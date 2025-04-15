@@ -44,21 +44,27 @@ const coursesData = {
 }
 
 export async function PopularCourses() {
-  // Wrap in try-catch to handle any errors
-  let popularCourseIds: string[] = []
+  // Default to showing some courses
+  const defaultCourses = Object.values(coursesData).slice(0, 4)
+
+  // Try to get popular courses, but fall back to defaults if there's an error
+  let coursesToShow = defaultCourses
 
   try {
-    popularCourseIds = await getPopularCourses(4)
-  } catch (error) {
-    console.error("Error fetching popular courses:", error)
-    // If there's an error, we'll fall back to default courses below
-  }
+    const popularCourseIds = await getPopularCourses(4)
 
-  // If no popular courses yet, show some default courses
-  const coursesToShow =
-    popularCourseIds.length > 0
-      ? popularCourseIds.map((id) => coursesData[id as keyof typeof coursesData]).filter(Boolean)
-      : Object.values(coursesData).slice(0, 4)
+    // Only use popular courses if we actually got some
+    if (popularCourseIds && popularCourseIds.length > 0) {
+      const popularCourses = popularCourseIds.map((id) => coursesData[id as keyof typeof coursesData]).filter(Boolean)
+
+      if (popularCourses.length > 0) {
+        coursesToShow = popularCourses
+      }
+    }
+  } catch (error) {
+    console.error("Error in PopularCourses component:", error)
+    // Fall back to default courses (already set)
+  }
 
   return (
     <section>

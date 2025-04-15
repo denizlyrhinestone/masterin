@@ -22,14 +22,15 @@ export async function getCourseViews(courseId: string): Promise<number> {
 
 export async function getPopularCourses(limit = 5): Promise<string[]> {
   try {
-    // Check if Redis client is properly initialized
-    if (!redis) {
-      console.error("Redis client not initialized")
+    // Get all keys matching the pattern
+    let keys: string[] = []
+
+    try {
+      keys = await redis.keys("course:*:views")
+    } catch (error) {
+      console.error("Failed to get course keys:", error)
       return []
     }
-
-    // Get all keys matching the pattern
-    const keys = await redis.keys("course:*:views")
 
     // If no keys found, return empty array
     if (!keys || keys.length === 0) return []
@@ -55,7 +56,6 @@ export async function getPopularCourses(limit = 5): Promise<string[]> {
       .map((course) => course.courseId)
   } catch (error) {
     console.error("Failed to get popular courses:", error)
-    // Return empty array instead of throwing an error
     return []
   }
 }
