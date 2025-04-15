@@ -10,7 +10,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
     return NextResponse.json({ materials })
   } catch (error) {
     console.error("Error fetching course materials:", error)
-    return NextResponse.json({ error: "Failed to fetch course materials" }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: "Failed to fetch course materials",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
 

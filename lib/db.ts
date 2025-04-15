@@ -21,7 +21,8 @@ export const db = drizzle(sql)
 // Execute a raw SQL query
 export async function executeQuery<T = any>(query: string, params: any[] = []): Promise<T[]> {
   try {
-    return (await sql(query, params)) as T[]
+    // Use sql.query instead of direct function call
+    return (await sql.query(query, params)) as T[]
   } catch (error) {
     console.error("Database query error:", error)
     throw error

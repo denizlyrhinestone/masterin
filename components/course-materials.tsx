@@ -35,13 +35,21 @@ export function CourseMaterials({ courseId, isInstructor = false }: CourseMateri
 
         if (response.ok) {
           const data = await response.json()
-          setMaterials(data.materials)
+          setMaterials(data.materials || [])
+        } else {
+          // Handle non-200 responses
+          console.error("Failed to fetch materials:", await response.text())
+          toast({
+            title: "Error",
+            description: "Failed to load course materials. Please try again later.",
+            variant: "destructive",
+          })
         }
       } catch (error) {
         console.error("Failed to fetch materials:", error)
         toast({
           title: "Error",
-          description: "Failed to load course materials",
+          description: "Failed to load course materials. Please try again later.",
           variant: "destructive",
         })
       } finally {

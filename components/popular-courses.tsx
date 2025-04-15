@@ -44,7 +44,15 @@ const coursesData = {
 }
 
 export async function PopularCourses() {
-  const popularCourseIds = await getPopularCourses(4)
+  // Wrap in try-catch to handle any errors
+  let popularCourseIds: string[] = []
+
+  try {
+    popularCourseIds = await getPopularCourses(4)
+  } catch (error) {
+    console.error("Error fetching popular courses:", error)
+    // If there's an error, we'll fall back to default courses below
+  }
 
   // If no popular courses yet, show some default courses
   const coursesToShow =

@@ -88,10 +88,10 @@
     "@ai-sdk/react": "latest",
     "@ai-sdk/xai": "latest",
     "ai": "latest",
-    "@upstash/redis": "latest",
     "@upstash/qstash": "latest",
     "@vercel/blob": "latest",
-    "drizzle-orm": "latest"
+    "drizzle-orm": "latest",
+    "@upstash/redis": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

@@ -5,6 +5,7 @@ import { FeaturedClasses } from "@/components/featured-classes"
 import { AiFeaturePreview } from "@/components/ai-feature-preview"
 import { LoadingSpinner } from "@/components/loading-spinner"
 import { PopularCourses } from "@/components/popular-courses"
+import { ErrorBoundary } from "@/components/error-boundary"
 
 export default function HomePage() {
   return (
@@ -20,7 +21,16 @@ export default function HomePage() {
         </Suspense>
 
         <Suspense fallback={<LoadingSpinner />}>
-          <PopularCourses />
+          <ErrorBoundary
+            fallback={
+              <div className="py-8">
+                <h2 className="text-3xl font-bold mb-6">Popular Courses</h2>
+                <p className="text-gray-500">Unable to load popular courses at this time. Please try again later.</p>
+              </div>
+            }
+          >
+            <PopularCourses />
+          </ErrorBoundary>
         </Suspense>
 
         <AiFeaturePreview />
