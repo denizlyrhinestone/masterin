@@ -14,7 +14,7 @@ import {
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu"
 import { cn } from "@/lib/utils"
-import { Menu, X } from "lucide-react"
+import { Menu, X, Bell } from "lucide-react"
 import { NotificationsPopover } from "./notifications"
 import { useAuth } from "./stack-auth-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -25,6 +25,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { ErrorBoundary } from "react-error-boundary"
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -87,7 +88,17 @@ export function Navigation() {
 
           <div className="hidden md:flex items-center space-x-4">
             {/* Notifications */}
-            {user && <NotificationsPopover userId={user.id} />}
+            {user && (
+              <ErrorBoundary
+                fallback={
+                  <Button variant="ghost" size="icon">
+                    <Bell className="h-5 w-5" />
+                  </Button>
+                }
+              >
+                <NotificationsPopover userId={user.id} />
+              </ErrorBoundary>
+            )}
 
             {isLoading ? (
               <div className="h-10 w-20 bg-gray-200 animate-pulse rounded"></div>

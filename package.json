@@ -90,8 +90,9 @@
     "ai": "latest",
     "@upstash/qstash": "latest",
     "@vercel/blob": "latest",
-    "drizzle-orm": "latest",
-    "@upstash/redis": "latest"
+    "@upstash/redis": "latest",
+    "react-error-boundary": "latest",
+    "drizzle-orm": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
