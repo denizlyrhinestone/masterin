@@ -40,12 +40,6 @@ export function EnhancedAiTutor({ courseContext }: EnhancedAiTutorProps) {
   const [feedbackText, setFeedbackText] = useState("")
   const [showHelpDialog, setShowHelpDialog] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [isClient, setIsClient] = useState(false)
-
-  // Only render client-side components after mount
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
 
   // Initialize the chat with AI SDK
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, reload } = useChat({
@@ -162,17 +156,6 @@ export function EnhancedAiTutor({ courseContext }: EnhancedAiTutorProps) {
   // Insert a suggested question into the input
   const insertSuggestedQuestion = () => {
     handleInputChange({ target: { value: getSuggestedQuestion() } } as any)
-  }
-
-  // If not client-side yet, return nothing or a loading indicator
-  if (!isClient) {
-    return (
-      <Card className="border-2">
-        <CardContent className="p-4 flex items-center justify-center h-[500px]">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-        </CardContent>
-      </Card>
-    )
   }
 
   return (
