@@ -152,11 +152,10 @@ export default function AIToolsHelpPage() {
 
                 <h3>Offline Support</h3>
                 <p>The AI Tutor works offline, allowing you to:</p>
-                <ul>
-                  <li>View your conversation history</li>
-                  <li>Draft questions to be sent when you're back online</li>
-                  <li>Access previously received answers</li>
-                </ul>
+                <li>View your conversation history</li>
+                <li>Draft questions to be sent when you're back online</li>
+                <li>Access previously received answers</li>
+
                 <p>
                   When you reconnect to the internet, your drafted questions will be automatically sent to the AI Tutor.
                 </p>
@@ -385,12 +384,10 @@ export default function AIToolsHelpPage() {
 
                 <h3>Sharing and Collaboration</h3>
                 <p>You can share quizzes with others:</p>
-                <ul>
-                  <li>Save quizzes to your account</li>
-                  <li>Export quizzes as PDF</li>
-                  <li>Share quizzes via link</li>
-                  <li>Make quizzes public or private</li>
-                </ul>
+                <li>Save quizzes to your account</li>
+                <li>Export quizzes as PDF</li>
+                <li>Share quizzes via link</li>
+                <li>Make quizzes public or private</li>
 
                 <h3>Troubleshooting</h3>
                 <Accordion type="single" collapsible className="w-full">
@@ -497,11 +494,9 @@ export default function AIToolsHelpPage() {
 
                 <h3>Offline Support</h3>
                 <p>Flashcards work offline, allowing you to:</p>
-                <ul>
-                  <li>Study your saved flashcard decks without an internet connection</li>
-                  <li>Track your progress offline</li>
-                  <li>Create new flashcards (they'll be synced when you're back online)</li>
-                </ul>
+                <li>Study your saved flashcard decks without an internet connection</li>
+                <li>Track your progress offline</li>
+                <li>Create new flashcards (they'll be synced when you're back online)</li>
 
                 <h3>Troubleshooting</h3>
                 <Accordion type="single" collapsible className="w-full">

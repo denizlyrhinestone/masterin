@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
-import { Loader2, ArrowLeft, RefreshCw } from "lucide-react"
+import { Loader2, ArrowLeft, RefreshCw, HelpCircle } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/components/auth-provider"
 import { getLMSConnections, type LMSConnection, type LMSPlatform } from "@/lib/lms-integration"
 import { LMSConnectCard } from "@/components/lms-integration/lms-connect-card"
 import { LMSConnectionCard } from "@/components/lms-integration/lms-connection-card"
+import Link from "next/link"
 
 export default function LMSIntegrationPage() {
   const router = useRouter()
@@ -21,6 +22,7 @@ export default function LMSIntegrationPage() {
   const [connections, setConnections] = useState<LMSConnection[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [hasFetchedInitialConnections, setHasFetchedInitialConnections] = useState(false)
 
   const platforms: LMSPlatform[] = ["canvas", "moodle", "blackboard", "google-classroom", "schoology"]
 
@@ -68,14 +70,15 @@ export default function LMSIntegrationPage() {
   useEffect(() => {
     let mounted = true
 
-    if (status === "authenticated") {
+    if (status === "authenticated" && !hasFetchedInitialConnections) {
       fetchConnections()
+      setHasFetchedInitialConnections(true)
     }
 
     return () => {
       mounted = false
     }
-  }, [status])
+  }, [status, hasFetchedInitialConnections])
 
   return (
     <div className="container mx-auto py-8 px-4">
@@ -130,7 +133,15 @@ export default function LMSIntegrationPage() {
         <TabsContent value="add">
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Add LMS Connection</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Add LMS Connection</CardTitle>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/help/lms-integration">
+                    <HelpCircle className="h-4 w-4 mr-2" />
+                    View Documentation
+                  </Link>
+                </Button>
+              </div>
               <CardDescription>Connect your Learning Management System to share content and sync data</CardDescription>
             </CardHeader>
           </Card>
