@@ -85,11 +85,9 @@
     "postgres": "latest",
     "sql.js": "latest",
     "sqlite3": "latest",
-    "@ai-sdk/react": "latest",
-    "@ai-sdk/xai": "latest",
-    "ai": "latest",
     "@upstash/qstash": "latest",
     "@vercel/blob": "latest",
+    "@ai-sdk/react": "latest",
     "@upstash/redis": "latest",
     "react-error-boundary": "latest",
     "drizzle-orm": "latest"

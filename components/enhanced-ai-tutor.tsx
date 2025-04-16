@@ -1,10 +1,11 @@
 "use client"
 
+import type React from "react"
+
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
-import { useChat } from "@ai-sdk/react"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Loader2,
@@ -15,9 +16,9 @@ import {
   Globe,
   ThumbsUp,
   ThumbsDown,
-  RefreshCw,
   Lightbulb,
   HelpCircle,
+  AlertTriangle,
 } from "lucide-react"
 import { toast } from "@/components/ui/use-toast"
 
@@ -27,6 +28,13 @@ interface CourseContext {
   description: string
   currentTopic: string
   learningObjectives: string[]
+}
+
+// Define message type
+type Message = {
+  id: string
+  role: "user" | "assistant"
+  content: string
 }
 
 interface EnhancedAiTutorProps {
@@ -41,34 +49,24 @@ export function EnhancedAiTutor({ courseContext }: EnhancedAiTutorProps) {
   const [showHelpDialog, setShowHelpDialog] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const [isClient, setIsClient] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  // Custom state management instead of useChat
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      id: "welcome",
+      role: "assistant",
+      content:
+        "Hello! I'm your AI learning assistant. I can help you understand concepts, solve problems, and provide learning resources. What would you like to learn today?",
+    },
+  ])
+  const [input, setInput] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   // Only render client-side components after mount
   useEffect(() => {
     setIsClient(true)
   }, [])
-
-  // Initialize the chat with AI SDK
-  const { messages, input, handleInputChange, handleSubmit, isLoading, error, reload } = useChat({
-    api: "/api/enhanced-tutor",
-    body: {
-      courseContext,
-    },
-    initialMessages: [
-      {
-        id: "welcome",
-        role: "assistant",
-        content:
-          "Hello! I'm your AI learning assistant. I can help you understand concepts, solve problems, and provide learning resources. What would you like to learn today?",
-      },
-    ],
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to connect to AI tutor. Please try again later.",
-        variant: "destructive",
-      })
-    },
-  })
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -76,6 +74,11 @@ export function EnhancedAiTutor({ courseContext }: EnhancedAiTutorProps) {
       messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
   }, [messages])
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value)
+  }
 
   // Handle tab change
   const handleTabChange = (value: string) => {
@@ -99,13 +102,112 @@ export function EnhancedAiTutor({ courseContext }: EnhancedAiTutorProps) {
 
     // Only send if changing to a specific subject tab
     if (value !== "general") {
-      const form = new FormData()
-      form.append("message", prompt)
-      handleSubmit({
-        preventDefault: () => {},
-        currentTarget: { elements: { message: { value: prompt } } },
-      } as any)
+      sendMessage(prompt)
     }
+  }
+
+  // Send message to API
+  const sendMessage = async (content: string) => {
+    try {
+      setIsLoading(true)
+      setErrorMessage(null)
+
+      // Add user message to state
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: "user",
+        content,
+      }
+
+      setMessages((prev) => [...prev, userMessage])
+
+      // Clear input if this is from the input field
+      if (content === input) {
+        setInput("")
+      }
+
+      // Call API
+      const response = await fetch("/api/enhanced-tutor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+          courseContext,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error(`API responded with status: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // Add assistant message to state
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: data.content,
+        },
+      ])
+    } catch (error) {
+      console.error("AI chat error:", error)
+      setErrorMessage("I'm having trouble connecting. Please try again in a moment.")
+
+      toast({
+        title: "Connection issue",
+        description: "There was a problem connecting to the AI assistant.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // Handle form submission
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!input.trim()) return
+
+    sendMessage(input)
+  }
+
+  // Retry last message
+  const retry = () => {
+    // Find the last user message
+    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user")
+
+    if (lastUserMessage) {
+      // Remove the last assistant message if it exists
+      const newMessages = messages.filter((m) => m.role !== "assistant" || m.id !== messages[messages.length - 1].id)
+
+      setMessages(newMessages)
+      sendMessage(lastUserMessage.content)
+    }
+  }
+
+  // Generate a suggested question based on the course context
+  const getSuggestedQuestion = () => {
+    if (!courseContext) return "What is the difference between machine learning and deep learning?"
+
+    const suggestions = [
+      `Can you explain the concept of ${courseContext.currentTopic}?`,
+      `What are the key principles of ${courseContext.currentTopic}?`,
+      `How does ${courseContext.currentTopic} relate to ${courseContext.title}?`,
+      `Can you provide an example of ${courseContext.currentTopic} in practice?`,
+      `What are common challenges when learning about ${courseContext.currentTopic}?`,
+    ]
+
+    return suggestions[Math.floor(Math.random() * suggestions.length)]
+  }
+
+  // Insert a suggested question into the input
+  const insertSuggestedQuestion = () => {
+    setInput(getSuggestedQuestion())
   }
 
   // Handle feedback submission
@@ -142,26 +244,6 @@ export function EnhancedAiTutor({ courseContext }: EnhancedAiTutorProps) {
     setShowFeedbackDialog(false)
     setFeedbackText("")
     setFeedbackMessage(null)
-  }
-
-  // Generate a suggested question based on the course context
-  const getSuggestedQuestion = () => {
-    if (!courseContext) return "What is the difference between machine learning and deep learning?"
-
-    const suggestions = [
-      `Can you explain the concept of ${courseContext.currentTopic}?`,
-      `What are the key principles of ${courseContext.currentTopic}?`,
-      `How does ${courseContext.currentTopic} relate to ${courseContext.title}?`,
-      `Can you provide an example of ${courseContext.currentTopic} in practice?`,
-      `What are common challenges when learning about ${courseContext.currentTopic}?`,
-    ]
-
-    return suggestions[Math.floor(Math.random() * suggestions.length)]
-  }
-
-  // Insert a suggested question into the input
-  const insertSuggestedQuestion = () => {
-    handleInputChange({ target: { value: getSuggestedQuestion() } } as any)
   }
 
   // If not client-side yet, return nothing or a loading indicator
@@ -237,15 +319,19 @@ export function EnhancedAiTutor({ courseContext }: EnhancedAiTutorProps) {
                 </div>
               ))}
 
-              {error && (
+              {errorMessage && (
                 <div className="p-3 bg-red-50 text-red-800 rounded-lg mb-4">
-                  <div className="font-medium">Error</div>
+                  <div className="font-medium flex items-center">
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                    Connection Issue
+                  </div>
                   <div>
-                    Failed to get a response. Please try again or reload the conversation.
-                    <Button variant="outline" size="sm" className="mt-2" onClick={reload}>
-                      <RefreshCw className="h-3 w-3 mr-2" />
-                      Reload
-                    </Button>
+                    {errorMessage}
+                    <div className="mt-2">
+                      <Button variant="outline" size="sm" onClick={retry}>
+                        Try Again
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -262,6 +348,7 @@ export function EnhancedAiTutor({ courseContext }: EnhancedAiTutorProps) {
                     value={input}
                     onChange={handleInputChange}
                     className="min-h-[80px] pr-20"
+                    disabled={isLoading}
                   />
                   <div className="absolute right-2 top-2 flex gap-1">
                     <Button
@@ -271,6 +358,7 @@ export function EnhancedAiTutor({ courseContext }: EnhancedAiTutorProps) {
                       className="h-8 w-8"
                       onClick={insertSuggestedQuestion}
                       title="Insert a suggested question"
+                      disabled={isLoading}
                     >
                       <Lightbulb className="h-4 w-4" />
                       <span className="sr-only">Suggest question</span>
@@ -303,6 +391,12 @@ export function EnhancedAiTutor({ courseContext }: EnhancedAiTutorProps) {
                     <span className="ml-2">{isLoading ? "Thinking..." : "Send"}</span>
                   </Button>
                 </div>
+                {isLoading && (
+                  <div className="text-xs text-gray-500 flex items-center">
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    Generating response... This may take a moment.
+                  </div>
+                )}
               </div>
             </form>
           </div>
