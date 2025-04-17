@@ -90,7 +90,14 @@
     "@ai-sdk/react": "latest",
     "@upstash/redis": "latest",
     "react-error-boundary": "latest",
-    "drizzle-orm": "latest"
+    "@jest/globals": "latest",
+    "http": "latest",
+    "node-fetch": "latest",
+    "crypto": "latest",
+    "drizzle-orm": "latest",
+    "ai": "latest",
+    "@ai-sdk/xai": "latest",
+    "@vercel/kv": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

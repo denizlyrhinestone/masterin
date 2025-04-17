@@ -1,6 +1,6 @@
 import { neon, neonConfig, type NeonQueryFunction } from "@neondatabase/serverless"
 import { logger } from "../logger"
-import { DatabaseError } from "./errors"
+import { DatabaseError } from "../errors"
 import { drizzle } from "drizzle-orm/neon-http"
 
 // Configure neon to use fetch polyfill
