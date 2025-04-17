@@ -1,72 +1,50 @@
 import { NextResponse } from "next/server"
-import { logger } from "@/lib/logger"
+import { generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
+import { groq } from "@ai-sdk/groq"
+import { xai } from "@ai-sdk/xai"
 
-// Mock responses for preview environments
-const MOCK_RESPONSES = [
-  "I'm a simulated AI tutor response in the preview environment. In the actual deployment, this would be powered by a real AI model.",
-  "This is a mock response since we're in a preview environment. The full AI capabilities will be available in the deployed version.",
-  "I'm currently in preview mode with limited capabilities. In the full version, I can provide detailed educational assistance.",
-  "As a preview version, I'm showing you a simulated response. The deployed version will connect to an actual AI model.",
-  "This is an example of how I would respond. In the actual deployment, I'll be able to provide personalized educational content.",
-]
-
-// Get a random mock response
-const getMockResponse = () => {
-  const randomIndex = Math.floor(Math.random() * MOCK_RESPONSES.length)
-  return MOCK_RESPONSES[randomIndex]
-}
-
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    // Extract the message from the request body
-    const { message, userId = "anonymous" } = await req.json()
+    const body = await request.json()
+    const { message, userId } = body
 
-    // Validate input
     if (!message) {
-      return NextResponse.json(
-        {
-          content: "Please provide a message to get a response.",
-        },
-        { status: 400 },
-      )
+      return new NextResponse(JSON.stringify({ error: "Invalid request. Message is required." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
     }
 
-    // Log the request
-    logger.info("AI tutor basic request", {
-      userId,
-      messageLength: message.length,
+    // Determine which AI model to use based on available API keys
+    let model
+    if (process.env.XAI_API_KEY) {
+      model = xai("grok-1")
+    } else if (process.env.GROQ_API_KEY) {
+      model = groq("llama3-70b-8192")
+    } else {
+      model = openai("gpt-3.5-turbo")
+    }
+
+    // Generate the AI response
+    const { text } = await generateText({
+      model,
+      system: "You are an educational AI tutor. Be helpful and concise.",
+      prompt: message,
     })
-
-    // Generate a response
-    let response = getMockResponse()
-
-    // Add some context based on the message
-    if (message.toLowerCase().includes("programming")) {
-      response +=
-        "\n\nIn programming, it's important to understand concepts like variables, functions, and data structures. These form the building blocks of any program."
-    } else if (message.toLowerCase().includes("math")) {
-      response +=
-        "\n\nMathematics is a vast field with many branches including algebra, calculus, geometry, and statistics. Each area has its own set of principles and applications."
-    } else if (message.toLowerCase().includes("language")) {
-      response +=
-        "\n\nLanguage learning involves vocabulary, grammar, pronunciation, and cultural understanding. Regular practice is key to mastering any new language."
-    }
-
-    // Add a delay to simulate thinking time (0.5-1.5 seconds)
-    await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 1000))
 
     return NextResponse.json({
-      content: response,
+      content: text,
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    logger.error("AI tutor basic error", { error })
-
-    // Return a friendly error message
-    return NextResponse.json(
-      {
-        content: "I apologize, but I'm having trouble processing your request right now. Please try again in a moment.",
-      },
-      { status: 500 },
+    console.error("AI Tutor Basic API Error:", error)
+    return new NextResponse(
+      JSON.stringify({
+        error: "Failed to process AI tutor request",
+        details: error instanceof Error ? error.message : "Unknown error",
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
     )
   }
 }

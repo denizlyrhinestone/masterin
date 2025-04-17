@@ -1,6 +1,0 @@
-# Ignore problematic files
-app/enhanced-tutor-with-selector/
-app/enhanced-tutor-selector/
-components/course-context-selector.tsx
-components/enhanced-tutor-with-selector.tsx
-components/enhanced-tutor-selector.tsx
