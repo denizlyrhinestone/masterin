@@ -1,13 +1,15 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Brain, Send, Sparkles, ThumbsDown, ThumbsUp, Lightbulb, Zap } from "lucide-react"
+import { Brain, Send, Sparkles, ThumbsDown, ThumbsUp, Lightbulb, Zap, RotateCcw } from "lucide-react"
+import { useAIConversation } from "@/hooks/use-ai-conversation"
+import { ConversationHistory } from "@/components/conversation-history"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Sample suggested questions
 const suggestedQuestions = [
@@ -18,93 +20,53 @@ const suggestedQuestions = [
   "What is the difference between mitosis and meiosis?",
 ]
 
-// Sample chat history
-const initialChatHistory = [
-  {
-    role: "assistant",
-    content: "Hi there! I'm your AI tutor. How can I help with your studies today?",
-    timestamp: new Date().toISOString(),
-  },
+// Subject options
+const subjectOptions = [
+  { value: "biology", label: "Biology" },
+  { value: "chemistry", label: "Chemistry" },
+  { value: "physics", label: "Physics" },
+  { value: "mathematics", label: "Mathematics" },
+  { value: "history", label: "History" },
+  { value: "literature", label: "Literature" },
+  { value: "general", label: "General" },
 ]
 
 export default function AITutorPage() {
-  const [chatHistory, setChatHistory] = useState(initialChatHistory)
-  const [message, setMessage] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [modelInfo, setModelInfo] = useState({ provider: "", model: "" })
+  // For demo purposes, we'll use a fixed user ID
+  const userId = "user-123"
 
-  const handleSendMessage = async () => {
-    if (!message.trim()) return
+  const [subject, setSubject] = useState<string | undefined>(undefined)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
-    // Add user message to chat
-    const userMessage = {
-      role: "user",
-      content: message,
-      timestamp: new Date().toISOString(),
-    }
-
-    setChatHistory((prev) => [...prev, userMessage])
-    setMessage("")
-    setIsLoading(true)
-
-    try {
-      // Call the AI tutor API
-      const response = await fetch("/api/ai-tutor", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: [...chatHistory, userMessage].map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error("Failed to get response from AI tutor")
-      }
-
-      const data = await response.json()
-
-      // Update model info if available
-      if (data.provider && data.model) {
-        setModelInfo({
-          provider: data.provider,
-          model: data.model,
-        })
-      }
-
-      // Add AI response to chat
-      setChatHistory((prev) => [
-        ...prev,
+  const { messages, input, setInput, handleSubmit, isLoading, error, modelInfo, sessionId, resetConversation } =
+    useAIConversation({
+      userId,
+      subject,
+      initialMessages: [
         {
+          id: "welcome",
           role: "assistant",
-          content: data.content,
-          timestamp: new Date().toISOString(),
+          content: "Hi there! I'm your AI tutor. How can I help with your studies today?",
         },
-      ])
-    } catch (error) {
-      console.error("Error:", error)
+      ],
+    })
 
-      // Add error message to chat
-      setChatHistory((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content: "I'm sorry, I encountered an error. Please try again later.",
-          timestamp: new Date().toISOString(),
-          isError: true,
-        },
-      ])
-    } finally {
-      setIsLoading(false)
+  // Scroll to bottom of messages
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
     }
+  }, [messages])
+
+  // Handle subject change
+  const handleSubjectChange = (value: string) => {
+    setSubject(value === "general" ? undefined : value)
+    resetConversation()
   }
 
+  // Handle suggested question
   const handleSuggestedQuestion = (question: string) => {
-    setMessage(question)
+    setInput(question)
   }
 
   return (
@@ -126,16 +88,29 @@ export default function AITutorPage() {
                       : "Powered by advanced AI"}
                   </CardDescription>
                 </div>
-                <Badge variant="outline" className="ml-auto flex items-center gap-1 bg-primary/10 text-primary">
-                  <Sparkles className="h-3 w-3" />
-                  <span>Smart</span>
-                </Badge>
+                <div className="ml-auto flex items-center gap-2">
+                  <Select value={subject || "general"} onValueChange={handleSubjectChange}>
+                    <SelectTrigger className="w-[140px]">
+                      <SelectValue placeholder="Select subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjectOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="icon" onClick={resetConversation} title="New conversation">
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="flex-1 overflow-auto p-6">
               <div className="space-y-6">
-                {chatHistory.map((message, index) => (
-                  <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                {messages.map((message, index) => (
+                  <div key={message.id} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                     {message.role === "assistant" && (
                       <Avatar className="mr-2 mt-0.5 h-8 w-8">
                         <AvatarImage src="/abstract-ai-network.png" alt="AI" />
@@ -146,7 +121,7 @@ export default function AITutorPage() {
                       className={`rounded-2xl px-4 py-2 max-w-[80%] ${
                         message.role === "user"
                           ? "bg-primary text-primary-foreground"
-                          : message.isError
+                          : message.id === "error"
                             ? "bg-destructive/10 text-destructive"
                             : "bg-muted"
                       }`}
@@ -158,7 +133,7 @@ export default function AITutorPage() {
                           </p>
                         ))}
                       </div>
-                      {message.role === "assistant" && !message.isError && (
+                      {message.role === "assistant" && message.id !== "error" && (
                         <div className="mt-2 flex items-center justify-end gap-2">
                           <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full">
                             <ThumbsUp className="h-3 w-3" />
@@ -194,39 +169,56 @@ export default function AITutorPage() {
                     </div>
                   </div>
                 )}
+                {error && (
+                  <div className="flex justify-start">
+                    <Avatar className="mr-2 mt-0.5 h-8 w-8">
+                      <AvatarImage src="/abstract-ai-network.png" alt="AI" />
+                      <AvatarFallback>AI</AvatarFallback>
+                    </Avatar>
+                    <div className="rounded-2xl px-4 py-2 bg-destructive/10 text-destructive">
+                      <p>{error}</p>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
             </CardContent>
             <CardFooter className="border-t bg-muted/30 p-4">
-              <div className="flex w-full items-center space-x-2">
+              <form onSubmit={handleSubmit} className="flex w-full items-center space-x-2">
                 <Textarea
                   placeholder="Ask me anything about your studies..."
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault()
-                      handleSendMessage()
+                      if (input.trim()) {
+                        handleSubmit(e as any)
+                      }
                     }
                   }}
                   className="min-h-12 flex-1 rounded-xl border-muted bg-background"
                 />
                 <Button
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !message.trim()}
+                  type="submit"
+                  disabled={isLoading || !input.trim()}
                   size="icon"
                   className="h-12 w-12 rounded-xl"
                 >
                   <Send className="h-5 w-5" />
                   <span className="sr-only">Send</span>
                 </Button>
-              </div>
+              </form>
             </CardFooter>
           </Card>
         </div>
 
         <div>
-          <Tabs defaultValue="suggested">
-            <TabsList className="grid w-full grid-cols-2 rounded-lg bg-muted p-1">
+          <Tabs defaultValue="history">
+            <TabsList className="grid w-full grid-cols-3 rounded-lg bg-muted p-1">
+              <TabsTrigger value="history" className="rounded-md">
+                History
+              </TabsTrigger>
               <TabsTrigger value="suggested" className="rounded-md">
                 Suggested
               </TabsTrigger>
@@ -234,6 +226,23 @@ export default function AITutorPage() {
                 Features
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="history" className="mt-6">
+              <Card className="border-none shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Conversation History</CardTitle>
+                  <CardDescription>Your previous AI tutor sessions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ConversationHistory
+                    userId={userId}
+                    onSelectSession={(id) => console.log("Selected session:", id)}
+                    onNewSession={resetConversation}
+                    currentSessionId={sessionId}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
             <TabsContent value="suggested" className="mt-6">
               <Card className="border-none shadow-sm">
@@ -273,9 +282,9 @@ export default function AITutorPage() {
                           <Sparkles className="h-4 w-4 text-primary" />
                         </div>
                         <div>
-                          <h3 className="font-medium">Personalized Learning</h3>
+                          <h3 className="font-medium">Continuous Conversations</h3>
                           <p className="text-sm text-muted-foreground">
-                            Get tailored explanations based on your learning style
+                            Have extended dialogues with context awareness
                           </p>
                         </div>
                       </div>
@@ -287,10 +296,8 @@ export default function AITutorPage() {
                           <Brain className="h-4 w-4 text-secondary" />
                         </div>
                         <div>
-                          <h3 className="font-medium">Concept Mastery</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Break down complex topics into easy-to-understand explanations
-                          </p>
+                          <h3 className="font-medium">Subject Specialization</h3>
+                          <p className="text-sm text-muted-foreground">Get expert help in specific academic subjects</p>
                         </div>
                       </div>
                     </div>
@@ -301,10 +308,8 @@ export default function AITutorPage() {
                           <Zap className="h-4 w-4 text-accent" />
                         </div>
                         <div>
-                          <h3 className="font-medium">Practice Problems</h3>
-                          <p className="text-sm text-muted-foreground">
-                            Get practice problems with step-by-step solutions
-                          </p>
+                          <h3 className="font-medium">Conversation History</h3>
+                          <p className="text-sm text-muted-foreground">Save and revisit your learning conversations</p>
                         </div>
                       </div>
                     </div>

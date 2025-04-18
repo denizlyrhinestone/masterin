@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
-import { getAIModel } from "@/lib/ai-client"
+import { getAIModel, getAITutorSystemMessage } from "@/lib/ai-client"
+import type { Message } from "ai"
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { messages, userId } = body
+    const { messages, userId, subject, sessionId } = body
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new NextResponse(JSON.stringify({ error: "Invalid request. Messages array is required." }), {
@@ -16,24 +17,32 @@ export async function POST(request: Request) {
 
     // Log the request if LOG_LEVEL is debug
     if (process.env.LOG_LEVEL === "debug") {
-      console.log("AI Tutor Request:", { userId, messageCount: messages.length })
+      console.log("AI Tutor Request:", {
+        userId,
+        sessionId,
+        subject,
+        messageCount: messages.length,
+      })
     }
 
     // Get the best available AI model
     const { model, provider, modelName } = getAIModel()
     console.log(`Using ${provider} model: ${modelName}`)
 
-    // Prepare the system message for the AI tutor
-    const systemMessage = `You are an educational AI tutor. Your goal is to help students learn by guiding them through problems, not just giving answers. Ask questions to help students discover solutions themselves. Be encouraging, clear, and concise.`
+    // Get the system message for the AI tutor
+    const systemMessage = getAITutorSystemMessage(subject)
 
-    // Combine the user's messages with the system message
-    const prompt = messages.map((msg) => msg.content).join("\n")
+    // Format messages for the AI model
+    const formattedMessages = messages.map((msg: Message) => ({
+      role: msg.role,
+      content: msg.content,
+    }))
 
     // Generate the AI response
     const { text } = await generateText({
       model,
       system: systemMessage,
-      prompt,
+      messages: formattedMessages,
     })
 
     return NextResponse.json({
@@ -41,6 +50,7 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
       provider,
       model: modelName,
+      sessionId: sessionId || `session_${Date.now()}`,
     })
   } catch (error) {
     console.error("AI Tutor API Error:", error)
