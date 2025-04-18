@@ -9,10 +9,11 @@ import { useAuth } from "@/contexts/auth-context"
 interface ProtectedRouteProps {
   children: React.ReactNode
   allowedRoles?: Array<"student" | "educator" | "admin">
+  requireEmailVerification?: boolean
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
-  const { user, profile, isLoading } = useAuth()
+export function ProtectedRoute({ children, allowedRoles, requireEmailVerification = false }: ProtectedRouteProps) {
+  const { user, profile, isLoading, isEmailVerified } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -30,11 +31,21 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
       return
     }
 
+    // If email verification is required and email is not verified
+    if (requireEmailVerification && !isEmailVerified) {
+      // Allow access to verification-related pages
+      const verificationPages = ["/verify-email", "/resend-verification"]
+      if (!verificationPages.includes(pathname)) {
+        router.push("/verify-email-required")
+        return
+      }
+    }
+
     // If roles are specified, check if user has the required role
     if (allowedRoles && profile && !allowedRoles.includes(profile.role)) {
       router.push("/unauthorized")
     }
-  }, [user, profile, isLoading, router, pathname, allowedRoles])
+  }, [user, profile, isLoading, router, pathname, allowedRoles, requireEmailVerification, isEmailVerified])
 
   // Show loading state
   if (isLoading) {
@@ -51,6 +62,15 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   // If not logged in or doesn't have the required role, don't render children
   if (!user || (allowedRoles && profile && !allowedRoles.includes(profile.role))) {
     return null
+  }
+
+  // If email verification is required and email is not verified
+  if (requireEmailVerification && !isEmailVerified) {
+    // Allow access to verification-related pages
+    const verificationPages = ["/verify-email", "/resend-verification"]
+    if (!verificationPages.includes(pathname)) {
+      return null
+    }
   }
 
   // Otherwise, render the protected content

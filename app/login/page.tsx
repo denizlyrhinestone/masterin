@@ -118,9 +118,9 @@ export default function LoginPage() {
               </Link>
             </p>
             <p className="mt-2 text-center text-sm text-muted-foreground">
-              Are you an educator?{" "}
-              <Link href="/educator/login" className="text-primary hover:underline">
-                Sign in as educator
+              Need to verify your email?{" "}
+              <Link href="/resend-verification" className="text-primary hover:underline">
+                Resend verification email
               </Link>
             </p>
           </CardFooter>

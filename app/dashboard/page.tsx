@@ -4,6 +4,7 @@ import { CourseCard } from "@/components/dashboard/course-card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { ProtectedRoute } from "@/components/protected-route"
+import { EmailVerificationBanner } from "@/components/email-verification-banner"
 
 export default function DashboardPage() {
   // In a real app, this data would come from an API or database
@@ -44,6 +45,9 @@ export default function DashboardPage() {
   return (
     <ProtectedRoute>
       <div className="container mx-auto p-6">
+        {/* Email Verification Banner */}
+        <EmailVerificationBanner />
+
         {/* Welcome Banner */}
         <div className="mb-8 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-8">
           <h1 className="text-3xl font-bold">

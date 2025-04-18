@@ -20,6 +20,7 @@ export interface UserProfile {
   educator_bio?: string
   educator_title?: string
   educator_verified?: boolean
+  email_verified: boolean
   created_at: string
   updated_at?: string
 }
@@ -64,13 +65,19 @@ export async function upsertUserProfile(profile: Partial<UserProfile>): Promise<
   }
 }
 
-// Function to sign up a new user
+// Function to sign up a new user with email verification
 export async function signUp(email: string, password: string, userData: Partial<UserProfile>, isEducator = false) {
   try {
-    // Create the user in Supabase Auth
+    // Create the user in Supabase Auth with email confirmation
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/verify-email`,
+        data: {
+          role: isEducator ? "educator" : "student",
+        },
+      },
     })
 
     if (authError) {
@@ -85,6 +92,7 @@ export async function signUp(email: string, password: string, userData: Partial<
         role: isEducator ? ("educator" as const) : ("student" as const),
         created_at: new Date().toISOString(),
         educator_verified: isEducator ? false : undefined, // Educators start unverified
+        email_verified: false, // Start with unverified email
         ...userData,
       }
 
@@ -165,51 +173,56 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
-// Function to check if a user is an educator
-export async function isEducator(userId: string): Promise<boolean> {
+// Function to check if a user's email is verified
+export async function isEmailVerified(userId: string): Promise<boolean> {
   try {
     const profile = await getUserProfile(userId)
-    return profile?.role === "educator"
+    return profile?.email_verified === true
   } catch (error) {
-    console.error("Error checking educator status:", error)
+    console.error("Error checking email verification status:", error)
     return false
   }
 }
 
-// Function to check if an educator is verified
-export async function isVerifiedEducator(userId: string): Promise<boolean> {
+// Function to update email verification status
+export async function updateEmailVerificationStatus(userId: string, verified: boolean): Promise<boolean> {
   try {
-    const profile = await getUserProfile(userId)
-    return profile?.role === "educator" && profile?.educator_verified === true
-  } catch (error) {
-    console.error("Error checking educator verification status:", error)
-    return false
-  }
-}
-
-// Function to request educator verification
-export async function requestEducatorVerification(userId: string, verificationData: any): Promise<boolean> {
-  try {
-    // In a real app, this would send an email or create a verification request record
-    // For now, we'll just update the profile with the verification data
-    const { data, error } = await supabase
-      .from("educator_verification_requests")
-      .insert({
-        user_id: userId,
-        verification_data: verificationData,
-        status: "pending",
-        created_at: new Date().toISOString(),
-      })
-      .select()
+    const { error } = await supabase
+      .from("profiles")
+      .update({ email_verified: verified, updated_at: new Date().toISOString() })
+      .eq("id", userId)
 
     if (error) {
-      console.error("Error requesting verification:", error)
+      console.error("Error updating email verification status:", error)
       return false
     }
 
     return true
   } catch (error) {
-    console.error("Error in requestEducatorVerification:", error)
+    console.error("Error in updateEmailVerificationStatus:", error)
+    return false
+  }
+}
+
+// Function to resend verification email
+export async function resendVerificationEmail(email: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/verify-email`,
+      },
+    })
+
+    if (error) {
+      console.error("Error resending verification email:", error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error("Error in resendVerificationEmail:", error)
     return false
   }
 }
