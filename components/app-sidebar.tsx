@@ -54,10 +54,18 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/courses")}>
+              <Link href="/courses">
+                <BookOpen className="h-5 w-5" />
+                <span>Courses</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
             <SidebarMenuButton asChild isActive={isActive("/classes")}>
               <Link href="/classes">
-                <BookOpen className="h-5 w-5" />
-                <span>My Courses</span>
+                <Book className="h-5 w-5" />
+                <span>My Classes</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
