@@ -31,6 +31,7 @@ export async function middleware(request: NextRequest) {
     "/educator/login",
     "/forgot-password",
     "/reset-password",
+    "/verify-email",
   ]
 
   // Check if the route is public
@@ -58,6 +59,17 @@ export async function middleware(request: NextRequest) {
   if (session && isPublicRoute) {
     // Redirect to dashboard
     return NextResponse.redirect(new URL("/dashboard", request.url))
+  }
+
+  // Check for admin-specific routes
+  if (pathname.startsWith("/admin")) {
+    // Get the user profile to check role
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", session?.user.id).single()
+
+    // If not an admin, redirect to unauthorized page
+    if (!profile || profile.role !== "admin") {
+      return NextResponse.redirect(new URL("/unauthorized", request.url))
+    }
   }
 
   // Check for educator-specific routes

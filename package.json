@@ -64,8 +64,8 @@
     "@ai-sdk/openai": "latest",
     "@ai-sdk/groq": "latest",
     "@ai-sdk/xai": "latest",
-    "@supabase/ssr": "latest",
-    "@supabase/auth-helpers-nextjs": "latest"
+    "@supabase/auth-helpers-nextjs": "latest",
+    "@supabase/ssr": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
