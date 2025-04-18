@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -9,68 +8,77 @@ import { BookOpen, Calendar, Clock } from "lucide-react"
 // Sample enrolled classes data
 const enrolledClasses = [
   {
-    id: "algebra-101",
-    title: "Algebra 101",
-    description: "Introduction to algebraic concepts",
+    id: "ap-biology",
+    title: "AP Biology",
+    description: "Advanced placement biology for college credit",
     instructor: "Dr. Jane Smith",
     progress: 65,
-    nextLesson: "Quadratic Equations",
+    nextLesson: "Cellular Respiration",
     nextLessonDate: "Today, 3:00 PM",
-    image: "/placeholder.svg?height=200&width=400&query=algebra",
+    image: "/placeholder.svg?height=200&width=400&query=ap+biology",
+    category: "Biology",
+    categoryColor: "bg-green-100 text-green-700",
   },
   {
-    id: "physics-mechanics",
-    title: "Physics: Mechanics",
-    description: "Fundamentals of classical mechanics",
+    id: "chemistry",
+    title: "Chemistry",
+    description: "Fundamentals of chemistry and chemical reactions",
     instructor: "Prof. Robert Chen",
     progress: 42,
-    nextLesson: "Newton's Laws of Motion",
+    nextLesson: "Chemical Bonding",
     nextLessonDate: "Tomorrow, 10:00 AM",
-    image: "/placeholder.svg?height=200&width=400&query=physics",
+    image: "/colorful-chemistry-lab.png",
+    category: "Chemistry",
+    categoryColor: "bg-purple-100 text-purple-700",
   },
   {
-    id: "literature-analysis",
-    title: "Literature Analysis",
-    description: "Critical analysis of classic literature",
+    id: "environmental-science",
+    title: "Environmental Science",
+    description: "Study of environmental systems and human impacts",
     instructor: "Dr. Emily Johnson",
     progress: 78,
-    nextLesson: "Shakespeare's Sonnets",
+    nextLesson: "Ecosystem Dynamics",
     nextLessonDate: "Wednesday, 2:00 PM",
-    image: "/placeholder.svg?height=200&width=400&query=literature",
+    image: "/interconnected-ecosystems.png",
+    category: "Environmental Science",
+    categoryColor: "bg-teal-100 text-teal-700",
   },
 ]
 
 // Sample recommended classes
 const recommendedClasses = [
   {
-    id: "calculus-fundamentals",
-    title: "Calculus Fundamentals",
-    description: "Learn the basics of differential and integral calculus",
+    id: "marine-biology",
+    title: "Marine Biology",
+    description: "Exploration of ocean ecosystems and marine life",
     instructor: "Prof. Michael Johnson",
     level: "Intermediate",
     duration: "10 weeks",
-    category: "Mathematics",
-    image: "/placeholder.svg?height=200&width=400&query=calculus",
+    category: "Biology",
+    categoryColor: "bg-blue-100 text-blue-700",
+    image: "/placeholder.svg?height=200&width=400&query=marine+biology",
   },
   {
-    id: "chemistry-101",
-    title: "Chemistry 101",
-    description: "Introduction to basic chemistry concepts",
+    id: "physics-mechanics",
+    title: "Physics: Mechanics",
+    description: "Principles of motion, forces, and energy",
     instructor: "Dr. Lisa Wong",
     level: "Beginner",
     duration: "8 weeks",
-    category: "Science",
-    image: "/placeholder.svg?height=200&width=400&query=chemistry",
+    category: "Physics",
+    categoryColor: "bg-indigo-100 text-indigo-700",
+    image: "/placeholder.svg?height=200&width=400&query=physics+mechanics",
   },
   {
-    id: "programming-python",
-    title: "Programming with Python",
-    description: "Learn Python programming from scratch",
+    id: "world-history",
+    title: "World History",
+    description: "Major civilizations and historical events",
     instructor: "Prof. David Miller",
     level: "Beginner",
     duration: "12 weeks",
-    category: "Computer Science",
-    image: "/placeholder.svg?height=200&width=400&query=python",
+    category: "History",
+    categoryColor: "bg-orange-100 text-orange-700",
+    image: "/placeholder.svg?height=200&width=400&query=world+history",
   },
 ]
 
@@ -78,54 +86,61 @@ export default function ClassesPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">My Classes</h1>
-        <p className="text-muted-foreground">Manage your enrolled classes and find new ones to join.</p>
+        <h1 className="text-3xl font-bold tracking-tight">My Courses</h1>
+        <p className="text-muted-foreground">Track your progress and discover new learning opportunities.</p>
       </div>
 
       <Tabs defaultValue="enrolled" className="mb-8">
-        <TabsList>
-          <TabsTrigger value="enrolled">Enrolled Classes</TabsTrigger>
-          <TabsTrigger value="recommended">Recommended</TabsTrigger>
-          <TabsTrigger value="completed">Completed</TabsTrigger>
+        <TabsList className="mb-6 w-full justify-start rounded-lg bg-muted p-1">
+          <TabsTrigger value="enrolled" className="rounded-md">
+            Enrolled
+          </TabsTrigger>
+          <TabsTrigger value="recommended" className="rounded-md">
+            Recommended
+          </TabsTrigger>
+          <TabsTrigger value="completed" className="rounded-md">
+            Completed
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="enrolled" className="mt-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {enrolledClasses.map((classItem) => (
-              <Card key={classItem.id} className="overflow-hidden">
-                <img
-                  src={classItem.image || "/placeholder.svg"}
-                  alt={classItem.title}
-                  className="h-48 w-full object-cover"
-                />
-                <CardHeader>
-                  <CardTitle>{classItem.title}</CardTitle>
-                  <CardDescription>{classItem.instructor}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-1 text-sm">
+              <div key={classItem.id} className="course-card overflow-hidden">
+                <div className="relative">
+                  <img
+                    src={classItem.image || "/placeholder.svg"}
+                    alt={classItem.title}
+                    className="h-48 w-full object-cover"
+                  />
+                  <Badge className={`absolute left-2 top-2 ${classItem.categoryColor}`}>{classItem.category}</Badge>
+                </div>
+                <div className="p-6">
+                  <h3 className="mb-2 text-lg font-bold">{classItem.title}</h3>
+                  <p className="mb-4 text-sm text-muted-foreground">{classItem.instructor}</p>
+
+                  <div className="mb-4">
+                    <div className="mb-1 flex justify-between text-sm">
                       <span>Progress</span>
-                      <span>{classItem.progress}%</span>
+                      <span className="font-medium">{classItem.progress}%</span>
                     </div>
                     <Progress value={classItem.progress} className="h-2" />
                   </div>
 
-                  <div className="rounded-lg bg-muted p-3">
+                  <div className="mb-4 rounded-lg bg-muted p-3">
                     <div className="flex items-center">
-                      <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <Calendar className="mr-2 h-4 w-4 text-primary" />
                       <h4 className="text-sm font-medium">Next Lesson</h4>
                     </div>
                     <p className="mt-1 text-sm">{classItem.nextLesson}</p>
                     <p className="mt-1 text-xs text-muted-foreground">{classItem.nextLessonDate}</p>
                   </div>
-                </CardContent>
-                <CardFooter>
+
                   <Button asChild className="w-full">
-                    <Link href={`/classes/${classItem.id}`}>Continue Learning</Link>
+                    <Link href={`/classes/${classItem.id}`}>Continue</Link>
                   </Button>
-                </CardFooter>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </TabsContent>
@@ -133,47 +148,48 @@ export default function ClassesPage() {
         <TabsContent value="recommended" className="mt-6">
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {recommendedClasses.map((classItem) => (
-              <Card key={classItem.id} className="overflow-hidden">
-                <img
-                  src={classItem.image || "/placeholder.svg"}
-                  alt={classItem.title}
-                  className="h-48 w-full object-cover"
-                />
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle>{classItem.title}</CardTitle>
-                    <Badge>{classItem.level}</Badge>
+              <div key={classItem.id} className="course-card overflow-hidden">
+                <div className="relative">
+                  <img
+                    src={classItem.image || "/placeholder.svg"}
+                    alt={classItem.title}
+                    className="h-48 w-full object-cover"
+                  />
+                  <Badge className={`absolute left-2 top-2 ${classItem.categoryColor}`}>{classItem.category}</Badge>
+                </div>
+                <div className="p-6">
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className="text-lg font-bold">{classItem.title}</h3>
+                    <Badge variant="outline">{classItem.level}</Badge>
                   </div>
-                  <CardDescription>{classItem.instructor}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm text-muted-foreground">{classItem.description}</p>
-                  <div className="flex items-center justify-between text-sm">
+                  <p className="mb-4 text-sm text-muted-foreground">{classItem.description}</p>
+                  <div className="mb-4 flex items-center justify-between text-sm">
                     <div className="flex items-center">
                       <Clock className="mr-1 h-4 w-4 text-muted-foreground" />
                       <span>{classItem.duration}</span>
                     </div>
                     <div className="flex items-center">
                       <BookOpen className="mr-1 h-4 w-4 text-muted-foreground" />
-                      <span>{classItem.category}</span>
+                      <span>{classItem.instructor}</span>
                     </div>
                   </div>
-                </CardContent>
-                <CardFooter>
                   <Button asChild className="w-full">
                     <Link href={`/classes/${classItem.id}`}>Enroll Now</Link>
                   </Button>
-                </CardFooter>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </TabsContent>
 
         <TabsContent value="completed" className="mt-6">
-          <div className="text-center py-12">
+          <div className="rounded-xl border border-dashed p-12 text-center">
             <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-medium">No completed classes yet</h3>
-            <p className="mt-2 text-sm text-muted-foreground">Continue learning to complete your enrolled classes.</p>
+            <h3 className="mt-4 text-lg font-medium">No completed courses yet</h3>
+            <p className="mt-2 text-sm text-muted-foreground">Continue learning to complete your enrolled courses.</p>
+            <Button asChild className="mt-6">
+              <Link href="/classes">Continue Learning</Link>
+            </Button>
           </div>
         </TabsContent>
       </Tabs>

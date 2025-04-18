@@ -1,118 +1,176 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { ArrowRight, BookOpen, Brain, ListIcon as Category } from "lucide-react"
+import { ArrowRight, BookOpen, Clock, Star, TrendingUp } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
 
 export default function Dashboard() {
   return (
     <div className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Welcome back, Student</h1>
-        <p className="text-muted-foreground">Continue your learning journey where you left off.</p>
+      {/* Hero Section */}
+      <div className="mb-8 rounded-2xl bg-gradient-to-r from-primary/10 to-secondary/10 p-8">
+        <h1 className="text-4xl font-bold tracking-tight">
+          Welcome to <span className="gradient-text">Masterin</span>
+        </h1>
+        <p className="mt-2 text-lg text-muted-foreground">Your personalized learning journey starts here.</p>
+        <div className="mt-6 flex flex-wrap gap-4">
+          <Button asChild size="lg">
+            <Link href="/classes">
+              Continue Learning <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="lg">
+            <Link href="/categories">Explore Categories</Link>
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Categories</CardTitle>
-            <Category className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12 Categories</div>
-            <p className="text-xs text-muted-foreground">Browse all subject categories</p>
-            <Button asChild variant="link" className="mt-4 px-0">
-              <Link href="/categories">
-                Explore Categories <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+      {/* Quick Stats */}
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="card-hover">
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <div className="feature-icon-container bg-primary/10">
+              <BookOpen className="h-6 w-6 text-primary" />
+            </div>
+            <h3 className="mt-4 text-xl font-bold">5</h3>
+            <p className="text-sm text-muted-foreground">Enrolled Courses</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-hover">
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <div className="feature-icon-container bg-secondary/10">
+              <Clock className="h-6 w-6 text-secondary" />
+            </div>
+            <h3 className="mt-4 text-xl font-bold">12.5 hrs</h3>
+            <p className="text-sm text-muted-foreground">Learning Time</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-hover">
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <div className="feature-icon-container bg-accent/10">
+              <Star className="h-6 w-6 text-accent" />
+            </div>
+            <h3 className="mt-4 text-xl font-bold">15</h3>
+            <p className="text-sm text-muted-foreground">Completed Lessons</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-hover">
+          <CardContent className="flex flex-col items-center justify-center p-6">
+            <div className="feature-icon-container bg-warning/10">
+              <TrendingUp className="h-6 w-6 text-warning-500" />
+            </div>
+            <h3 className="mt-4 text-xl font-bold">85%</h3>
+            <p className="text-sm text-muted-foreground">Average Score</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Continue Learning */}
+      <h2 className="mb-4 text-2xl font-bold">Continue Learning</h2>
+      <div className="mb-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <Card className="course-card">
+          <div className="relative">
+            <img src="/microscopic-life.png" alt="AP Biology" className="h-48 w-full object-cover" />
+            <Badge className="absolute right-2 top-2 bg-primary text-white">AP Course</Badge>
+          </div>
+          <CardContent className="p-6">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-lg font-bold">AP Biology</h3>
+              <Badge variant="outline">65% Complete</Badge>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Cellular processes, genetics, evolution, and biological systems.
+            </p>
+            <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full w-[65%] rounded-full bg-primary"></div>
+            </div>
+            <Button asChild className="w-full">
+              <Link href="/classes/ap-biology">Continue</Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Classes</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">5 Enrolled</div>
-            <p className="text-xs text-muted-foreground">Access your enrolled classes</p>
-            <Button asChild variant="link" className="mt-4 px-0">
-              <Link href="/classes">
-                View Classes <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+        <Card className="course-card">
+          <div className="relative">
+            <img src="/colorful-chemistry-lab.png" alt="Chemistry" className="h-48 w-full object-cover" />
+          </div>
+          <CardContent className="p-6">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-lg font-bold">Chemistry</h3>
+              <Badge variant="outline">42% Complete</Badge>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">Atomic structure, chemical bonding, and reactions.</p>
+            <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full w-[42%] rounded-full bg-primary"></div>
+            </div>
+            <Button asChild className="w-full">
+              <Link href="/classes/chemistry">Continue</Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">AI Tutor</CardTitle>
-            <Brain className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">24/7 Help</div>
-            <p className="text-xs text-muted-foreground">Get personalized AI tutoring</p>
-            <Button asChild variant="link" className="mt-4 px-0">
-              <Link href="/ai-tutor">
-                Start Learning <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+        <Card className="course-card">
+          <div className="relative">
+            <img src="/interconnected-ecosystems.png" alt="Environmental Science" className="h-48 w-full object-cover" />
+          </div>
+          <CardContent className="p-6">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-lg font-bold">Environmental Science</h3>
+              <Badge variant="outline">78% Complete</Badge>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Ecosystems, biodiversity, and environmental challenges.
+            </p>
+            <div className="mb-4 h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full w-[78%] rounded-full bg-primary"></div>
+            </div>
+            <Button asChild className="w-full">
+              <Link href="/classes/environmental-science">Continue</Link>
             </Button>
           </CardContent>
         </Card>
       </div>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Continue Learning</CardTitle>
-            <CardDescription>Pick up where you left off</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-md bg-muted flex items-center justify-center">
-                    <BookOpen className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium">Introduction to Calculus</h3>
-                    <div className="text-sm text-muted-foreground">65% complete</div>
-                    <div className="mt-1 h-1.5 w-full rounded-full bg-muted">
-                      <div className="h-full w-[65%] rounded-full bg-primary"></div>
-                    </div>
-                  </div>
-                  <Button size="sm" variant="outline">
-                    Resume
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Featured Categories */}
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Featured Categories</h2>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/categories">
+            View All <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Link href="/categories/biology" className="category-card group block p-6">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 group-hover:bg-primary/20">
+            <img src="/microscopic-life.png" alt="Biology" className="h-8 w-8" />
+          </div>
+          <h3 className="mb-2 text-lg font-bold">Biology</h3>
+          <p className="text-sm text-muted-foreground">
+            Explore living organisms, their structures, functions, and ecosystems.
+          </p>
+        </Link>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Upcoming Deadlines</CardTitle>
-            <CardDescription>Assignments due soon</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <h3 className="font-medium">Physics Problem Set #{i}</h3>
-                    <div className="text-sm text-muted-foreground">
-                      Due in {i} day{i > 1 ? "s" : ""}
-                    </div>
-                  </div>
-                  <Button size="sm" variant="outline">
-                    View
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <Link href="/categories/mathematics" className="category-card group block p-6">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-secondary/10 group-hover:bg-secondary/20">
+            <img src="/abstract-mathematics.png" alt="Mathematics" className="h-8 w-8" />
+          </div>
+          <h3 className="mb-2 text-lg font-bold">Mathematics</h3>
+          <p className="text-sm text-muted-foreground">Master algebra, calculus, geometry, and statistical concepts.</p>
+        </Link>
+
+        <Link href="/categories/history" className="category-card group block p-6">
+          <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-accent/10 group-hover:bg-accent/20">
+            <img src="/ancient-civilizations-timeline.png" alt="History" className="h-8 w-8" />
+          </div>
+          <h3 className="mb-2 text-lg font-bold">History</h3>
+          <p className="text-sm text-muted-foreground">
+            Discover world civilizations, important events, and cultural developments.
+          </p>
+        </Link>
       </div>
     </div>
   )

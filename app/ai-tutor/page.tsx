@@ -7,22 +7,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Brain, Send, Sparkles, ThumbsDown, ThumbsUp, BookOpen } from "lucide-react"
+import { Brain, Send, Sparkles, ThumbsDown, ThumbsUp, Lightbulb, Zap } from "lucide-react"
 
 // Sample suggested questions
 const suggestedQuestions = [
-  "Explain the concept of photosynthesis",
+  "Explain the process of photosynthesis",
   "How do I solve quadratic equations?",
   "What are the key events of World War II?",
   "Help me understand Newton's laws of motion",
-  "What is the difference between metaphor and simile?",
+  "What is the difference between mitosis and meiosis?",
 ]
 
 // Sample chat history
 const initialChatHistory = [
   {
     role: "assistant",
-    content: "Hello! I'm your AI tutor. How can I help you with your studies today?",
+    content: "Hi there! I'm your AI tutor. How can I help with your studies today?",
     timestamp: new Date().toISOString(),
   },
 ]
@@ -31,7 +31,6 @@ export default function AITutorPage() {
   const [chatHistory, setChatHistory] = useState(initialChatHistory)
   const [message, setMessage] = useState("")
   const [isLoading, setIsLoading] = useState(false)
-  // Add a new state for the AI model info
   const [modelInfo, setModelInfo] = useState({ provider: "", model: "" })
 
   const handleSendMessage = async () => {
@@ -110,40 +109,41 @@ export default function AITutorPage() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">AI Tutor</h1>
-        <p className="text-muted-foreground">Get personalized help with your studies 24/7.</p>
-      </div>
-
       <div className="grid gap-6 md:grid-cols-3">
         <div className="md:col-span-2">
-          <Card className="h-[calc(100vh-12rem)]">
-            <CardHeader>
+          <Card className="h-[calc(100vh-12rem)] overflow-hidden">
+            <CardHeader className="border-b bg-muted/30 px-6">
               <div className="flex items-center gap-2">
-                <Avatar className="h-8 w-8">
+                <Avatar className="h-10 w-10 border-2 border-primary">
                   <AvatarImage src="/abstract-ai-network.png" alt="AI" />
                   <AvatarFallback>AI</AvatarFallback>
                 </Avatar>
                 <div>
-                  <CardTitle className="text-lg">AI Tutor</CardTitle>
+                  <CardTitle>AI Tutor</CardTitle>
                   <CardDescription>
                     {modelInfo.provider && modelInfo.model
                       ? `Using ${modelInfo.provider} (${modelInfo.model})`
                       : "Powered by advanced AI"}
                   </CardDescription>
                 </div>
-                <Badge variant="outline" className="ml-auto flex items-center gap-1">
+                <Badge variant="outline" className="ml-auto flex items-center gap-1 bg-primary/10 text-primary">
                   <Sparkles className="h-3 w-3" />
                   <span>Smart</span>
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="flex-1 overflow-auto pb-0">
-              <div className="space-y-4">
+            <CardContent className="flex-1 overflow-auto p-6">
+              <div className="space-y-6">
                 {chatHistory.map((message, index) => (
                   <div key={index} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+                    {message.role === "assistant" && (
+                      <Avatar className="mr-2 mt-0.5 h-8 w-8">
+                        <AvatarImage src="/abstract-ai-network.png" alt="AI" />
+                        <AvatarFallback>AI</AvatarFallback>
+                      </Avatar>
+                    )}
                     <div
-                      className={`rounded-lg px-4 py-2 max-w-[80%] ${
+                      className={`rounded-2xl px-4 py-2 max-w-[80%] ${
                         message.role === "user"
                           ? "bg-primary text-primary-foreground"
                           : message.isError
@@ -171,11 +171,21 @@ export default function AITutorPage() {
                         </div>
                       )}
                     </div>
+                    {message.role === "user" && (
+                      <Avatar className="ml-2 mt-0.5 h-8 w-8">
+                        <AvatarImage src="/diverse-students-studying.png" alt="User" />
+                        <AvatarFallback>ME</AvatarFallback>
+                      </Avatar>
+                    )}
                   </div>
                 ))}
                 {isLoading && (
                   <div className="flex justify-start">
-                    <div className="rounded-lg px-4 py-2 bg-muted">
+                    <Avatar className="mr-2 mt-0.5 h-8 w-8">
+                      <AvatarImage src="/abstract-ai-network.png" alt="AI" />
+                      <AvatarFallback>AI</AvatarFallback>
+                    </Avatar>
+                    <div className="rounded-2xl px-4 py-2 bg-muted">
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-2 animate-pulse rounded-full bg-current"></div>
                         <div className="h-2 w-2 animate-pulse rounded-full bg-current"></div>
@@ -186,7 +196,7 @@ export default function AITutorPage() {
                 )}
               </div>
             </CardContent>
-            <CardFooter className="pt-4">
+            <CardFooter className="border-t bg-muted/30 p-4">
               <div className="flex w-full items-center space-x-2">
                 <Textarea
                   placeholder="Ask me anything about your studies..."
@@ -198,10 +208,15 @@ export default function AITutorPage() {
                       handleSendMessage()
                     }
                   }}
-                  className="min-h-12 flex-1"
+                  className="min-h-12 flex-1 rounded-xl border-muted bg-background"
                 />
-                <Button onClick={handleSendMessage} disabled={isLoading || !message.trim()} size="icon">
-                  <Send className="h-4 w-4" />
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={isLoading || !message.trim()}
+                  size="icon"
+                  className="h-12 w-12 rounded-xl"
+                >
+                  <Send className="h-5 w-5" />
                   <span className="sr-only">Send</span>
                 </Button>
               </div>
@@ -211,16 +226,20 @@ export default function AITutorPage() {
 
         <div>
           <Tabs defaultValue="suggested">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="suggested">Suggested</TabsTrigger>
-              <TabsTrigger value="history">History</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 rounded-lg bg-muted p-1">
+              <TabsTrigger value="suggested" className="rounded-md">
+                Suggested
+              </TabsTrigger>
+              <TabsTrigger value="features" className="rounded-md">
+                Features
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="suggested" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Suggested Questions</CardTitle>
-                  <CardDescription>Try asking one of these questions to get started</CardDescription>
+              <Card className="border-none shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Try asking</CardTitle>
+                  <CardDescription>Select a question to get started</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -231,72 +250,64 @@ export default function AITutorPage() {
                         className="w-full justify-start text-left"
                         onClick={() => handleSuggestedQuestion(question)}
                       >
-                        <Brain className="mr-2 h-4 w-4 text-primary" />
+                        <Lightbulb className="mr-2 h-4 w-4 text-primary" />
                         {question}
                       </Button>
                     ))}
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
 
-              <Card className="mt-6">
-                <CardHeader>
+            <TabsContent value="features" className="mt-6">
+              <Card className="border-none shadow-sm">
+                <CardHeader className="pb-2">
                   <CardTitle className="text-lg">AI Tutor Features</CardTitle>
-                  <CardDescription>How our AI tutor can help you learn</CardDescription>
+                  <CardDescription>How our AI tutor helps you learn</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-full bg-primary/10 p-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium">Personalized Learning</h3>
-                        <p className="text-xs text-muted-foreground">
-                          Get tailored explanations based on your learning style
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-full bg-primary/10 p-2">
-                        <Brain className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium">Concept Mastery</h3>
-                        <p className="text-xs text-muted-foreground">
-                          Break down complex topics into easy-to-understand explanations
-                        </p>
+                    <div className="rounded-lg bg-primary/5 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full bg-primary/10 p-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">Personalized Learning</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Get tailored explanations based on your learning style
+                          </p>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-full bg-primary/10 p-2">
-                        <BookOpen className="h-4 w-4 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="text-sm font-medium">Practice Problems</h3>
-                        <p className="text-xs text-muted-foreground">
-                          Get practice problems with step-by-step solutions
-                        </p>
+                    <div className="rounded-lg bg-secondary/5 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full bg-secondary/10 p-2">
+                          <Brain className="h-4 w-4 text-secondary" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">Concept Mastery</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Break down complex topics into easy-to-understand explanations
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
 
-            <TabsContent value="history" className="mt-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Chat History</CardTitle>
-                  <CardDescription>Your recent conversations with AI Tutor</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <Brain className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-medium">No previous chats</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">Your chat history will appear here</p>
+                    <div className="rounded-lg bg-accent/5 p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-full bg-accent/10 p-2">
+                          <Zap className="h-4 w-4 text-accent" />
+                        </div>
+                        <div>
+                          <h3 className="font-medium">Practice Problems</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Get practice problems with step-by-step solutions
+                          </p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -1,58 +1,92 @@
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 
-// Sample category data
+// Sample category data with expanded subjects for middle and high school
 const categories = [
+  {
+    id: "biology",
+    name: "Biology",
+    description: "Cell biology, genetics, evolution, ecology, and physiology",
+    count: 24,
+    icon: "/microscopic-life.png",
+    popular: true,
+    color: "bg-green-100 text-green-700",
+    iconBg: "bg-green-100",
+  },
+  {
+    id: "chemistry",
+    name: "Chemistry",
+    description: "Atomic structure, chemical bonding, reactions, and organic chemistry",
+    count: 18,
+    icon: "/colorful-chemistry-lab.png",
+    popular: true,
+    color: "bg-purple-100 text-purple-700",
+    iconBg: "bg-purple-100",
+  },
+  {
+    id: "environmental-science",
+    name: "Environmental Science",
+    description: "Ecosystems, biodiversity, climate change, and sustainability",
+    count: 12,
+    icon: "/interconnected-ecosystems.png",
+    popular: false,
+    color: "bg-teal-100 text-teal-700",
+    iconBg: "bg-teal-100",
+  },
+  {
+    id: "marine-biology",
+    name: "Marine Biology",
+    description: "Ocean ecosystems, marine organisms, and conservation",
+    count: 8,
+    icon: "/placeholder.svg?height=40&width=40&query=marine+biology",
+    popular: false,
+    color: "bg-blue-100 text-blue-700",
+    iconBg: "bg-blue-100",
+  },
+  {
+    id: "ap-biology",
+    name: "AP Biology",
+    description: "Advanced placement biology for college credit",
+    count: 15,
+    icon: "/placeholder.svg?height=40&width=40&query=ap+biology",
+    popular: true,
+    color: "bg-amber-100 text-amber-700",
+    iconBg: "bg-amber-100",
+    featured: true,
+  },
   {
     id: "mathematics",
     name: "Mathematics",
-    description: "Algebra, Calculus, Geometry, Statistics, and more",
-    count: 24,
+    description: "Algebra, calculus, geometry, statistics, and trigonometry",
+    count: 30,
+    icon: "/placeholder.svg?height=40&width  geometry, statistics, and trigonometry",
+    count: 30,
     icon: "/abstract-mathematics.png",
     popular: true,
+    color: "bg-blue-100 text-blue-700",
+    iconBg: "bg-blue-100",
   },
   {
-    id: "science",
-    name: "Science",
-    description: "Physics, Chemistry, Biology, Astronomy, and more",
-    count: 32,
-    icon: "/colorful-science-lab.png",
-    popular: true,
-  },
-  {
-    id: "computer-science",
-    name: "Computer Science",
-    description: "Programming, Algorithms, Data Structures, and more",
-    count: 18,
-    icon: "/modern-desktop-setup.png",
-    popular: true,
-  },
-  {
-    id: "language-arts",
-    name: "Language Arts",
-    description: "Literature, Writing, Grammar, and more",
-    count: 15,
-    icon: "/linguistic-diversity.png",
-    popular: false,
-  },
-  {
-    id: "social-studies",
-    name: "Social Studies",
-    description: "History, Geography, Economics, and more",
+    id: "history",
+    name: "History",
+    description: "World history, civilizations, important events, and cultural developments",
     count: 20,
-    icon: "/placeholder.svg?height=40&width=40&query=history",
+    icon: "/ancient-civilizations-timeline.png",
     popular: false,
+    color: "bg-orange-100 text-orange-700",
+    iconBg: "bg-orange-100",
   },
   {
-    id: "arts",
-    name: "Arts",
-    description: "Visual Arts, Music, Theater, and more",
-    count: 12,
-    icon: "/placeholder.svg?height=40&width=40&query=art",
+    id: "physics",
+    name: "Physics",
+    description: "Mechanics, electricity, magnetism, thermodynamics, and quantum physics",
+    count: 16,
+    icon: "/placeholder.svg?height=40&width=40&query=physics",
     popular: false,
+    color: "bg-indigo-100 text-indigo-700",
+    iconBg: "bg-indigo-100",
   },
 ]
 
@@ -60,16 +94,25 @@ export default function CategoriesPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Categories</h1>
-        <p className="text-muted-foreground">Browse all subject categories to find the perfect class for you.</p>
+        <h1 className="text-3xl font-bold tracking-tight">Explore Categories</h1>
+        <p className="text-muted-foreground">
+          Discover a wide range of subjects tailored for middle and high school students.
+        </p>
       </div>
 
       <Tabs defaultValue="all" className="mb-8">
-        <TabsList>
-          <TabsTrigger value="all">All Categories</TabsTrigger>
-          <TabsTrigger value="popular">Popular</TabsTrigger>
-          <TabsTrigger value="recent">Recently Added</TabsTrigger>
+        <TabsList className="mb-6 w-full justify-start rounded-lg bg-muted p-1">
+          <TabsTrigger value="all" className="rounded-md">
+            All Categories
+          </TabsTrigger>
+          <TabsTrigger value="popular" className="rounded-md">
+            Popular
+          </TabsTrigger>
+          <TabsTrigger value="featured" className="rounded-md">
+            Featured
+          </TabsTrigger>
         </TabsList>
+
         <TabsContent value="all" className="mt-6">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => (
@@ -77,6 +120,7 @@ export default function CategoriesPage() {
             ))}
           </div>
         </TabsContent>
+
         <TabsContent value="popular" className="mt-6">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {categories
@@ -86,11 +130,14 @@ export default function CategoriesPage() {
               ))}
           </div>
         </TabsContent>
-        <TabsContent value="recent" className="mt-6">
+
+        <TabsContent value="featured" className="mt-6">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {categories.slice(0, 3).map((category) => (
-              <CategoryCard key={category.id} category={category} />
-            ))}
+            {categories
+              .filter((c) => c.featured)
+              .map((category) => (
+                <CategoryCard key={category.id} category={category} />
+              ))}
           </div>
         </TabsContent>
       </Tabs>
@@ -100,31 +147,32 @@ export default function CategoriesPage() {
 
 function CategoryCard({ category }: { category: (typeof categories)[0] }) {
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="flex flex-row items-center gap-4 pb-2">
-        <img
-          src={category.icon || "/placeholder.svg"}
-          alt={category.name}
-          className="h-10 w-10 rounded-md object-cover"
-        />
-        <div>
-          <CardTitle>{category.name}</CardTitle>
-          <CardDescription>{category.count} classes</CardDescription>
+    <Link href={`/categories/${category.id}`} className="category-card block">
+      <div className="p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${category.iconBg}`}>
+            <img src={category.icon || "/placeholder.svg"} alt={category.name} className="h-8 w-8" />
+          </div>
+          {category.popular && (
+            <Badge variant="secondary" className={category.color}>
+              Popular
+            </Badge>
+          )}
+          {category.featured && (
+            <Badge variant="secondary" className="bg-primary/20 text-primary">
+              Featured
+            </Badge>
+          )}
         </div>
-        {category.popular && (
-          <Badge variant="secondary" className="ml-auto">
-            Popular
-          </Badge>
-        )}
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground">{category.description}</p>
-      </CardContent>
-      <CardFooter>
-        <Button asChild className="w-full">
-          <Link href={`/categories/${category.id}`}>Browse Classes</Link>
-        </Button>
-      </CardFooter>
-    </Card>
+        <h3 className="mb-2 text-lg font-bold">{category.name}</h3>
+        <p className="mb-4 text-sm text-muted-foreground">{category.description}</p>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium">{category.count} courses</span>
+          <Button variant="ghost" size="sm" className="rounded-full">
+            Explore
+          </Button>
+        </div>
+      </div>
+    </Link>
   )
 }
