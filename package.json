@@ -62,7 +62,8 @@
     "ai": "latest",
     "@ai-sdk/openai": "latest",
     "@ai-sdk/groq": "latest",
-    "@ai-sdk/xai": "latest"
+    "@ai-sdk/xai": "latest",
+    "@supabase/supabase-js": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

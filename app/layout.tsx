@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { AppHeader } from "@/components/app-header"
 import { MasterinSidebar } from "@/components/masterin-sidebar"
 import { ErrorBoundary } from "@/components/error-boundary"
-import { MobileNav } from "@/components/mobile-nav"
+import { AuthProvider } from "@/contexts/auth-context"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -25,23 +25,21 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-      </head>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <ErrorBoundary>
-            <SidebarProvider>
-              <div className="flex min-h-screen">
-                <MasterinSidebar />
-                <div className="flex-1 flex flex-col w-full">
-                  <AppHeader />
-                  <main className="flex-1 overflow-auto pb-16 md:pb-0">{children}</main>
-                  <MobileNav />
+          <AuthProvider>
+            <ErrorBoundary>
+              <SidebarProvider>
+                <div className="flex min-h-screen">
+                  <MasterinSidebar />
+                  <div className="flex-1 flex flex-col">
+                    <AppHeader />
+                    <main className="flex-1 overflow-auto">{children}</main>
+                  </div>
                 </div>
-              </div>
-            </SidebarProvider>
-          </ErrorBoundary>
+              </SidebarProvider>
+            </ErrorBoundary>
+          </AuthProvider>
           <Toaster />
         </ThemeProvider>
       </body>

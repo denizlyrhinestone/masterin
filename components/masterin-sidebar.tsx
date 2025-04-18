@@ -2,7 +2,17 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Book, BookOpen, Brain, GraduationCap, LayoutDashboard, MessageSquare, Search, Settings } from "lucide-react"
+import {
+  Book,
+  BookOpen,
+  Brain,
+  GraduationCap,
+  LayoutDashboard,
+  MessageSquare,
+  Search,
+  Settings,
+  LogOut,
+} from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -19,49 +29,36 @@ import {
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-
-// Types for user roles
-type UserRole = "student" | "educator" | "admin"
-
-interface UserData {
-  id: string
-  name: string
-  email: string
-  role: UserRole
-  avatar?: string
-}
-
-// Mock user data - in a real app this would come from auth context
-const currentUser: UserData = {
-  id: "user-123",
-  name: "Alex Johnson",
-  email: "alex@example.com",
-  role: "student", // Change to "educator" or "admin" to see different navigation
-  avatar: "/vibrant-street-market.png",
-}
+import { useAuth } from "@/contexts/auth-context"
 
 export function MasterinSidebar() {
   const pathname = usePathname()
+  const { user, profile, signOut } = useAuth()
   const isActive = (path: string) => pathname === path
 
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (profile?.full_name) {
+      return profile.full_name
+        .split(" ")
+        .map((name) => name[0])
+        .join("")
+        .toUpperCase()
+        .substring(0, 2)
+    }
+    return user?.email?.substring(0, 2).toUpperCase() || "U"
+  }
+
   return (
-    <Sidebar collapsible="offcanvas" className="z-40">
+    <Sidebar>
       <SidebarHeader className="border-b px-3 py-2">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary">
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold md:text-lg sm:text-base">
+            <span className="text-xl font-bold">
               Masterin<span className="text-primary">.org</span>
             </span>
           </Link>
@@ -141,32 +138,27 @@ export function MasterinSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t p-3">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="w-full justify-start px-2" size="sm">
-              <Avatar className="mr-2 h-6 w-6">
-                <AvatarImage src={currentUser.avatar || "/placeholder.svg"} alt={currentUser.name} />
-                <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div className="flex flex-col items-start text-sm">
-                <span className="font-medium">{currentUser.name}</span>
-                <span className="text-xs text-muted-foreground capitalize">{currentUser.role}</span>
-              </div>
+        {user ? (
+          <div className="flex items-center gap-2">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={profile?.avatar_url || ""} alt={profile?.full_name || "User"} />
+              <AvatarFallback>{getUserInitials()}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col text-sm">
+              <span className="font-medium truncate max-w-[140px]">
+                {profile?.full_name || user.email?.split("@")[0]}
+              </span>
+              <span className="text-xs text-muted-foreground capitalize">{profile?.role || "Student"}</span>
+            </div>
+            <Button variant="ghost" size="icon" className="ml-auto h-8 w-8" onClick={() => signOut()} title="Sign out">
+              <LogOut className="h-4 w-4" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/profile">Profile</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/account/settings">Settings</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Sign out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          </div>
+        ) : (
+          <Button variant="default" className="w-full" asChild>
+            <Link href="/login">Sign In</Link>
+          </Button>
+        )}
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
