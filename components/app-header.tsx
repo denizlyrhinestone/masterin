@@ -28,6 +28,8 @@ export function AppHeader() {
     if (pathname === "/my-courses") return "My Courses"
     if (pathname.startsWith("/courses/")) return "Course Details"
     if (pathname === "/ai-tutor") return "AI Tutor"
+    if (pathname === "/settings") return "Settings"
+    if (pathname === "/community") return "Community"
     return "Masterin"
   }
 
@@ -50,8 +52,8 @@ export function AppHeader() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="/diverse-students-studying.png" alt="Student" />
-                <AvatarFallback>ST</AvatarFallback>
+                <AvatarImage src="/vibrant-street-market.png" alt="User" />
+                <AvatarFallback>U</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
