@@ -59,10 +59,10 @@
     "vaul": "^0.9.6",
     "zod": "^3.24.1",
     "node-fetch": "latest",
-    "ai": "latest",
     "@ai-sdk/openai": "latest",
     "@ai-sdk/groq": "latest",
-    "@ai-sdk/xai": "latest"
+    "@ai-sdk/xai": "latest",
+    "ai": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

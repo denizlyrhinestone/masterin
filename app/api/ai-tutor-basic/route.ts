@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
-import { groq } from "@ai-sdk/groq"
-import { xai } from "@ai-sdk/xai"
+import { getAIModel } from "@/lib/ai-client"
 
 export async function POST(request: Request) {
   try {
@@ -16,15 +14,9 @@ export async function POST(request: Request) {
       })
     }
 
-    // Determine which AI model to use based on available API keys
-    let model
-    if (process.env.XAI_API_KEY) {
-      model = xai("grok-1")
-    } else if (process.env.GROQ_API_KEY) {
-      model = groq("llama3-70b-8192")
-    } else {
-      model = openai("gpt-3.5-turbo")
-    }
+    // Get the best available AI model
+    const { model, provider, modelName } = getAIModel()
+    console.log(`Using ${provider} model: ${modelName}`)
 
     // Generate the AI response
     const { text } = await generateText({
@@ -36,6 +28,8 @@ export async function POST(request: Request) {
     return NextResponse.json({
       content: text,
       timestamp: new Date().toISOString(),
+      provider,
+      model: modelName,
     })
   } catch (error) {
     console.error("AI Tutor Basic API Error:", error)
