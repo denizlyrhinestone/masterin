@@ -43,43 +43,45 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto p-6">
       {/* Welcome Banner */}
-      <div className="mb-8 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-8">
-        <h1 className="text-3xl font-bold">
+      <div className="mb-8 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-4 md:p-8">
+        <h1 className="text-2xl md:text-3xl font-bold">
           Welcome to <span className="text-primary">Masterin</span>
         </h1>
-        <p className="mb-6 text-muted-foreground">Your personalized learning journey starts here.</p>
-        <div className="flex flex-wrap gap-4">
-          <Button asChild>
+        <p className="mb-4 md:mb-6 text-sm md:text-base text-muted-foreground">
+          Your personalized learning journey starts here.
+        </p>
+        <div className="flex flex-wrap gap-2 md:gap-4">
+          <Button size="sm" className="md:size-md" asChild>
             <Link href="/my-courses">Continue Learning</Link>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="sm" className="md:size-md" asChild>
             <Link href="/categories">Explore Categories</Link>
           </Button>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="mb-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-6 md:mb-10 grid grid-cols-2 gap-3 md:gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          icon={<BookOpen className="h-6 w-6" />}
+          icon={<BookOpen className="h-5 w-5 md:h-6 md:w-6" />}
           value={stats.enrolledCourses}
           label="Enrolled Courses"
           iconColor="text-blue-500"
         />
         <StatsCard
-          icon={<Clock className="h-6 w-6" />}
+          icon={<Clock className="h-5 w-5 md:h-6 md:w-6" />}
           value={`${stats.learningTime} hrs`}
           label="Learning Time"
           iconColor="text-purple-500"
         />
         <StatsCard
-          icon={<Star className="h-6 w-6" />}
+          icon={<Star className="h-5 w-5 md:h-6 md:w-6" />}
           value={stats.completedLessons}
           label="Completed Lessons"
           iconColor="text-teal-500"
         />
         <StatsCard
-          icon={<Award className="h-6 w-6" />}
+          icon={<Award className="h-5 w-5 md:h-6 md:w-6" />}
           value={`${stats.averageScore}%`}
           label="Average Score"
           iconColor="text-amber-500"

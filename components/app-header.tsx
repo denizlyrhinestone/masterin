@@ -34,16 +34,20 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-6">
-      <div className="flex flex-1 items-center gap-4">
+    <header className="sticky top-0 z-30 flex h-16 items-center gap-2 md:gap-4 border-b bg-background px-3 md:px-6">
+      <div className="flex flex-1 items-center gap-2 md:gap-4">
         <SidebarTrigger className="md:hidden" />
-        <h1 className="text-xl font-semibold">{getPageTitle()}</h1>
+        <h1 className="text-lg md:text-xl font-semibold truncate">{getPageTitle()}</h1>
+        <Button variant="ghost" size="icon" className="md:hidden rounded-full">
+          <Search className="h-5 w-5" />
+          <span className="sr-only">Search</span>
+        </Button>
       </div>
       <div className="relative hidden md:flex">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input type="search" placeholder="Search..." className="w-64 rounded-full bg-muted pl-8 md:w-80 lg:w-96" />
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         <Button variant="ghost" size="icon" className="rounded-full">
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notifications</span>

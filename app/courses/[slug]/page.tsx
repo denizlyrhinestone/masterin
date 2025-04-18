@@ -163,7 +163,7 @@ export default function CourseDetailPage({ params }: { params: { slug: string } 
 
   return (
     <div className="container mx-auto p-6">
-      <Breadcrumb className="mb-6">
+      <Breadcrumb className="mb-4 md:mb-6 overflow-auto whitespace-nowrap">
         <BreadcrumbList>
           <BreadcrumbItem>
             <BreadcrumbLink href="/courses">Courses</BreadcrumbLink>
@@ -320,8 +320,8 @@ export default function CourseDetailPage({ params }: { params: { slug: string } 
           </Tabs>
         </div>
 
-        <div>
-          <Card className="sticky top-6">
+        <div className="order-first md:order-last mb-6 md:mb-0">
+          <Card className="md:sticky md:top-6">
             <CardContent className="p-6 space-y-6">
               {isEnrolled ? (
                 <>

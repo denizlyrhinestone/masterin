@@ -54,14 +54,14 @@ export function MasterinSidebar() {
   const isActive = (path: string) => pathname === path
 
   return (
-    <Sidebar>
+    <Sidebar collapsible="offcanvas" className="z-40">
       <SidebarHeader className="border-b px-3 py-2">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-secondary">
               <GraduationCap className="h-5 w-5 text-white" />
             </div>
-            <span className="text-xl font-bold">
+            <span className="text-xl font-bold md:text-lg sm:text-base">
               Masterin<span className="text-primary">.org</span>
             </span>
           </Link>

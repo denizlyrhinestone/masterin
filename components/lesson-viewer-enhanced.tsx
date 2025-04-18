@@ -220,13 +220,19 @@ export function LessonViewerEnhanced({
 
           <Tabs defaultValue="content" value={activeTab} onValueChange={setActiveTab}>
             <div className="border-b">
-              <TabsList className="mx-4 my-2">
-                <TabsTrigger value="content">Content</TabsTrigger>
+              <TabsList className="w-full grid grid-cols-4 gap-1">
+                <TabsTrigger value="content" className="text-xs md:text-sm">
+                  Content
+                </TabsTrigger>
                 {lesson.resources && lesson.resources.length > 0 && (
-                  <TabsTrigger value="resources">Resources</TabsTrigger>
+                  <TabsTrigger value="resources" className="text-xs md:text-sm">
+                    Resources
+                  </TabsTrigger>
                 )}
-                <TabsTrigger value="discussion">Discussion</TabsTrigger>
-                <TabsTrigger value="notes" onClick={() => setShowNotes(true)}>
+                <TabsTrigger value="discussion" className="text-xs md:text-sm">
+                  Discussion
+                </TabsTrigger>
+                <TabsTrigger value="notes" onClick={() => setShowNotes(true)} className="text-xs md:text-sm">
                   Notes
                 </TabsTrigger>
               </TabsList>

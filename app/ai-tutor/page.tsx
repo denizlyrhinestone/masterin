@@ -197,15 +197,15 @@ export default function AITutorPage() {
                       }
                     }
                   }}
-                  className="min-h-12 flex-1 rounded-xl border-muted bg-background"
+                  className="min-h-10 md:min-h-12 flex-1 rounded-xl border-muted bg-background"
                 />
                 <Button
                   type="submit"
                   disabled={isLoading || !input.trim()}
                   size="icon"
-                  className="h-12 w-12 rounded-xl"
+                  className="h-10 w-10 md:h-12 md:w-12 rounded-xl"
                 >
-                  <Send className="h-5 w-5" />
+                  <Send className="h-4 w-4 md:h-5 md:w-5" />
                   <span className="sr-only">Send</span>
                 </Button>
               </form>
@@ -213,7 +213,7 @@ export default function AITutorPage() {
           </Card>
         </div>
 
-        <div>
+        <div className="order-first md:order-last mb-6 md:mb-0">
           <Tabs defaultValue="history">
             <TabsList className="grid w-full grid-cols-3 rounded-lg bg-muted p-1">
               <TabsTrigger value="history" className="rounded-md">

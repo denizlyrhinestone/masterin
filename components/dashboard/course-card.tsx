@@ -16,20 +16,20 @@ export function CourseCard({ id, title, description, progress, image, isAP }: Co
   return (
     <div className="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
       <div className="relative">
-        <img src={image || "/placeholder.svg"} alt={title} className="h-48 w-full object-cover" />
-        {isAP && <Badge className="absolute right-2 top-2 bg-primary text-white">AP Course</Badge>}
+        <img src={image || "/placeholder.svg"} alt={title} className="h-36 md:h-48 w-full object-cover" />
+        {isAP && <Badge className="absolute right-2 top-2 bg-primary text-white text-xs">AP Course</Badge>}
       </div>
-      <div className="p-6">
-        <h3 className="text-xl font-bold">{title}</h3>
-        <p className="mb-4 mt-1 text-sm text-muted-foreground">{description}</p>
+      <div className="p-4 md:p-6">
+        <h3 className="text-lg md:text-xl font-bold line-clamp-1">{title}</h3>
+        <p className="mb-3 md:mb-4 mt-1 text-xs md:text-sm text-muted-foreground line-clamp-2">{description}</p>
 
-        <div className="mb-1 flex justify-between text-sm">
+        <div className="mb-1 flex justify-between text-xs md:text-sm">
           <span className="text-muted-foreground">Progress</span>
           <span className="font-medium">{progress}% Complete</span>
         </div>
-        <Progress value={progress} className="h-2 mb-4" />
+        <Progress value={progress} className="h-2 mb-3 md:mb-4" />
 
-        <Button asChild className="w-full">
+        <Button size="sm" className="w-full md:size-md" asChild>
           <Link href={`/courses/${id}/learn`}>Continue</Link>
         </Button>
       </div>
