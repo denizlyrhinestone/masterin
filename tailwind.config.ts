@@ -26,7 +26,7 @@ const config = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "hsl(var(--primary))",
+          DEFAULT: "hsl(210 100% 50%)", // Bright blue color from the screenshot
           foreground: "hsl(var(--primary-foreground))",
         },
         secondary: {

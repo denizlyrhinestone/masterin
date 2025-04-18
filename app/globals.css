@@ -77,7 +77,7 @@
 
 /* Custom styles for the educational platform */
 .gradient-text {
-  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary;
+  @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500;
 }
 
 .card-hover {
@@ -90,6 +90,10 @@
 
 .course-card {
   @apply overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm transition-all duration-300 hover:shadow-md hover:-translate-y-1;
+}
+
+.dashboard-banner {
+  @apply rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-8;
 }
 
 .feature-icon-container {

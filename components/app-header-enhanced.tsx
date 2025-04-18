@@ -14,14 +14,12 @@ import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { usePathname } from "next/navigation"
 import Link from "next/link"
-import { SidebarTrigger } from "@/components/ui/sidebar"
 
-export function AppHeader() {
+export function AppHeaderEnhanced() {
   const pathname = usePathname()
 
   // Function to get the current page title
   const getPageTitle = () => {
-    if (pathname === "/") return "Dashboard"
     if (pathname === "/dashboard") return "Dashboard"
     if (pathname === "/categories") return "Categories"
     if (pathname.startsWith("/categories/")) return "Category Details"
@@ -34,7 +32,6 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background px-6">
       <div className="flex flex-1 items-center gap-4">
-        <SidebarTrigger className="md:hidden" />
         <h1 className="text-xl font-semibold">{getPageTitle()}</h1>
       </div>
       <div className="relative hidden md:flex">
@@ -50,8 +47,8 @@ export function AppHeader() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarImage src="/diverse-students-studying.png" alt="Student" />
-                <AvatarFallback>ST</AvatarFallback>
+                <AvatarImage src="/vibrant-street-market.png" alt="User" />
+                <AvatarFallback>U</AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>

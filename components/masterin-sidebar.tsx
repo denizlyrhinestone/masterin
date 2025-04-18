@@ -1,22 +1,8 @@
 "use client"
+
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import {
-  Book,
-  BookOpen,
-  Brain,
-  GraduationCap,
-  LayoutDashboard,
-  LineChart,
-  ListChecks,
-  type LucideIcon,
-  MessageSquare,
-  PlusCircle,
-  Settings,
-  Trophy,
-  Upload,
-  Users,
-} from "lucide-react"
+import { Book, BookOpen, Brain, GraduationCap, LayoutDashboard, MessageSquare, Search, Settings } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -28,12 +14,10 @@ import {
   SidebarRail,
   SidebarTrigger,
   SidebarSeparator,
-  SidebarGroupLabel,
   SidebarGroup,
   SidebarGroupContent,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -43,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { SearchForm } from "./search-form"
+import { Input } from "@/components/ui/input"
 
 // Types for user roles
 type UserRole = "student" | "educator" | "admin"
@@ -56,14 +40,6 @@ interface UserData {
   avatar?: string
 }
 
-interface SidebarNavItemProps {
-  href: string
-  icon: LucideIcon
-  title: string
-  badge?: string
-  isActive?: boolean
-}
-
 // Mock user data - in a real app this would come from auth context
 const currentUser: UserData = {
   id: "user-123",
@@ -71,24 +47,6 @@ const currentUser: UserData = {
   email: "alex@example.com",
   role: "student", // Change to "educator" or "admin" to see different navigation
   avatar: "/vibrant-street-market.png",
-}
-
-function SidebarNavItem({ href, icon: Icon, title, badge, isActive }: SidebarNavItemProps) {
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isActive} tooltip={title}>
-        <Link href={href}>
-          <Icon className="h-5 w-5" />
-          <span>{title}</span>
-          {badge && (
-            <Badge className="ml-auto bg-primary/10 text-primary" variant="secondary">
-              {badge}
-            </Badge>
-          )}
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  )
 }
 
 export function MasterinSidebar() {
@@ -111,113 +69,73 @@ export function MasterinSidebar() {
 
       <SidebarContent>
         <SidebarGroup>
-          <SearchForm />
+          <SidebarGroupContent className="relative">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 select-none opacity-50" />
+              <Input placeholder="Search courses, topics..." className="pl-8" />
+            </div>
+          </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarMenu>
-            <SidebarNavItem
-              href="/dashboard"
-              icon={LayoutDashboard}
-              title="Dashboard"
-              isActive={isActive("/dashboard")}
-            />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/dashboard")}>
+              <Link href="/dashboard">
+                <LayoutDashboard className="h-5 w-5" />
+                <span>Dashboard</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
-            {currentUser.role === "student" && (
-              <>
-                <SidebarNavItem
-                  href="/my-courses"
-                  icon={BookOpen}
-                  title="My Courses"
-                  badge="3"
-                  isActive={isActive("/my-courses")}
-                />
-                <SidebarNavItem href="/explore" icon={Book} title="Explore Courses" isActive={isActive("/explore")} />
-                <SidebarNavItem
-                  href="/progress"
-                  icon={LineChart}
-                  title="My Progress"
-                  isActive={isActive("/progress")}
-                />
-                <SidebarNavItem
-                  href="/achievements"
-                  icon={Trophy}
-                  title="Achievements"
-                  badge="New"
-                  isActive={isActive("/achievements")}
-                />
-              </>
-            )}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/categories")}>
+              <Link href="/categories">
+                <Book className="h-5 w-5" />
+                <span>Categories</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
-            {currentUser.role === "educator" && (
-              <>
-                <SidebarNavItem
-                  href="/my-courses"
-                  icon={BookOpen}
-                  title="My Courses"
-                  isActive={isActive("/my-courses")}
-                />
-                <SidebarNavItem href="/students" icon={Users} title="My Students" isActive={isActive("/students")} />
-                <SidebarNavItem
-                  href="/create-course"
-                  icon={PlusCircle}
-                  title="Create Course"
-                  isActive={isActive("/create-course")}
-                />
-                <SidebarNavItem
-                  href="/content-library"
-                  icon={Upload}
-                  title="Content Library"
-                  isActive={isActive("/content-library")}
-                />
-                <SidebarNavItem
-                  href="/analytics"
-                  icon={LineChart}
-                  title="Analytics"
-                  isActive={isActive("/analytics")}
-                />
-              </>
-            )}
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/my-courses")}>
+              <Link href="/my-courses">
+                <BookOpen className="h-5 w-5" />
+                <span>My Courses</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
 
-            {currentUser.role === "admin" && (
-              <>
-                <SidebarNavItem href="/users" icon={Users} title="User Management" isActive={isActive("/users")} />
-                <SidebarNavItem href="/courses" icon={Book} title="All Courses" isActive={isActive("/courses")} />
-                <SidebarNavItem
-                  href="/approvals"
-                  icon={ListChecks}
-                  title="Approvals"
-                  badge="5"
-                  isActive={isActive("/approvals")}
-                />
-                <SidebarNavItem href="/reports" icon={LineChart} title="Reports" isActive={isActive("/reports")} />
-                <SidebarNavItem
-                  href="/settings"
-                  icon={Settings}
-                  title="Site Settings"
-                  isActive={isActive("/settings")}
-                />
-              </>
-            )}
-          </SidebarMenu>
-        </SidebarGroup>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/ai-tutor")}>
+              <Link href="/ai-tutor">
+                <Brain className="h-5 w-5" />
+                <span>AI Tutor</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
 
         <SidebarSeparator />
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Support</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarNavItem href="/ai-tutor" icon={Brain} title="AI Tutor" isActive={isActive("/ai-tutor")} />
-              <SidebarNavItem
-                href="/community"
-                icon={MessageSquare}
-                title="Community"
-                isActive={isActive("/community")}
-              />
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/community")}>
+              <Link href="/community">
+                <MessageSquare className="h-5 w-5" />
+                <span>Community</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={isActive("/settings")}>
+              <Link href="/settings">
+                <Settings className="h-5 w-5" />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarContent>
 
       <SidebarFooter className="border-t p-3">
@@ -243,11 +161,6 @@ export function MasterinSidebar() {
             <DropdownMenuItem asChild>
               <Link href="/account/settings">Settings</Link>
             </DropdownMenuItem>
-            {currentUser.role === "student" && (
-              <DropdownMenuItem asChild>
-                <Link href="/subscriptions">Subscription</Link>
-              </DropdownMenuItem>
-            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem>Sign out</DropdownMenuItem>
           </DropdownMenuContent>

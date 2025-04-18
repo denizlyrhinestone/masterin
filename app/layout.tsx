@@ -4,9 +4,9 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AppSidebar } from "@/components/app-sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { AppHeader } from "@/components/app-header"
+import { MasterinSidebar } from "@/components/masterin-sidebar"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,14 +27,14 @@ export default function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <SidebarProvider>
             <div className="flex min-h-screen">
-              <AppSidebar />
+              <MasterinSidebar />
               <div className="flex-1 flex flex-col">
                 <AppHeader />
                 <main className="flex-1 overflow-auto">{children}</main>
               </div>
             </div>
-            <Toaster />
           </SidebarProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
