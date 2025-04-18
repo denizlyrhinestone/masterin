@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import {
   Breadcrumb,
@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, ArrowRight, CheckCircle2, FileText, VideoIcon } from "lucide-react"
 import { getCourseBySlug } from "@/lib/courses-data"
 import { CourseService } from "@/lib/course-service"
+import { LessonViewer } from "@/components/lesson-viewer"
 
 export default function LessonPage({
   params,
@@ -101,6 +102,16 @@ export default function LessonPage({
     }
   }
 
+  // Handle quiz submission
+  const handleQuizSubmit = (score: number) => {
+    CourseService.submitQuizScore(userId, course.id, params.lessonId, score)
+  }
+
+  // Handle assignment submission
+  const handleAssignmentSubmit = (content: string, attachments?: string[]) => {
+    CourseService.submitAssignment(userId, course.id, params.lessonId, content, attachments)
+  }
+
   // Navigate to next lesson
   const handleNextLesson = () => {
     if (!isCompleted) {
@@ -147,100 +158,15 @@ export default function LessonPage({
             <p className="text-muted-foreground mt-2">{currentLesson.description}</p>
           </div>
 
-          {/* Lesson Content */}
-          <Card className="mb-6">
-            <CardContent className="p-0">
-              {currentLesson.type === "video" && (
-                <div className="aspect-video bg-black flex items-center justify-center">
-                  {currentLesson.videoUrl ? (
-                    <div className="w-full h-full">
-                      {/* In a real app, this would be a video player */}
-                      <div className="w-full h-full flex items-center justify-center bg-muted">
-                        <VideoIcon className="h-16 w-16 text-muted-foreground" />
-                        <span className="sr-only">Video Player</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center text-white">
-                      <VideoIcon className="h-16 w-16 mx-auto mb-2" />
-                      <p>Video content would appear here</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {currentLesson.type === "quiz" && (
-                <div className="p-6">
-                  <div className="flex items-center mb-4">
-                    <FileText className="h-6 w-6 mr-2 text-orange-500" />
-                    <h2 className="text-xl font-bold">Quiz: {currentLesson.quiz?.title}</h2>
-                  </div>
-                  <p className="mb-4">{currentLesson.quiz?.description}</p>
-                  <div className="bg-muted p-4 rounded-md mb-4">
-                    <p className="font-medium">Quiz Details:</p>
-                    <ul className="mt-2 space-y-1 text-sm">
-                      <li>Time Limit: {currentLesson.quiz?.timeLimit} minutes</li>
-                      <li>Questions: {currentLesson.quiz?.questions}</li>
-                      <li>Points: {currentLesson.quiz?.points}</li>
-                    </ul>
-                  </div>
-                  <Button className="w-full">Start Quiz</Button>
-                </div>
-              )}
-
-              {currentLesson.type === "assignment" && (
-                <div className="p-6">
-                  <div className="flex items-center mb-4">
-                    <FileText className="h-6 w-6 mr-2 text-purple-500" />
-                    <h2 className="text-xl font-bold">Assignment: {currentLesson.assignment?.title}</h2>
-                  </div>
-                  <p className="mb-4">{currentLesson.assignment?.description}</p>
-                  <div className="bg-muted p-4 rounded-md mb-4">
-                    <p className="font-medium">Assignment Details:</p>
-                    <ul className="mt-2 space-y-1 text-sm">
-                      {currentLesson.assignment?.dueDate && (
-                        <li>Due Date: {new Date(currentLesson.assignment.dueDate).toLocaleDateString()}</li>
-                      )}
-                      <li>Points: {currentLesson.assignment?.points}</li>
-                    </ul>
-                  </div>
-                  <Button className="w-full">Submit Assignment</Button>
-                </div>
-              )}
-
-              {currentLesson.type === "reading" && currentLesson.content && (
-                <div className="p-6 prose prose-sm max-w-none">
-                  <div dangerouslySetInnerHTML={{ __html: currentLesson.content }} />
-                </div>
-              )}
-
-              {/* Lesson Resources */}
-              {currentLesson.resources && currentLesson.resources.length > 0 && (
-                <div className="p-6 border-t">
-                  <h3 className="font-medium mb-4">Lesson Resources</h3>
-                  <div className="space-y-2">
-                    {currentLesson.resources.map((resource) => (
-                      <div key={resource.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
-                        <div className="flex items-center">
-                          <FileText className="h-5 w-5 mr-3 text-blue-500" />
-                          <div>
-                            <p className="font-medium">{resource.title}</p>
-                            {resource.size && <p className="text-xs text-muted-foreground">{resource.size}</p>}
-                          </div>
-                        </div>
-                        <Button size="sm" variant="outline">
-                          Download
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <LessonViewer
+            lesson={currentLesson}
+            onComplete={handleCompleteLesson}
+            onSubmitQuiz={handleQuizSubmit}
+            onSubmitAssignment={handleAssignmentSubmit}
+          />
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between">
+          <div className="flex justify-between mt-6">
             <Button
               variant="outline"
               disabled={!prevLesson}
@@ -263,24 +189,26 @@ export default function LessonPage({
         {/* Sidebar */}
         <div>
           <Card className="sticky top-6">
-            <CardHeader>
-              <CardTitle>Course Progress</CardTitle>
-              <CardDescription>
-                {enrollmentStatus?.completedLessons.length || 0} of{" "}
-                {course.modules.reduce((acc, module) => acc + module.lessons.length, 0)} lessons completed
-              </CardDescription>
-              <Progress
-                value={
-                  enrollmentStatus
-                    ? (enrollmentStatus.completedLessons.length /
-                        course.modules.reduce((acc, module) => acc + module.lessons.length, 0)) *
-                      100
-                    : 0
-                }
-                className="h-2 mt-2"
-              />
-            </CardHeader>
-            <CardContent className="max-h-[calc(100vh-300px)] overflow-y-auto">
+            <div className="p-4 border-b">
+              <h3 className="font-medium">Course Progress</h3>
+              <div className="mt-2">
+                <Progress
+                  value={
+                    enrollmentStatus
+                      ? (enrollmentStatus.completedLessons.length /
+                          course.modules.reduce((acc, module) => acc + module.lessons.length, 0)) *
+                        100
+                      : 0
+                  }
+                  className="h-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {enrollmentStatus?.completedLessons.length || 0} of{" "}
+                  {course.modules.reduce((acc, module) => acc + module.lessons.length, 0)} lessons completed
+                </p>
+              </div>
+            </div>
+            <div className="max-h-[calc(100vh-300px)] overflow-y-auto p-4">
               <div className="space-y-4">
                 {course.modules.map((module) => (
                   <div key={module.id}>
@@ -320,7 +248,7 @@ export default function LessonPage({
                   </div>
                 ))}
               </div>
-            </CardContent>
+            </div>
           </Card>
         </div>
       </div>
