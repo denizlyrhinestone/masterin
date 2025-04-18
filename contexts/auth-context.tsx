@@ -4,18 +4,21 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import type { User, Session } from "@supabase/supabase-js"
-import { supabase, getUserProfile, type UserProfile } from "@/lib/auth"
+import { supabase, getUserProfile, type UserProfile, type UserRole } from "@/lib/auth"
 
 interface AuthContextType {
   user: User | null
   profile: UserProfile | null
   session: Session | null
   isLoading: boolean
+  isEducator: boolean
+  isVerifiedEducator: boolean
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: any }>
   signUp: (
     email: string,
     password: string,
     userData: Partial<UserProfile>,
+    isEducator?: boolean,
   ) => Promise<{ success: boolean; error?: any }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
@@ -28,6 +31,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isEducatorRole, setIsEducatorRole] = useState(false)
+  const [isVerifiedEducatorStatus, setIsVerifiedEducatorStatus] = useState(false)
   const router = useRouter()
 
   // Initialize auth state
@@ -45,6 +50,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session.user)
         const userProfile = await getUserProfile(session.user.id)
         setProfile(userProfile)
+
+        // Check educator status
+        if (userProfile) {
+          setIsEducatorRole(userProfile.role === "educator")
+          setIsVerifiedEducatorStatus(userProfile.role === "educator" && userProfile.educator_verified === true)
+        }
       }
 
       setIsLoading(false)
@@ -59,8 +70,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           const userProfile = await getUserProfile(session.user.id)
           setProfile(userProfile)
+
+          // Check educator status
+          if (userProfile) {
+            setIsEducatorRole(userProfile.role === "educator")
+            setIsVerifiedEducatorStatus(userProfile.role === "educator" && userProfile.educator_verified === true)
+          }
         } else {
           setProfile(null)
+          setIsEducatorRole(false)
+          setIsVerifiedEducatorStatus(false)
         }
 
         setIsLoading(false)
@@ -92,6 +111,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (data.user) {
         const userProfile = await getUserProfile(data.user.id)
         setProfile(userProfile)
+
+        // Check educator status
+        if (userProfile) {
+          setIsEducatorRole(userProfile.role === "educator")
+          setIsVerifiedEducatorStatus(userProfile.role === "educator" && userProfile.educator_verified === true)
+        }
       }
 
       return { success: true }
@@ -102,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Sign up function
-  const signUp = async (email: string, password: string, userData: Partial<UserProfile>) => {
+  const signUp = async (email: string, password: string, userData: Partial<UserProfile>, isEducatorSignup = false) => {
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -118,8 +143,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const profileData = {
           id: data.user.id,
           email,
-          role: "student" as const,
+          role: isEducatorSignup ? ("educator" as UserRole) : ("student" as UserRole),
           created_at: new Date().toISOString(),
+          educator_verified: isEducatorSignup ? false : undefined, // Educators start unverified
           ...userData,
         }
 
@@ -133,6 +159,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error("Error creating profile:", profileError)
         } else {
           setProfile(profile as UserProfile)
+          setIsEducatorRole(isEducatorSignup)
+          setIsVerifiedEducatorStatus(false) // New educators are not verified
         }
       }
 
@@ -150,6 +178,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null)
       setProfile(null)
       setSession(null)
+      setIsEducatorRole(false)
+      setIsVerifiedEducatorStatus(false)
       router.push("/login")
     } catch (error) {
       console.error("Error signing out:", error)
@@ -161,6 +191,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user) {
       const userProfile = await getUserProfile(user.id)
       setProfile(userProfile)
+
+      // Check educator status
+      if (userProfile) {
+        setIsEducatorRole(userProfile.role === "educator")
+        setIsVerifiedEducatorStatus(userProfile.role === "educator" && userProfile.educator_verified === true)
+      }
     }
   }
 
@@ -169,6 +205,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     profile,
     session,
     isLoading,
+    isEducator: isEducatorRole,
+    isVerifiedEducator: isVerifiedEducatorStatus,
     signIn,
     signUp,
     signOut,

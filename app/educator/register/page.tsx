@@ -9,17 +9,18 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/components/ui/use-toast"
 import { GraduationCap } from "lucide-react"
 
-export default function RegisterPage() {
+export default function EducatorRegisterPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [fullName, setFullName] = useState("")
-  const [gradeLevel, setGradeLevel] = useState("")
+  const [title, setTitle] = useState("")
+  const [bio, setBio] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { signUp } = useAuth()
   const router = useRouter()
@@ -27,7 +28,7 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!email || !password || !confirmPassword || !fullName || !gradeLevel) {
+    if (!email || !password || !confirmPassword || !fullName || !title || !bio) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -48,17 +49,23 @@ export default function RegisterPage() {
     setIsLoading(true)
 
     try {
-      const { success, error } = await signUp(email, password, {
-        full_name: fullName,
-        grade_level: gradeLevel,
-      })
+      const { success, error } = await signUp(
+        email,
+        password,
+        {
+          full_name: fullName,
+          educator_title: title,
+          educator_bio: bio,
+        },
+        true, // isEducator flag
+      )
 
       if (success) {
         toast({
           title: "Success",
-          description: "Your account has been created. Please check your email for verification.",
+          description: "Your educator account has been created. Please check your email for verification.",
         })
-        router.push("/login")
+        router.push("/educator/verification")
       } else {
         toast({
           title: "Error",
@@ -80,15 +87,15 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
-      <Card className="mx-auto w-full max-w-md">
+      <Card className="mx-auto w-full max-w-lg">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-2">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary">
               <GraduationCap className="h-6 w-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-          <CardDescription>Enter your information to get started</CardDescription>
+          <CardTitle className="text-2xl font-bold">Educator Registration</CardTitle>
+          <CardDescription>Create an educator account to share your knowledge</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
@@ -96,7 +103,7 @@ export default function RegisterPage() {
               <Label htmlFor="fullName">Full Name</Label>
               <Input
                 id="fullName"
-                placeholder="John Doe"
+                placeholder="Dr. Jane Smith"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
@@ -114,21 +121,27 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="gradeLevel">Grade Level</Label>
-              <Select value={gradeLevel} onValueChange={setGradeLevel} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your grade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="6">6th Grade</SelectItem>
-                  <SelectItem value="7">7th Grade</SelectItem>
-                  <SelectItem value="8">8th Grade</SelectItem>
-                  <SelectItem value="9">9th Grade</SelectItem>
-                  <SelectItem value="10">10th Grade</SelectItem>
-                  <SelectItem value="11">11th Grade</SelectItem>
-                  <SelectItem value="12">12th Grade</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="title">Professional Title</Label>
+              <Input
+                id="title"
+                placeholder="Professor of Biology"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">Your professional title or specialization</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bio">Professional Bio</Label>
+              <Textarea
+                id="bio"
+                placeholder="Share your educational background, teaching experience, and areas of expertise..."
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                className="min-h-[100px]"
+                required
+              />
+              <p className="text-xs text-muted-foreground">This will be displayed on your educator profile</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -153,18 +166,18 @@ export default function RegisterPage() {
           </CardContent>
           <CardFooter className="flex flex-col">
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Creating account..." : "Create account"}
+              {isLoading ? "Creating account..." : "Create Educator Account"}
             </Button>
             <p className="mt-4 text-center text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/login" className="text-primary hover:underline">
+              <Link href="/educator/login" className="text-primary hover:underline">
                 Sign in
               </Link>
             </p>
             <p className="mt-2 text-center text-sm text-muted-foreground">
-              Are you an educator?{" "}
-              <Link href="/educator/register" className="text-primary hover:underline">
-                Register as educator
+              Are you a student?{" "}
+              <Link href="/register" className="text-primary hover:underline">
+                Register as student
               </Link>
             </p>
           </CardFooter>

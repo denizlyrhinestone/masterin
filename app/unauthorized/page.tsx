@@ -8,9 +8,10 @@ export default function UnauthorizedPage() {
       <div className="mb-6 rounded-full bg-destructive/10 p-6">
         <ShieldAlert className="h-16 w-16 text-destructive" />
       </div>
-      <h1 className="text-4xl font-bold tracking-tight mb-2">Access Denied</h1>
+      <h1 className="text-4xl font-bold tracking-tight mb-2">Unauthorized Access</h1>
       <p className="text-muted-foreground mb-8 max-w-md">
-        You don't have permission to access this page. Please contact an administrator if you believe this is an error.
+        You don't have permission to access this page. Please sign in with the appropriate account or contact an
+        administrator.
       </p>
       <div className="flex gap-4">
         <Button asChild size="lg">

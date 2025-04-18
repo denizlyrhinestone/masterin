@@ -1,28 +1,40 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-// Initialize the Supabase client
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+import { createServerClient } from "@supabase/ssr"
 
 export async function middleware(request: NextRequest) {
-  // Create a Supabase client
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
+  // Create a Supabase client using the more appropriate server-side method
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get: (name) => request.cookies.get(name)?.value,
+        set: (name, value, options) => {
+          // This is just for the middleware, we don't actually set cookies here
+        },
+        remove: (name, options) => {
+          // This is just for the middleware, we don't actually remove cookies here
+        },
+      },
     },
-  })
+  )
 
   // Get the pathname from the request
   const { pathname } = request.nextUrl
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/login", "/register", "/forgot-password", "/reset-password"]
+  const publicRoutes = [
+    "/login",
+    "/register",
+    "/educator/register",
+    "/educator/login",
+    "/forgot-password",
+    "/reset-password",
+  ]
 
   // Check if the route is public
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
+  const isPublicRoute = publicRoutes.some((route) => pathname === route || pathname.startsWith(route))
 
   // For API routes, we'll handle auth in the route handlers
   if (pathname.startsWith("/api/")) {
@@ -38,7 +50,7 @@ export async function middleware(request: NextRequest) {
   if (!session && !isPublicRoute) {
     // Redirect to login page
     const redirectUrl = new URL("/login", request.url)
-    redirectUrl.searchParams.set("redirect", pathname)
+    redirectUrl.searchParams.set("redirect", encodeURIComponent(pathname))
     return NextResponse.redirect(redirectUrl)
   }
 
@@ -46,6 +58,17 @@ export async function middleware(request: NextRequest) {
   if (session && isPublicRoute) {
     // Redirect to dashboard
     return NextResponse.redirect(new URL("/dashboard", request.url))
+  }
+
+  // Check for educator-specific routes
+  if (pathname.startsWith("/educator/dashboard") || pathname.startsWith("/educator/courses")) {
+    // Get the user profile to check role
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", session?.user.id).single()
+
+    // If not an educator, redirect to unauthorized page
+    if (!profile || profile.role !== "educator") {
+      return NextResponse.redirect(new URL("/unauthorized", request.url))
+    }
   }
 
   // Otherwise, continue with the request

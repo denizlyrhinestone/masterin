@@ -13,7 +13,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/components/ui/use-toast"
 import { GraduationCap } from "lucide-react"
 
-export default function LoginPage() {
+export default function EducatorLoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -38,15 +38,40 @@ export default function LoginPage() {
       const { success, error } = await signIn(email, password)
 
       if (success) {
-        toast({
-          title: "Success",
-          description: "You have been logged in successfully",
+        // Check if user is an educator
+        const response = await fetch("/api/auth/check-educator", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
         })
 
-        // Check if there's a redirect path stored
-        const redirectPath = sessionStorage.getItem("redirectAfterLogin") || "/dashboard"
-        sessionStorage.removeItem("redirectAfterLogin")
-        router.push(redirectPath)
+        const data = await response.json()
+
+        if (data.isEducator) {
+          toast({
+            title: "Success",
+            description: "You have been logged in successfully",
+          })
+
+          // Redirect to educator dashboard
+          router.push("/educator/dashboard")
+        } else {
+          // Not an educator, sign out and show error
+          await fetch("/api/auth/signout", {
+            method: "POST",
+          })
+
+          toast({
+            title: "Error",
+            description:
+              "This account is not registered as an educator. Please use the student login or register as an educator.",
+            variant: "destructive",
+          })
+
+          // Redirect back to educator login
+          router.push("/educator/login")
+        }
       } else {
         toast({
           title: "Error",
@@ -75,8 +100,8 @@ export default function LoginPage() {
               <GraduationCap className="h-6 w-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
+          <CardTitle className="text-2xl font-bold">Educator Login</CardTitle>
+          <CardDescription>Sign in to your educator account</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
@@ -109,18 +134,18 @@ export default function LoginPage() {
           </CardContent>
           <CardFooter className="flex flex-col">
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Signing in..." : "Sign in"}
+              {isLoading ? "Signing in..." : "Sign in as Educator"}
             </Button>
             <p className="mt-4 text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
-              <Link href="/register" className="text-primary hover:underline">
-                Sign up
+              Don't have an educator account?{" "}
+              <Link href="/educator/register" className="text-primary hover:underline">
+                Register as educator
               </Link>
             </p>
             <p className="mt-2 text-center text-sm text-muted-foreground">
-              Are you an educator?{" "}
-              <Link href="/educator/login" className="text-primary hover:underline">
-                Sign in as educator
+              Are you a student?{" "}
+              <Link href="/login" className="text-primary hover:underline">
+                Sign in as student
               </Link>
             </p>
           </CardFooter>

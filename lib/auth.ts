@@ -8,14 +8,20 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Types for user data
+export type UserRole = "student" | "educator" | "admin"
+
 export interface UserProfile {
   id: string
   email: string
   full_name?: string
   avatar_url?: string
-  role: "student" | "educator" | "admin"
+  role: UserRole
   grade_level?: string
+  educator_bio?: string
+  educator_title?: string
+  educator_verified?: boolean
   created_at: string
+  updated_at?: string
 }
 
 // Function to get user profile data
@@ -38,7 +44,13 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
 // Function to create or update user profile
 export async function upsertUserProfile(profile: Partial<UserProfile>): Promise<UserProfile | null> {
   try {
-    const { data, error } = await supabase.from("profiles").upsert(profile).select().single()
+    // Ensure we have an updated_at timestamp
+    const profileWithTimestamp = {
+      ...profile,
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data, error } = await supabase.from("profiles").upsert(profileWithTimestamp).select().single()
 
     if (error) {
       console.error("Error upserting user profile:", error)
@@ -53,7 +65,7 @@ export async function upsertUserProfile(profile: Partial<UserProfile>): Promise<
 }
 
 // Function to sign up a new user
-export async function signUp(email: string, password: string, userData: Partial<UserProfile>) {
+export async function signUp(email: string, password: string, userData: Partial<UserProfile>, isEducator = false) {
   try {
     // Create the user in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -70,8 +82,9 @@ export async function signUp(email: string, password: string, userData: Partial<
       const profile = {
         id: authData.user.id,
         email,
-        role: "student" as const,
+        role: isEducator ? ("educator" as const) : ("student" as const),
         created_at: new Date().toISOString(),
+        educator_verified: isEducator ? false : undefined, // Educators start unverified
         ...userData,
       }
 
@@ -149,5 +162,54 @@ export async function getCurrentUser(): Promise<User | null> {
   } catch (error) {
     console.error("Error getting current user:", error)
     return null
+  }
+}
+
+// Function to check if a user is an educator
+export async function isEducator(userId: string): Promise<boolean> {
+  try {
+    const profile = await getUserProfile(userId)
+    return profile?.role === "educator"
+  } catch (error) {
+    console.error("Error checking educator status:", error)
+    return false
+  }
+}
+
+// Function to check if an educator is verified
+export async function isVerifiedEducator(userId: string): Promise<boolean> {
+  try {
+    const profile = await getUserProfile(userId)
+    return profile?.role === "educator" && profile?.educator_verified === true
+  } catch (error) {
+    console.error("Error checking educator verification status:", error)
+    return false
+  }
+}
+
+// Function to request educator verification
+export async function requestEducatorVerification(userId: string, verificationData: any): Promise<boolean> {
+  try {
+    // In a real app, this would send an email or create a verification request record
+    // For now, we'll just update the profile with the verification data
+    const { data, error } = await supabase
+      .from("educator_verification_requests")
+      .insert({
+        user_id: userId,
+        verification_data: verificationData,
+        status: "pending",
+        created_at: new Date().toISOString(),
+      })
+      .select()
+
+    if (error) {
+      console.error("Error requesting verification:", error)
+      return false
+    }
+
+    return true
+  } catch (error) {
+    console.error("Error in requestEducatorVerification:", error)
+    return false
   }
 }
