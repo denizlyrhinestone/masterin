@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,12 +11,20 @@ import { Label } from "@/components/ui/label"
 import { Mail, ArrowRight, CheckCircle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/components/ui/use-toast"
+import { motion } from "framer-motion"
 
 export default function ResendVerificationPage() {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
-  const { resendVerification } = useAuth()
+  const { resendVerification, user } = useAuth()
+
+  // Pre-fill email if user is logged in
+  useEffect(() => {
+    if (user?.email) {
+      setEmail(user.email)
+    }
+  }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -64,27 +72,56 @@ export default function ResendVerificationPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/40 p-4">
       <Card className="mx-auto w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
-          <div className="flex justify-center mb-2">
+          <motion.div
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="flex justify-center mb-2"
+          >
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary">
               <Mail className="h-6 w-6 text-white" />
             </div>
-          </div>
+          </motion.div>
           <CardTitle className="text-2xl font-bold">Resend Verification Email</CardTitle>
           <CardDescription>Enter your email address and we'll send you another verification link.</CardDescription>
         </CardHeader>
 
         {isSuccess ? (
-          <CardContent className="space-y-4 text-center">
-            <div className="flex justify-center mb-2">
-              <CheckCircle className="h-12 w-12 text-green-500" />
-            </div>
-            <p className="text-lg font-medium">Verification email sent!</p>
-            <p className="text-sm text-muted-foreground">
-              We've sent a verification link to <strong>{email}</strong>. Please check your inbox and follow the
-              instructions to verify your email address.
-            </p>
-            <p className="text-sm text-muted-foreground">If you don't see the email, please check your spam folder.</p>
-          </CardContent>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <CardContent className="space-y-4 text-center">
+              <div className="flex justify-center mb-2">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 260,
+                    damping: 20,
+                  }}
+                >
+                  <CheckCircle className="h-12 w-12 text-green-500" />
+                </motion.div>
+              </div>
+              <p className="text-lg font-medium">Verification email sent!</p>
+              <p className="text-sm text-muted-foreground">
+                We've sent a verification link to <strong>{email}</strong>. Please check your inbox and follow the
+                instructions to verify your email address.
+              </p>
+              <div className="bg-muted p-4 rounded-md mt-4">
+                <p className="text-sm font-medium">Didn't receive the email?</p>
+                <ul className="text-sm text-muted-foreground mt-2 space-y-1 list-disc list-inside">
+                  <li>Check your spam or junk folder</li>
+                  <li>Verify that you entered the correct email address</li>
+                  <li>Wait a few minutes as email delivery can sometimes be delayed</li>
+                  <li>If you still don't receive it, you can try again in 15 minutes</li>
+                </ul>
+              </div>
+            </CardContent>
+          </motion.div>
         ) : (
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">

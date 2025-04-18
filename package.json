@@ -59,13 +59,16 @@
     "vaul": "^0.9.6",
     "zod": "latest",
     "@supabase/supabase-js": "latest",
+    "@emotion/is-prop-valid": "latest",
     "node-fetch": "latest",
     "ai": "latest",
     "@ai-sdk/openai": "latest",
     "@ai-sdk/groq": "latest",
     "@ai-sdk/xai": "latest",
     "@supabase/auth-helpers-nextjs": "latest",
-    "@supabase/ssr": "latest"
+    "@supabase/ssr": "latest",
+    "crypto": "latest",
+    "framer-motion": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
