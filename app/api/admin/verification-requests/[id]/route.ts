@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
+import { logAdminAction } from "@/lib/audit-log"
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -79,6 +80,13 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       }
     }
 
+    // Log the admin action
+    await logAdminAction({
+      actionType: `verification_request_${status}`,
+      description: `Verification request ${params.id} ${status === "approved" ? "approved" : "rejected"}`,
+      req: request,
+    })
+
     return NextResponse.json({
       success: true,
       message: `Verification request ${status === "approved" ? "approved" : "rejected"} successfully`,
@@ -118,22 +126,22 @@ export async function GET(request: Request, { params }: { params: { id: string }
     const { data, error } = await supabase
       .from("educator_verification_requests")
       .select(`
-        id, 
-        institution, 
-        credentials, 
-        additional_info, 
-        status, 
-        admin_notes, 
-        created_at,
-        user_id,
-        profiles:user_id (
-          id,
-          full_name,
-          email,
-          educator_title,
-          educator_bio
-        )
-      `)
+       id, 
+       institution, 
+       credentials, 
+       additional_info, 
+       status, 
+       admin_notes, 
+       created_at,
+       user_id,
+       profiles:user_id (
+         id,
+         full_name,
+         email,
+         educator_title,
+         educator_bio
+       )
+     `)
       .eq("id", params.id)
       .single()
 

@@ -25,6 +25,18 @@ import { toast } from "@/components/ui/use-toast"
 import { Search, MoreHorizontal, UserCheck, UserX, Shield, User } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { supabase } from "@/lib/auth"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+
+type UserType = {
+  id: string
+  full_name: string
+  email: string
+  avatar_url: string | null
+  role: string
+  created_at: string
+}
 
 export function UsersList({ roleFilter = "all" }) {
   const [users, setUsers] = useState([])
@@ -412,5 +424,85 @@ export function UsersList({ roleFilter = "all" }) {
         </DialogContent>
       </Dialog>
     </>
+  )
+}
+
+export function RecentUsersList() {
+  const [users, setUsers] = useState<UserType[]>([])
+  const [loading, setLoading] = useState(true)
+  const supabase = createClientComponentClient()
+
+  useEffect(() => {
+    async function fetchRecentUsers() {
+      try {
+        setLoading(true)
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, avatar_url, role, created_at")
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (error) {
+          console.error("Error fetching recent users:", error)
+          return
+        }
+
+        setUsers(data || [])
+      } catch (error) {
+        console.error("Error in fetchRecentUsers:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchRecentUsers()
+  }, [supabase])
+
+  function getInitials(name: string) {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Recent Users</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex justify-center p-4">Loading recent users...</div>
+        ) : (
+          <div className="space-y-4">
+            {users.length === 0 ? (
+              <div className="text-center text-muted-foreground">No users found</div>
+            ) : (
+              users.map((user) => (
+                <div key={user.id} className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Avatar>
+                      <AvatarImage src={user.avatar_url || ""} alt={user.full_name} />
+                      <AvatarFallback>{getInitials(user.full_name)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">{user.full_name}</div>
+                      <div className="text-sm text-muted-foreground">{user.email}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant={user.role === "admin" ? "destructive" : "secondary"}>{user.role}</Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {formatDistanceToNow(new Date(user.created_at), { addSuffix: true })}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
