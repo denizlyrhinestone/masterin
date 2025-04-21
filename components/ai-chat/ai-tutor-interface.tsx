@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Send, Sparkles, BookOpen, History, Info, Loader2 } from "lucide-react"
+import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw, AlertTriangle } from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 
 // Message type definition
 type Message = {
@@ -17,6 +18,7 @@ type Message = {
   role: "user" | "assistant" | "system"
   content: string
   timestamp: Date
+  status?: "sending" | "error" | "success"
 }
 
 // Initial welcome message
@@ -27,6 +29,7 @@ const initialMessages: Message[] = [
     content:
       "👋 Hi there! I'm your AI tutor. I can help you with a wide range of subjects including math, science, language arts, history, and more. What would you like to learn about today?",
     timestamp: new Date(),
+    status: "success",
   },
 ]
 
@@ -36,16 +39,26 @@ export function AITutorInterface() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState("general")
   const [activeTab, setActiveTab] = useState("chat")
+  const [retryCount, setRetryCount] = useState(0)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
+  // Focus textarea when component mounts
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }, [])
+
   // Handle sending a message
   const handleSendMessage = async () => {
-    if (!input.trim()) return
+    if (!input.trim() || isLoading) return
 
     // Create user message
     const userMessage: Message = {
@@ -53,12 +66,23 @@ export function AITutorInterface() {
       role: "user",
       content: input,
       timestamp: new Date(),
+      status: "success",
     }
 
-    // Add user message to chat
-    setMessages((prev) => [...prev, userMessage])
+    // Create placeholder for assistant message
+    const assistantPlaceholder: Message = {
+      id: Date.now().toString() + "-assistant",
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      status: "sending",
+    }
+
+    // Add user message to chat and clear input
+    setMessages((prev) => [...prev, userMessage, assistantPlaceholder])
     setInput("")
     setIsLoading(true)
+    setErrorMessage(null)
 
     try {
       // Send message to AI and get response
@@ -70,44 +94,86 @@ export function AITutorInterface() {
         body: JSON.stringify({
           message: input,
           subject: selectedSubject,
-          history: messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
+          history: messages
+            .filter((msg) => msg.role !== "system" && msg.status !== "sending")
+            .map((msg) => ({
+              role: msg.role,
+              content: msg.content,
+            })),
         }),
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to get response from AI tutor")
-      }
-
       const data = await response.json()
 
-      // Add AI response to chat
-      const aiMessage: Message = {
-        id: Date.now().toString() + "-ai",
-        role: "assistant",
-        content: data.response,
-        timestamp: new Date(),
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to get response from AI tutor")
       }
 
-      setMessages((prev) => [...prev, aiMessage])
-    } catch (error) {
+      // Update the placeholder message with the actual response
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantPlaceholder.id ? { ...msg, content: data.response, status: "success" } : msg,
+        ),
+      )
+
+      // Reset retry count on successful response
+      setRetryCount(0)
+    } catch (error: any) {
       console.error("Error getting AI response:", error)
 
-      // Add error message
-      const errorMessage: Message = {
-        id: Date.now().toString() + "-error",
-        role: "assistant",
-        content:
-          "I'm sorry, I encountered an error processing your request. Please try again or ask a different question.",
-        timestamp: new Date(),
-      }
+      // Update the placeholder message with error status
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantPlaceholder.id
+            ? {
+                ...msg,
+                content:
+                  "I'm sorry, I encountered an error processing your request. You can try again or ask a different question.",
+                status: "error",
+              }
+            : msg,
+        ),
+      )
 
-      setMessages((prev) => [...prev, errorMessage])
+      // Show error toast
+      toast({
+        title: "AI Tutor Error",
+        description: error.message || "Failed to get a response. Please try again.",
+        variant: "destructive",
+      })
+
+      // Track error message for retry button
+      setErrorMessage(error.message || "Unknown error")
+
+      // Increment retry count
+      setRetryCount((prev) => prev + 1)
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Retry the last message
+  const handleRetry = async () => {
+    if (isLoading) return
+
+    // Find the last user message
+    const lastUserMessage = [...messages].reverse().find((msg) => msg.role === "user")
+    if (!lastUserMessage) return
+
+    // Remove the last assistant message if it was an error
+    setMessages((prev) => {
+      const lastMessage = prev[prev.length - 1]
+      if (lastMessage.role === "assistant" && lastMessage.status === "error") {
+        return prev.slice(0, -1)
+      }
+      return prev
+    })
+
+    // Set the input to the last user message and send it
+    setInput(lastUserMessage.content)
+    setTimeout(() => {
+      handleSendMessage()
+    }, 100)
   }
 
   // Handle key press (Enter to send)
@@ -121,6 +187,36 @@ export function AITutorInterface() {
   // Clear chat history
   const handleClearChat = () => {
     setMessages(initialMessages)
+    setRetryCount(0)
+    setErrorMessage(null)
+    if (textareaRef.current) {
+      textareaRef.current.focus()
+    }
+  }
+
+  // Handle subject change
+  const handleSubjectChange = (subject: string) => {
+    setSelectedSubject(subject)
+
+    // Add a system message about the subject change
+    const subjectNames: Record<string, string> = {
+      general: "General",
+      math: "Mathematics",
+      science: "Science",
+      language: "Language Arts",
+      history: "History",
+      "computer-science": "Computer Science",
+    }
+
+    const systemMessage: Message = {
+      id: Date.now().toString(),
+      role: "system",
+      content: `Subject changed to ${subjectNames[subject] || subject}`,
+      timestamp: new Date(),
+      status: "success",
+    }
+
+    setMessages((prev) => [...prev, systemMessage])
   }
 
   return (
@@ -151,25 +247,52 @@ export function AITutorInterface() {
         </TabsList>
 
         <TabsContent value="chat" className="mt-4">
-          <Card className="border-gray-200">
+          <Card className="border-gray-200 shadow-sm">
             <CardHeader className="border-b bg-gray-50 px-4 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-emerald-600" />
                   <h3 className="font-semibold">AI Tutor Chat</h3>
                 </div>
-                <SubjectSelector selectedSubject={selectedSubject} onSelectSubject={setSelectedSubject} />
+                <SubjectSelector selectedSubject={selectedSubject} onSelectSubject={handleSubjectChange} />
               </div>
             </CardHeader>
-            <CardContent className="h-[500px] overflow-y-auto p-4">
+            <CardContent className="h-[500px] overflow-y-auto p-4 bg-gray-50/30">
               <div className="flex flex-col space-y-4">
-                {messages.map((message) => (
-                  <ChatMessage key={message.id} message={message} />
-                ))}
-                {isLoading && (
+                {messages.map((message) =>
+                  message.role === "system" ? (
+                    <div key={message.id} className="flex justify-center my-2">
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                        {message.content}
+                      </span>
+                    </div>
+                  ) : (
+                    <ChatMessage key={message.id} message={message} />
+                  ),
+                )}
+                {isLoading && messages[messages.length - 1]?.status !== "sending" && (
                   <div className="flex items-center self-start rounded-lg bg-gray-100 px-4 py-2 text-gray-700">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Thinking...
+                  </div>
+                )}
+                {errorMessage && retryCount > 0 && !isLoading && (
+                  <div className="flex items-center justify-center gap-2 my-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRetry}
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Retry
+                    </Button>
+                    {retryCount > 2 && (
+                      <div className="flex items-center text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
+                        <AlertTriangle className="h-3 w-3 mr-1" />
+                        Having trouble? Try a different question
+                      </div>
+                    )}
                   </div>
                 )}
                 <div ref={messagesEndRef} />
@@ -178,11 +301,12 @@ export function AITutorInterface() {
             <CardFooter className="border-t bg-white p-4">
               <div className="flex w-full items-end gap-2">
                 <Textarea
+                  ref={textareaRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyPress}
                   placeholder="Ask anything about your studies..."
-                  className="min-h-[80px] flex-1 resize-none"
+                  className="min-h-[80px] flex-1 resize-none focus:border-emerald-500 focus:ring-emerald-500"
                   disabled={isLoading}
                 />
                 <div className="flex flex-col gap-2">

@@ -33,13 +33,16 @@ export function SubjectSelector({ selectedSubject, onSelectSubject }: SubjectSel
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          className="flex items-center gap-1 border-gray-300 text-sm transition-all duration-200 hover:border-emerald-300 hover:bg-emerald-50/50"
+          className="flex items-center gap-1 border-gray-300 text-sm transition-all duration-200 hover:border-emerald-300 hover:bg-emerald-50/50 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
         >
           <span>Subject: {selectedSubjectName}</span>
-          <ChevronDown className="h-4 w-4" />
+          <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
+      <DropdownMenuContent
+        align="end"
+        className="w-48 animate-in fade-in-80 zoom-in-95 data-[side=bottom]:slide-in-from-top-2"
+      >
         <DropdownMenuGroup>
           {subjects.map((subject) => (
             <DropdownMenuItem
@@ -47,7 +50,9 @@ export function SubjectSelector({ selectedSubject, onSelectSubject }: SubjectSel
               onClick={() => onSelectSubject(subject.id)}
               className={cn(
                 "flex cursor-pointer items-center justify-between transition-colors duration-200",
-                selectedSubject === subject.id ? "bg-emerald-50 text-emerald-700" : "hover:bg-gray-50",
+                selectedSubject === subject.id
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "hover:bg-gray-50 hover:text-gray-900 focus:bg-gray-50 focus:text-gray-900",
               )}
             >
               {subject.name}

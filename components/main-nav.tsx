@@ -89,7 +89,7 @@ export function MainNav() {
           <NavigationMenu>
             <NavigationMenuList>
               <NavigationMenuItem>
-                <NavigationMenuTrigger>Courses</NavigationMenuTrigger>
+                <NavigationMenuTrigger className="transition-colors duration-200">Courses</NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <ul className="grid w-[400px] gap-3 p-4 md:w-[500px] md:grid-cols-2 lg:w-[600px]">
                     {courseCategories.map((category) => (
@@ -109,7 +109,7 @@ export function MainNav() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <NavigationMenuTrigger className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent relative after:content-[''] after:absolute after:top-0 after:right-0 after:-mt-1 after:-mr-1 after:w-2 after:h-2 after:bg-emerald-500 after:rounded-full after:animate-pulse">
+                <NavigationMenuTrigger className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent relative after:content-[''] after:absolute after:top-0 after:right-0 after:-mt-1 after:-mr-1 after:w-2 after:h-2 after:bg-emerald-500 after:rounded-full after:animate-pulse transition-colors duration-200">
                   AI Learning
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
@@ -132,31 +132,40 @@ export function MainNav() {
               </NavigationMenuItem>
               <NavigationMenuItem>
                 <Link href="/educators" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>Educators</NavigationMenuLink>
+                  <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "transition-colors duration-200")}>
+                    Educators
+                  </NavigationMenuLink>
                 </Link>
               </NavigationMenuItem>
               <NavigationMenuItem>
                 <Link href="/community" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>Community</NavigationMenuLink>
+                  <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "transition-colors duration-200")}>
+                    Community
+                  </NavigationMenuLink>
                 </Link>
               </NavigationMenuItem>
               <NavigationMenuItem>
                 <Link href="/about" legacyBehavior passHref>
-                  <NavigationMenuLink className={navigationMenuTriggerStyle()}>About</NavigationMenuLink>
+                  <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "transition-colors duration-200")}>
+                    About
+                  </NavigationMenuLink>
                 </Link>
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
 
           <div className="flex items-center space-x-2">
-            <Button variant="ghost" size="icon">
+            <Button variant="ghost" size="icon" className="transition-colors duration-200 hover:bg-gray-100">
               <Search className="h-5 w-5" />
               <span className="sr-only">Search</span>
             </Button>
-            <Button variant="ghost" asChild>
+            <Button variant="ghost" asChild className="transition-colors duration-200 hover:bg-gray-100">
               <Link href="/login">Log in</Link>
             </Button>
-            <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+            <Button
+              asChild
+              className="bg-emerald-600 hover:bg-emerald-700 transition-colors duration-200 hover:shadow-md"
+            >
               <Link href="/register">Sign up</Link>
             </Button>
           </div>
@@ -164,7 +173,12 @@ export function MainNav() {
 
         {/* Mobile Menu Button */}
         <div className="flex md:hidden">
-          <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="transition-colors duration-200 hover:bg-gray-100"
+          >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
         </div>
@@ -177,7 +191,7 @@ export function MainNav() {
             <Link
               href="/courses"
               className={cn(
-                "block rounded-md px-3 py-2 text-base font-medium",
+                "block rounded-md px-3 py-2 text-base font-medium transition-colors duration-200",
                 pathname.startsWith("/courses")
                   ? "bg-emerald-50 text-emerald-700"
                   : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
@@ -188,7 +202,7 @@ export function MainNav() {
             <Link
               href="/ai-tutor"
               className={cn(
-                "block rounded-md px-3 py-2 text-base font-medium text-emerald-600 relative",
+                "block rounded-md px-3 py-2 text-base font-medium text-emerald-600 relative transition-colors duration-200",
                 pathname.startsWith("/ai")
                   ? "bg-emerald-50 text-emerald-700"
                   : "text-emerald-600 hover:bg-gray-50 hover:text-emerald-700",
@@ -200,7 +214,7 @@ export function MainNav() {
             <Link
               href="/educators"
               className={cn(
-                "block rounded-md px-3 py-2 text-base font-medium",
+                "block rounded-md px-3 py-2 text-base font-medium transition-colors duration-200",
                 pathname.startsWith("/educators")
                   ? "bg-emerald-50 text-emerald-700"
                   : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
@@ -211,7 +225,7 @@ export function MainNav() {
             <Link
               href="/community"
               className={cn(
-                "block rounded-md px-3 py-2 text-base font-medium",
+                "block rounded-md px-3 py-2 text-base font-medium transition-colors duration-200",
                 pathname.startsWith("/community")
                   ? "bg-emerald-50 text-emerald-700"
                   : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
@@ -222,7 +236,7 @@ export function MainNav() {
             <Link
               href="/about"
               className={cn(
-                "block rounded-md px-3 py-2 text-base font-medium",
+                "block rounded-md px-3 py-2 text-base font-medium transition-colors duration-200",
                 pathname.startsWith("/about")
                   ? "bg-emerald-50 text-emerald-700"
                   : "text-gray-700 hover:bg-gray-50 hover:text-gray-900",
@@ -231,10 +245,13 @@ export function MainNav() {
               About
             </Link>
             <div className="mt-4 flex flex-col space-y-2">
-              <Button variant="outline" asChild className="w-full justify-center">
+              <Button variant="outline" asChild className="w-full justify-center transition-colors duration-200">
                 <Link href="/login">Log in</Link>
               </Button>
-              <Button asChild className="w-full justify-center bg-emerald-600 hover:bg-emerald-700">
+              <Button
+                asChild
+                className="w-full justify-center bg-emerald-600 hover:bg-emerald-700 transition-colors duration-200"
+              >
                 <Link href="/register">Sign up</Link>
               </Button>
             </div>
