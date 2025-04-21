@@ -97,7 +97,7 @@ export function MainNav() {
                         <NavigationMenuLink asChild>
                           <Link
                             href={category.href}
-                            className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100"
+                            className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors duration-200 hover:bg-slate-100 focus:bg-slate-100"
                           >
                             <div className="text-sm font-medium leading-none">{category.title}</div>
                             <p className="line-clamp-2 text-sm leading-snug text-slate-500">{category.description}</p>
@@ -109,7 +109,7 @@ export function MainNav() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <NavigationMenuTrigger className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent">
+                <NavigationMenuTrigger className="bg-gradient-to-r from-emerald-500 to-teal-500 bg-clip-text text-transparent relative after:content-[''] after:absolute after:top-0 after:right-0 after:-mt-1 after:-mr-1 after:w-2 after:h-2 after:bg-emerald-500 after:rounded-full after:animate-pulse">
                   AI Learning
                 </NavigationMenuTrigger>
                 <NavigationMenuContent>
@@ -119,7 +119,7 @@ export function MainNav() {
                         <NavigationMenuLink asChild>
                           <Link
                             href={feature.href}
-                            className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100"
+                            className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors duration-200 hover:bg-slate-100 focus:bg-slate-100"
                           >
                             <div className="text-sm font-medium leading-none">{feature.title}</div>
                             <p className="line-clamp-2 text-sm leading-snug text-slate-500">{feature.description}</p>
@@ -188,13 +188,14 @@ export function MainNav() {
             <Link
               href="/ai-tutor"
               className={cn(
-                "block rounded-md px-3 py-2 text-base font-medium text-emerald-600",
+                "block rounded-md px-3 py-2 text-base font-medium text-emerald-600 relative",
                 pathname.startsWith("/ai")
                   ? "bg-emerald-50 text-emerald-700"
                   : "text-emerald-600 hover:bg-gray-50 hover:text-emerald-700",
               )}
             >
               AI Learning
+              <span className="absolute top-0 right-0 -mt-1 -mr-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
             </Link>
             <Link
               href="/educators"

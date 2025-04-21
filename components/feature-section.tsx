@@ -1,4 +1,6 @@
 import { BookOpen, Brain, BarChart3, Users, Award } from "lucide-react"
+import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 const features = [
   {
@@ -45,11 +47,40 @@ export function FeatureSection() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md"
+              className={cn(
+                "rounded-lg border border-gray-200 bg-white p-6 shadow-sm transition-all hover:shadow-md",
+                feature.title === "AI-Powered Learning" &&
+                  "border-emerald-200 bg-emerald-50/50 ring-1 ring-emerald-500/20",
+              )}
             >
               <div className="mb-4">{feature.icon}</div>
-              <h3 className="mb-2 text-xl font-semibold text-gray-900">{feature.title}</h3>
+              <h3
+                className={cn(
+                  "mb-2 text-xl font-semibold",
+                  feature.title === "AI-Powered Learning" ? "text-emerald-700" : "text-gray-900",
+                )}
+              >
+                {feature.title}
+                {feature.title === "AI-Powered Learning" && (
+                  <span className="ml-2 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
+                    New
+                  </span>
+                )}
+              </h3>
               <p className="text-gray-600">{feature.description}</p>
+              {feature.title === "AI-Powered Learning" && (
+                <div className="mt-4">
+                  <Link
+                    href="/ai-tutor"
+                    className="inline-flex items-center text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors duration-200"
+                  >
+                    Try AI Tutor
+                    <svg className="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+              )}
             </div>
           ))}
         </div>

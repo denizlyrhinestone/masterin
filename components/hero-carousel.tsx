@@ -112,10 +112,19 @@ export function HeroCarousel() {
                   </h1>
                   <p className="mb-8 text-xl text-gray-200">{slide.description}</p>
                   <div className="flex flex-wrap gap-4">
-                    <Button asChild size="lg" className="bg-emerald-600 hover:bg-emerald-700">
+                    <Button
+                      asChild
+                      size="lg"
+                      className="bg-emerald-600 transition-all duration-200 hover:bg-emerald-700 hover:shadow-md"
+                    >
                       <Link href={slide.ctaLink}>{slide.ctaText}</Link>
                     </Button>
-                    <Button asChild variant="outline" size="lg" className="border-white text-white hover:bg-white/10">
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="lg"
+                      className="border-white text-white transition-all duration-200 hover:bg-white/20 hover:border-white/80"
+                    >
                       <Link href="/about">Learn More</Link>
                     </Button>
                   </div>
@@ -129,14 +138,14 @@ export function HeroCarousel() {
       {/* Navigation Arrows */}
       <button
         onClick={prevSlide}
-        className="absolute left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white backdrop-blur-sm transition-all hover:bg-black/50"
+        className="absolute left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white backdrop-blur-sm transition-all duration-200 hover:bg-black/50 hover:scale-110"
         aria-label="Previous slide"
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
       <button
         onClick={nextSlide}
-        className="absolute right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white backdrop-blur-sm transition-all hover:bg-black/50"
+        className="absolute right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/30 p-2 text-white backdrop-blur-sm transition-all duration-200 hover:bg-black/50 hover:scale-110"
         aria-label="Next slide"
       >
         <ChevronRight className="h-6 w-6" />

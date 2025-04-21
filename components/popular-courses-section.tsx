@@ -3,7 +3,8 @@ import Image from "next/image"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Star, Users, Clock } from "lucide-react"
+import { Star, Users, Clock, Sparkles } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const popularCourses = [
   {
@@ -16,8 +17,8 @@ const popularCourses = [
     students: 1245,
     duration: "8 weeks",
     instructor: "Dr. Sarah Chen",
-    imageUrl:
-      "/placeholder.svg?height=200&width=400&query=artificial intelligence course thumbnail with digital brain visualization",
+    imageUrl: "/digital-brain-ai.png",
+    isAIEnabled: true,
   },
   {
     id: 2,
@@ -29,7 +30,7 @@ const popularCourses = [
     students: 876,
     duration: "10 weeks",
     instructor: "Prof. Michael Johnson",
-    imageUrl: "/placeholder.svg?height=200&width=400&query=mathematics calculus formulas on chalkboard",
+    imageUrl: "/calculus-chalkboard.png",
   },
   {
     id: 3,
@@ -41,7 +42,7 @@ const popularCourses = [
     students: 1032,
     duration: "6 weeks",
     instructor: "Emma Rodriguez",
-    imageUrl: "/placeholder.svg?height=200&width=400&query=creative writing notebook with pen and coffee",
+    imageUrl: "/creative-workspace.png",
   },
   {
     id: 4,
@@ -53,7 +54,7 @@ const popularCourses = [
     students: 945,
     duration: "12 weeks",
     instructor: "Dr. James Wilson",
-    imageUrl: "/placeholder.svg?height=200&width=400&query=ancient civilization ruins with columns and architecture",
+    imageUrl: "/sun-kissed-colonnade.png",
   },
 ]
 
@@ -76,6 +77,14 @@ export function PopularCoursesSection() {
             <Card key={course.id} className="overflow-hidden transition-all hover:shadow-md">
               <div className="aspect-video relative">
                 <Image src={course.imageUrl || "/placeholder.svg"} alt={course.title} fill className="object-cover" />
+                {course.isAIEnabled && (
+                  <div className="absolute top-2 right-2 rounded-full bg-emerald-600 px-2 py-1 text-xs font-medium text-white shadow-sm">
+                    <div className="flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      <span>AI Tutor</span>
+                    </div>
+                  </div>
+                )}
               </div>
               <CardHeader className="p-4">
                 <div className="flex items-center justify-between">
@@ -109,8 +118,18 @@ export function PopularCoursesSection() {
                 <div className="mt-2 text-sm">Instructor: {course.instructor}</div>
               </CardContent>
               <CardFooter className="p-4 pt-0">
-                <Button asChild className="w-full bg-emerald-600 hover:bg-emerald-700">
-                  <Link href={`/courses/${course.id}`}>Enroll Now</Link>
+                <Button
+                  asChild
+                  className={cn(
+                    "w-full transition-all duration-200",
+                    course.isAIEnabled
+                      ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 hover:shadow-md"
+                      : "bg-emerald-600 hover:bg-emerald-700",
+                  )}
+                >
+                  <Link href={course.isAIEnabled ? `/ai-tutor?course=${course.id}` : `/courses/${course.id}`}>
+                    {course.isAIEnabled ? "Start with AI Tutor" : "Enroll Now"}
+                  </Link>
                 </Button>
               </CardFooter>
             </Card>
