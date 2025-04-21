@@ -59,21 +59,8 @@
     "vaul": "^0.9.6",
     "zod": "^3.24.1",
     "@supabase/supabase-js": "latest",
-    "@emotion/is-prop-valid": "latest",
-    "@testing-library/dom": "latest",
-    "node-fetch": "latest",
-    "ai": "latest",
-    "@ai-sdk/openai": "latest",
-    "@ai-sdk/groq": "latest",
-    "@ai-sdk/xai": "latest",
-    "@supabase/auth-helpers-nextjs": "latest",
     "@supabase/ssr": "latest",
-    "framer-motion": "latest",
-    "crypto": "latest",
-    "@vercel/blob": "latest",
-    "nanoid": "latest",
-    "resend": "latest",
-    "@testing-library/react": "latest"
+    "uuid": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
