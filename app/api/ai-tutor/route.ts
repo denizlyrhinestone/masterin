@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
-import { selectAIModel, generateFallbackResponse } from "@/lib/ai-utils"
+import { selectAIModel, performAIDiagnostics } from "@/lib/ai-utils"
+import { logError, ErrorSeverity, ErrorCodes, getUserFriendlyErrorMessage } from "@/lib/error-handling"
+import { HealthMonitor, ServiceType, HealthStatus, createAIModelHealthCheck } from "@/lib/health-monitoring"
+import { AlertManager, AlertType, AlertSeverity } from "@/lib/alert-system"
+import { FallbackStrategy } from "@/lib/fallback-strategy"
 
 // Define the system prompts for different subjects
 const subjectPrompts: Record<string, string> = {
@@ -38,34 +42,70 @@ let consecutiveErrors = 0
 const ERROR_THRESHOLD = 5
 const ERROR_COOLDOWN_MS = 60000 // 1 minute cooldown after consecutive errors
 
-// Mock functions for performAIDiagnostics and updateServiceHealth
-// Replace these with your actual implementations
-async function performAIDiagnostics() {
-  return {
-    status: "ok",
-    message: "All systems nominal (mock).",
+// Initialize health monitoring for AI models
+function initializeHealthMonitoring() {
+  const healthMonitor = HealthMonitor.getInstance()
+  const alertManager = AlertManager.getInstance()
+
+  // Register health check for OpenAI
+  if (process.env.OPENAI_API_KEY) {
+    healthMonitor.registerHealthCheck(
+      `${ServiceType.AI_MODEL}.openai`,
+      createAIModelHealthCheck("openai", async () => {
+        try {
+          // Simple health check query
+          const { model } = selectAIModel()
+          if (!model) return false
+
+          const response = await generateText({
+            model,
+            prompt: "Health check: Are you operational?",
+            system: "You are a health check system. Respond with 'operational' only.",
+            maxTokens: 10,
+          })
+
+          return response.text.toLowerCase().includes("operational")
+        } catch (error) {
+          logError(error instanceof Error ? error : String(error), "HealthCheck.openai", {})
+          return false
+        }
+      }),
+      300000, // Check every 5 minutes
+    )
   }
+
+  // Register alert callback
+  healthMonitor.registerAlertCallback((incident) => {
+    alertManager.createAlertFromHealthIncident(incident)
+  })
 }
 
-function updateServiceHealth(provider: string, status: string, responseTime?: number, error?: any) {
-  console.log(
-    `[Health] Provider: ${provider}, Status: ${status}, Response Time: ${responseTime}ms, Error: ${error ? error.message : "None"}`,
-  )
-}
+// Initialize health monitoring on first import
+initializeHealthMonitoring()
 
 export async function POST(request: Request) {
+  const requestId = `req-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+  const startTime = Date.now()
+
   try {
     // Parse the request body
     const body = await request.json()
-    const { message, subject = "general", history = [], healthCheck = false } = body
+    const { message, subject = "general", history = [], healthCheck = false, sessionId, userId, topic } = body
 
     // Validate inputs
     if (!message || typeof message !== "string") {
-      return NextResponse.json({ error: "Invalid message format", success: false }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "Invalid message format",
+          success: false,
+          errorCode: ErrorCodes.CLIENT_INVALID_INPUT,
+        },
+        { status: 400 },
+      )
     }
 
     console.log(
-      `AI Tutor request received - Subject: ${subject}, Message length: ${message.length}, Health check: ${healthCheck}`,
+      `AI Tutor request received - Subject: ${subject}, Message length: ${message.length}, Health check: ${healthCheck}, Request ID: ${requestId}`,
     )
 
     // Get the appropriate system prompt based on the selected subject
@@ -77,6 +117,27 @@ export async function POST(request: Request) {
       content: msg.content,
     }))
 
+    // Get fallback strategy instance
+    const fallbackStrategy = FallbackStrategy.getInstance()
+
+    // Check for cached response first if not a health check
+    if (!healthCheck) {
+      const cachedResponse = fallbackStrategy.getCachedResponse(subject, topic || "general", message)
+
+      if (cachedResponse) {
+        console.log(`Using cached response for subject: ${subject}, topic: ${topic || "general"}`)
+
+        return NextResponse.json({
+          response: cachedResponse.content,
+          success: true,
+          cached: true,
+          provider: "cache",
+          responseTime: Date.now() - startTime,
+          timestamp: new Date().toISOString(),
+        })
+      }
+    }
+
     // Select the best available AI model
     const { model, provider } = selectAIModel()
 
@@ -87,15 +148,37 @@ export async function POST(request: Request) {
       // Perform diagnostics to provide better error information
       const diagnostics = await performAIDiagnostics()
 
-      const fallbackResponse = generateFallbackResponse(subject, message)
+      // Get appropriate fallback content
+      const fallbackContent = fallbackStrategy.getFallbackContent(
+        subject,
+        topic || "general",
+        ErrorCodes.CONN_SERVICE_UNAVAILABLE,
+      )
+
+      // Log the error
+      logError(
+        "No AI model available",
+        "AITutor.POST",
+        {
+          subject,
+          topic,
+          diagnostics,
+          requestId,
+        },
+        userId,
+        sessionId,
+        requestId,
+      )
 
       return NextResponse.json({
-        response: fallbackResponse,
+        response: fallbackContent.content,
         success: true,
         fallback: true,
         provider: "fallback",
         timestamp: new Date().toISOString(),
         diagnostics: diagnostics,
+        errorCode: ErrorCodes.CONN_SERVICE_UNAVAILABLE,
+        responseTime: Date.now() - startTime,
       })
     }
 
@@ -103,29 +186,49 @@ export async function POST(request: Request) {
     const timeSinceLastSuccess = Date.now() - lastSuccessfulCall
     if (consecutiveErrors >= ERROR_THRESHOLD && timeSinceLastSuccess < ERROR_COOLDOWN_MS) {
       console.log(`AI service in cooldown period after ${consecutiveErrors} consecutive errors`)
-      const fallbackResponse = generateFallbackResponse(subject, message)
+
+      // Get appropriate fallback content
+      const fallbackContent = fallbackStrategy.getFallbackContent(
+        subject,
+        topic || "general",
+        ErrorCodes.RATE_TOO_MANY_REQUESTS,
+      )
+
+      // Log the error
+      logError(
+        "AI service in cooldown period",
+        "AITutor.POST",
+        {
+          consecutiveErrors,
+          timeSinceLastSuccess,
+          subject,
+          topic,
+          requestId,
+        },
+        userId,
+        sessionId,
+        requestId,
+      )
 
       return NextResponse.json({
-        response: fallbackResponse,
+        response: fallbackContent.content,
         success: true,
         fallback: true,
         provider: "cooldown",
-        errorCode: "SERVICE_COOLDOWN",
+        errorCode: ErrorCodes.RATE_TOO_MANY_REQUESTS,
         timestamp: new Date().toISOString(),
+        responseTime: Date.now() - startTime,
       })
     }
 
     try {
-      // Start time for performance monitoring
-      const startTime = Date.now()
-
       // For health checks, attempt a simpler prompt for quick response
       const promptContent = healthCheck
         ? "This is a health check. Please respond with 'operational' if you can process requests."
         : message
 
       // Log request sent to the AI provider for debugging
-      console.log(`Sending request to ${provider} with model: ${model}`)
+      console.log(`Sending request to ${provider} with model: ${model}, Request ID: ${requestId}`)
 
       // Generate response using AI SDK with proper error handling
       const response = await generateText({
@@ -138,14 +241,31 @@ export async function POST(request: Request) {
 
       // Calculate response time for monitoring
       const responseTime = Date.now() - startTime
-      console.log(`AI Tutor response generated successfully using ${provider} in ${responseTime}ms`)
+      console.log(
+        `AI Tutor response generated successfully using ${provider} in ${responseTime}ms, Request ID: ${requestId}`,
+      )
 
       // Reset error tracking
       lastSuccessfulCall = Date.now()
       consecutiveErrors = 0
 
-      // Update service health status
-      updateServiceHealth(provider, "available", responseTime)
+      // Update health monitor
+      const healthMonitor = HealthMonitor.getInstance()
+      const serviceHealth = {
+        service: `${ServiceType.AI_MODEL}.${provider}`,
+        status: HealthStatus.OPERATIONAL,
+        latency: responseTime,
+        lastChecked: new Date().toISOString(),
+        message: `${provider} is operational`,
+      }(
+        // We're using a private method, so we need to use any
+        healthMonitor as any,
+      ).updateServiceHealth(`${ServiceType.AI_MODEL}.${provider}`, serviceHealth)
+
+      // Cache the response for future use if not a health check
+      if (!healthCheck) {
+        fallbackStrategy.cacheResponse(subject, topic || "general", message, response.text)
+      }
 
       // Return the AI response
       return NextResponse.json({
@@ -160,102 +280,107 @@ export async function POST(request: Request) {
       consecutiveErrors++
 
       // Detailed error logging for troubleshooting
-      console.error(`${provider} AI SDK Error (${consecutiveErrors}/${ERROR_THRESHOLD}):`, aiError)
-      console.error(
-        `Error details: ${JSON.stringify({
-          message: aiError.message,
-          name: aiError.name,
-          stack: aiError.stack?.split("\n")[0],
+      const errorLog = logError(
+        aiError,
+        "AITutor.generateText",
+        {
           provider,
-        })}`,
+          consecutiveErrors,
+          subject,
+          topic,
+          requestId,
+          messageLength: message.length,
+          historyLength: history.length,
+        },
+        userId,
+        sessionId,
+        requestId,
       )
 
-      // Update service health to reflect the error
-      updateServiceHealth(provider, "unavailable", undefined, aiError)
+      // Update health monitor
+      const healthMonitor = HealthMonitor.getInstance()
+      const serviceHealth = {
+        service: `${ServiceType.AI_MODEL}.${provider}`,
+        status: HealthStatus.DEGRADED,
+        latency: Date.now() - startTime,
+        lastChecked: new Date().toISOString(),
+        message: `${provider} is experiencing issues: ${aiError.message}`,
+      }(
+        // We're using a private method, so we need to use any
+        healthMonitor as any,
+      ).updateServiceHealth(`${ServiceType.AI_MODEL}.${provider}`, serviceHealth)
 
-      // Generate a more specific fallback response based on error type
-      let fallbackResponse = ""
-      let errorCode = "GENERAL_ERROR"
-      let errorDetails = null
-
-      if (aiError.message?.includes("rate limit") || aiError.message?.includes("429")) {
-        fallbackResponse = "I'm receiving too many questions right now. Can you try again in a moment?"
-        errorCode = "RATE_LIMITED"
-      } else if (aiError.message?.includes("timeout") || aiError.message?.includes("ETIMEDOUT")) {
-        fallbackResponse =
-          "It's taking me longer than expected to process your question. Let me try a simpler approach. What specific part of this subject are you interested in?"
-        errorCode = "TIMEOUT"
-      } else if (aiError.message?.includes("context length") || aiError.message?.includes("token limit")) {
-        fallbackResponse =
-          "Your question and our conversation history have become quite lengthy. Could you ask a more focused question?"
-        errorCode = "CONTEXT_LENGTH_EXCEEDED"
-      } else if (aiError.message?.includes("authentication") || aiError.message?.includes("invalid key")) {
-        fallbackResponse =
-          "I'm having trouble authenticating with my knowledge source. Let me help with what I know. What specific concept would you like me to explain?"
-        errorCode = "AUTHENTICATION_ERROR"
-        errorDetails = "API key validation failed"
-      } else if (aiError.message?.includes("unavailable") || aiError.message?.includes("connecting")) {
-        fallbackResponse =
-          "I'm temporarily unable to connect to my advanced knowledge base. Let me help with a simpler explanation instead. What topic would you like to know about?"
-        errorCode = "CONNECTION_ERROR"
-      } else {
-        fallbackResponse =
-          "I'm temporarily having trouble accessing my advanced tutoring capabilities. Let me help with a simpler explanation instead. What specific concept would you like me to clarify?"
+      // Send alert if this is a critical error or recurring issue
+      if (errorLog.severity === ErrorSeverity.CRITICAL || consecutiveErrors >= 3) {
+        const alertManager = AlertManager.getInstance()
+        await alertManager.sendAlert(
+          AlertType.SERVICE_DEGRADED,
+          AlertSeverity.ERROR,
+          `AI Tutor Error: ${provider}`,
+          `The AI tutor service is experiencing issues with ${provider}: ${aiError.message}`,
+          "AITutor.POST",
+          {
+            provider,
+            consecutiveErrors,
+            errorCategory: errorLog.category,
+            errorCode: errorLog.errorCode,
+          },
+        )
       }
 
-      // Create diagnostic information for troubleshooting
-      const diagnosticInfo = {
-        errorType: aiError.name || "Unknown",
-        errorMessage: aiError.message || "No message available",
-        provider: provider,
-        consecutiveErrors,
-        recommendation: consecutiveErrors > 2 ? "Consider switching to a different AI provider" : "Retry your request",
-      }
+      // Get appropriate fallback content based on error
+      const fallbackContent = fallbackStrategy.getFallbackContent(subject, topic || "general", errorLog.errorCode)
 
       // Return a more informative fallback response
       return NextResponse.json({
-        response: fallbackResponse,
+        response: fallbackContent.content,
         success: true, // Mark as success to prevent frontend error display
         fallback: true,
         provider: provider,
         error: aiError.message,
-        errorCode,
-        errorDetails,
+        errorCode: errorLog.errorCode,
+        errorCategory: errorLog.category,
         consecutiveErrors,
-        diagnostics: diagnosticInfo,
+        diagnostics: {
+          errorType: aiError.name || "Unknown",
+          errorMessage: aiError.message || "No message available",
+          provider: provider,
+          consecutiveErrors,
+          recommendation: consecutiveErrors > 2 ? "Consider switching to a different AI provider" : "Retry your request",\
+          userMessage: getUserFriendlyErrorMessage(errorLog.errorCode  : "Retry your request",
+          userMessage: getUserFriendlyErrorMessage(errorLog.errorCode),
+          fallbackType: fallbackContent.type,
+        },
         timestamp: new Date().toISOString(),
+        responseTime: Date.now() - startTime,
       })
     }
   } catch (error: any) {
-    console.error("Error in AI tutor API:", error)
+    console.error(`Error in AI tutor API: ${error.message}, Request ID: ${requestId}`)
 
-    // Determine the appropriate error message and status code
-    let errorMessage = "Failed to process your request"
-    let statusCode = 500
-    let errorCode = "SERVER_ERROR"
+    // Log the error with our enhanced error logging
+    const errorLog = logError(error, "AITutor.POST", {
+      requestId,
+      responseTime: Date.now() - startTime,
+    })
 
-    if (error.code === "ECONNRESET" || error.code === "ETIMEDOUT") {
-      errorMessage = "Connection to AI service failed. Please try again later."
-      statusCode = 503 // Service Unavailable
-      errorCode = "CONNECTION_FAILED"
-    } else if (error.message?.includes("rate limit")) {
-      errorMessage = "AI service rate limit exceeded. Please try again in a few moments."
-      statusCode = 429 // Too Many Requests
-      errorCode = "RATE_LIMITED"
-    } else if (error.message?.includes("parse") || error instanceof SyntaxError) {
-      errorMessage = "Invalid request format. Please check your input."
-      statusCode = 400 // Bad Request
-      errorCode = "INVALID_REQUEST"
-    }
+    // Get fallback strategy instance
+    const fallbackStrategy = FallbackStrategy.getInstance()
+
+    // Get appropriate fallback content based on error
+    const fallbackContent = fallbackStrategy.getFallbackContent("general", "general", errorLog.errorCode)
 
     return NextResponse.json(
       {
-        error: errorMessage,
+        error: getUserFriendlyErrorMessage(errorLog.errorCode),
         success: false,
-        errorCode,
+        errorCode: errorLog.errorCode,
+        errorCategory: errorLog.category,
+        fallbackResponse: fallbackContent.content,
         timestamp: new Date().toISOString(),
+        responseTime: Date.now() - startTime,
       },
-      { status: statusCode },
+      { status: 500 },
     )
   }
 }

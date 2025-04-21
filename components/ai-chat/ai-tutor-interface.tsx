@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw, AlertTriangle, Shield } from "lucide-react"
+import { showErrorToast, ErrorSeverity, ErrorCategory, ErrorCodes } from "@/lib/error-handling"
 
 // Message type definition with extended properties
 type Message = {
@@ -21,7 +21,10 @@ type Message = {
   status?: "sending" | "error" | "success"
   isFallback?: boolean
   errorCode?: string
+  errorCategory?: string
   provider?: string
+  cached?: boolean
+  diagnosticInfo?: any
 }
 
 // Initial welcome message
@@ -36,23 +39,24 @@ const initialMessages: Message[] = [
   },
 ]
 
-// Sample responses for fallback mode (used when API is having issues)
-const fallbackResponses = {
-  math: [
-    "In mathematics, it's important to understand the underlying concepts rather than just memorizing formulas. Could you tell me more specifically what math topic you're working on?",
-    "Mathematics builds on foundational concepts. Let's break down your question step by step. Could you provide more details about what you're trying to solve?",
-    "When approaching math problems, I recommend starting with the basics and working your way up. What specific concept are you struggling with?",
-  ],
-  science: [
-    "Science is all about observation, hypothesis, and experimentation. Could you tell me more about the specific scientific concept you're interested in?",
-    "In science, we often use models to understand complex phenomena. What particular aspect of science are you studying?",
-    "Scientific understanding evolves over time as we gather more evidence. What specific science topic would you like to explore?",
-  ],
-  general: [
-    "Learning is most effective when we connect new information to what we already know. Could you tell me more about what you're trying to learn?",
-    "I'd be happy to help you understand this topic better. Could you provide more specific details about your question?",
-    "Education is a journey of discovery. Let's explore this topic together. What specific aspects are you curious about?",
-  ],
+// Session management
+const SESSION_STORAGE_KEY = "ai_tutor_session"
+
+// Generate a session ID
+function generateSessionId() {
+  return `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+}
+
+// Get or create session ID
+function getSessionId() {
+  if (typeof window === "undefined") return generateSessionId()
+
+  let sessionId = localStorage.getItem(SESSION_STORAGE_KEY)
+  if (!sessionId) {
+    sessionId = generateSessionId()
+    localStorage.setItem(SESSION_STORAGE_KEY, sessionId)
+  }
+  return sessionId
 }
 
 export function AITutorInterface() {
@@ -60,6 +64,7 @@ export function AITutorInterface() {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [selectedSubject, setSelectedSubject] = useState("general")
+  const [selectedTopic, setSelectedTopic] = useState("general")
   const [activeTab, setActiveTab] = useState("chat")
   const [retryCount, setRetryCount] = useState(0)
   const [isOfflineMode, setIsOfflineMode] = useState(false)
@@ -75,6 +80,9 @@ export function AITutorInterface() {
   })
   const [isAutoRetryEnabled, setIsAutoRetryEnabled] = useState(true)
   const [retryDelay, setRetryDelay] = useState(30) // seconds
+  const [sessionId] = useState(getSessionId)
+  const [diagnosticMode, setDiagnosticMode] = useState(false)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -99,13 +107,6 @@ export function AITutorInterface() {
       }
     }
   }, [])
-
-  // Get a fallback response when API is having issues
-  const getFallbackResponse = (subject: string): string => {
-    const subjectResponses = fallbackResponses[subject as keyof typeof fallbackResponses] || fallbackResponses.general
-    const randomIndex = Math.floor(Math.random() * subjectResponses.length)
-    return subjectResponses[randomIndex]
-  }
 
   // Update service health status
   const updateServiceHealth = (status: "operational" | "degraded" | "offline", provider?: string) => {
@@ -182,14 +183,15 @@ export function AITutorInterface() {
           message: "Hello, this is a health check. Please respond with 'operational' if you can process requests.",
           subject: "general",
           healthCheck: true,
+          sessionId,
         }),
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
-        throw new Error(data.error || "Health check failed")
+        throw new Error(`Health check failed with status: ${response.status}`)
       }
+
+      const data = await response.json()
 
       // Update service health based on response
       if (data.fallback) {
@@ -201,8 +203,7 @@ export function AITutorInterface() {
           {
             id: Date.now().toString() + "-system",
             role: "system",
-            content:
-              "AI service is responding but with limited capabilities. Some advanced features may be unavailable.",
+            content: `AI service is responding but with limited capabilities. ${data.errorCode ? `Issue: ${data.errorCode}` : "Some advanced features may be unavailable."}`,
             timestamp: new Date(),
             status: "success",
           },
@@ -217,7 +218,7 @@ export function AITutorInterface() {
           {
             id: Date.now().toString() + "-system",
             role: "system",
-            content: "AI service is fully operational. All capabilities have been restored.",
+            content: `AI service is fully operational using ${data.provider}.`,
             timestamp: new Date(),
             status: "success",
           },
@@ -279,6 +280,8 @@ export function AITutorInterface() {
         body: JSON.stringify({
           message: input,
           subject: selectedSubject,
+          topic: selectedTopic,
+          sessionId,
           history: messages
             .filter((msg) => msg.role !== "system" && msg.status !== "sending")
             .map((msg) => ({
@@ -296,19 +299,23 @@ export function AITutorInterface() {
       const data = await response.json()
 
       // Add detailed diagnostics if available
-      if (data.diagnostics) {
+      if (data.diagnostics && diagnosticMode) {
         console.log("AI Service Diagnostics:", data.diagnostics)
       }
 
       // Update the service health based on response
       if (data.fallback) {
         updateServiceHealth(
-          data.errorCode === "CONNECTION_ERROR" || data.errorCode === "AUTHENTICATION_ERROR" ? "offline" : "degraded",
+          data.errorCode === ErrorCodes.CONN_NETWORK_FAILURE ||
+            data.errorCode === ErrorCodes.CONN_SERVICE_UNAVAILABLE ||
+            data.errorCode === ErrorCodes.AUTH_INVALID_KEY
+            ? "offline"
+            : "degraded",
           data.provider,
         )
 
         // If we got an authentication error, show a more helpful message
-        if (data.errorCode === "AUTHENTICATION_ERROR") {
+        if (data.errorCode === ErrorCodes.AUTH_INVALID_KEY) {
           setErrorMessage("API key validation failed. Please check your AI service configuration.")
 
           // Add system message about API key issue
@@ -321,6 +328,7 @@ export function AITutorInterface() {
                 "There appears to be an issue with the AI service authentication. Please contact the administrator to verify API keys.",
               timestamp: new Date(),
               status: "success",
+              errorCode: data.errorCode,
             },
           ])
         }
@@ -337,7 +345,9 @@ export function AITutorInterface() {
                 content: data.response,
                 status: "success",
                 isFallback: data.fallback || false,
+                cached: data.cached || false,
                 errorCode: data.errorCode,
+                errorCategory: data.errorCategory,
                 provider: data.provider,
                 diagnosticInfo: data.diagnostics, // Store diagnostic info for debugging
               }
@@ -350,7 +360,7 @@ export function AITutorInterface() {
         setConsecutiveErrors((prev) => prev + 1)
 
         // If we've had multiple fallback responses, switch to offline mode
-        if (consecutiveErrors >= 2 || data.errorCode === "SERVICE_COOLDOWN") {
+        if (consecutiveErrors >= 2 || data.errorCode === ErrorCodes.RATE_TOO_MANY_REQUESTS) {
           setIsOfflineMode(true)
 
           // Add system message about offline mode with more details
@@ -359,9 +369,10 @@ export function AITutorInterface() {
             {
               id: Date.now().toString() + "-system",
               role: "system",
-              content: `Switched to offline mode due to ${data.errorCode || "connectivity issues"}. Some features may be limited. ${data.errorDetails ? `Details: ${data.errorDetails}` : ""}`,
+              content: `Switched to offline mode due to ${data.errorCode || "connectivity issues"}. Some features may be limited. ${data.diagnostics?.userMessage || ""}`,
               timestamp: new Date(),
               status: "success",
+              errorCode: data.errorCode,
             },
           ])
         }
@@ -396,11 +407,12 @@ export function AITutorInterface() {
             msg.id === assistantPlaceholder.id
               ? {
                   ...msg,
-                  content: getFallbackResponse(selectedSubject),
+                  content:
+                    "I'm having trouble connecting to my knowledge source right now. Could you try asking a more specific question or breaking your question into smaller parts?",
                   status: "success",
                   isFallback: true,
-                  errorCode: "CONNECTIVITY_FAILURE",
-                  errorDetails: error.message,
+                  errorCode: ErrorCodes.CONN_NETWORK_FAILURE,
+                  errorCategory: ErrorCategory.CONNECTIVITY,
                 }
               : msg,
           ),
@@ -427,8 +439,8 @@ export function AITutorInterface() {
                   content:
                     "I'm sorry, I encountered an error processing your request. You can try again or ask a different question.",
                   status: "error",
-                  errorCode: "REQUEST_FAILED",
-                  errorDetails: error.message,
+                  errorCode: ErrorCodes.UNKNOWN_ERROR,
+                  errorCategory: ErrorCategory.UNKNOWN,
                 }
               : msg,
           ),
@@ -436,11 +448,11 @@ export function AITutorInterface() {
       }
 
       // Show error toast with more specific information
-      toast({
-        title: "AI Tutor Error",
-        description: `${error.message || "Failed to get a response"}. Try switching subjects or simplifying your question.`,
-        variant: "destructive",
-      })
+      showErrorToast(
+        "AI Tutor Error",
+        `${error.message || "Failed to get a response"}. Try switching subjects or simplifying your question.`,
+        ErrorSeverity.ERROR,
+      )
 
       // Track error message for retry button
       setErrorMessage(error.message || "Unknown error")
@@ -463,7 +475,7 @@ export function AITutorInterface() {
     // Remove the last assistant message if it was an error
     setMessages((prev) => {
       const lastMessage = prev[prev.length - 1]
-      if (lastMessage.role === "assistant" && lastMessage.status === "error") {
+      if (lastMessage.role === "assistant" && (lastMessage.status === "error" || lastMessage.isFallback)) {
         return prev.slice(0, -1)
       }
       return prev
@@ -510,6 +522,7 @@ export function AITutorInterface() {
     setMessages(initialMessages)
     setRetryCount(0)
     setErrorMessage(null)
+    setConsecutiveErrors(0)
     if (textareaRef.current) {
       textareaRef.current.focus()
     }
@@ -518,6 +531,7 @@ export function AITutorInterface() {
   // Handle subject change
   const handleSubjectChange = (subject: string) => {
     setSelectedSubject(subject)
+    setSelectedTopic("general") // Reset topic when subject changes
 
     // Add a system message about the subject change
     const subjectNames: Record<string, string> = {
@@ -540,6 +554,22 @@ export function AITutorInterface() {
     setMessages((prev) => [...prev, systemMessage])
   }
 
+  // Handle topic change
+  const handleTopicChange = (topic: string) => {
+    setSelectedTopic(topic)
+
+    // Add a system message about the topic change
+    const systemMessage: Message = {
+      id: Date.now().toString(),
+      role: "system",
+      content: `Topic changed to ${topic}`,
+      timestamp: new Date(),
+      status: "success",
+    }
+
+    setMessages((prev) => [...prev, systemMessage])
+  }
+
   // Toggle auto retry feature
   const toggleAutoRetry = () => {
     setIsAutoRetryEnabled(!isAutoRetryEnabled)
@@ -553,6 +583,25 @@ export function AITutorInterface() {
         content: !isAutoRetryEnabled
           ? "Auto-retry enabled. System will periodically check for service availability."
           : "Auto-retry disabled. You'll need to manually reconnect when ready.",
+        timestamp: new Date(),
+        status: "success",
+      },
+    ])
+  }
+
+  // Toggle diagnostic mode
+  const toggleDiagnosticMode = () => {
+    setDiagnosticMode(!diagnosticMode)
+
+    // Add system message about diagnostic mode
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString() + "-system",
+        role: "system",
+        content: !diagnosticMode
+          ? "Diagnostic mode enabled. Additional error information will be displayed."
+          : "Diagnostic mode disabled.",
         timestamp: new Date(),
         status: "success",
       },
@@ -608,6 +657,11 @@ export function AITutorInterface() {
                       {serviceHealth.provider} Active
                     </span>
                   )}
+                  {diagnosticMode && (
+                    <span className="ml-2 rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-800">
+                      Diagnostic Mode
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {(isOfflineMode || serviceHealth.status !== "operational") && (
@@ -622,6 +676,15 @@ export function AITutorInterface() {
                     </Button>
                   )}
                   <SubjectSelector selectedSubject={selectedSubject} onSelectSubject={handleSubjectChange} />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleDiagnosticMode}
+                    className={`text-xs ${diagnosticMode ? "border-purple-300 text-purple-700 bg-purple-50" : ""}`}
+                  >
+                    <Shield className="mr-1 h-3 w-3" />
+                    {diagnosticMode ? "Diagnostics On" : "Diagnostics"}
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -635,7 +698,7 @@ export function AITutorInterface() {
                       </span>
                     </div>
                   ) : (
-                    <ChatMessage key={message.id} message={message} />
+                    <ChatMessage key={message.id} message={message} showDiagnostics={diagnosticMode} />
                   ),
                 )}
                 {isLoading && messages[messages.length - 1]?.status !== "sending" && (
@@ -665,6 +728,12 @@ export function AITutorInterface() {
                     >
                       {isAutoRetryEnabled ? "Auto-Retry On" : "Auto-Retry Off"}
                     </Button>
+                  </div>
+                )}
+                {errorMessage && diagnosticMode && (
+                  <div className="flex items-center justify-center gap-2 my-2 p-2 bg-red-50 border border-red-200 rounded-md">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                    <span className="text-xs text-red-700">{errorMessage}</span>
                   </div>
                 )}
                 <div ref={messagesEndRef} />
