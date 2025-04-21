@@ -4,7 +4,7 @@ import type React from "react"
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Shield, Users, BookOpen, Settings, LogOut, UserCheck, BarChart3, Home } from "lucide-react"
+import { Shield, Users, BookOpen, Settings, LogOut, UserCheck, BarChart3, Home, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -33,6 +33,14 @@ export function AdminSidebar() {
             isActive={isActive("/admin/verification-requests")}
           >
             Verification Requests
+          </NavItem>
+
+          <NavItem
+            href="/admin/verification-appeals"
+            icon={<AlertCircle className="h-5 w-5" />}
+            isActive={isActive("/admin/verification-appeals")}
+          >
+            Verification Appeals
           </NavItem>
 
           <NavItem href="/admin/users" icon={<Users className="h-5 w-5" />} isActive={isActive("/admin/users")}>

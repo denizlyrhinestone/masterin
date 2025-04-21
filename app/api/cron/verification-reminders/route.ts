@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server"
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
-import { getUsersNeedingReminders, generateVerificationToken, sendVerificationEmail } from "@/lib/auth-utils"
+import { generateVerificationToken, sendVerificationEmail } from "@/lib/auth"
 
-/**
- * Cron job API endpoint to send email verification reminders
- * This endpoint will be called daily at noon by Vercel Cron
- */
+// This endpoint will be called by a scheduled job (e.g., Vercel Cron)
 export async function POST(request: Request) {
   try {
-    // Verify the request is authorized using the CRON_SECRET_KEY
+    // Verify the request is authorized (e.g., using a secret key)
     const { headers } = request
     const authHeader = headers.get("authorization")
 
@@ -20,111 +17,48 @@ export async function POST(request: Request) {
     // Initialize Supabase client
     const supabase = createRouteHandlerClient({ cookies })
 
-    // Get users who need reminders
-    const unverifiedUsers = await getUsersNeedingReminders()
+    // Get users with unverified emails who registered more than 24 hours ago
+    // but less than 7 days ago (to avoid spamming)
+    const oneDayAgo = new Date()
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1)
 
-    if (unverifiedUsers.length === 0) {
-      return NextResponse.json({
-        message: "No users need verification reminders at this time",
-        sent: 0,
-        total: 0,
-        timestamp: new Date().toISOString(),
-      })
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+    const { data: unverifiedUsers, error } = await supabase
+      .from("profiles")
+      .select("id, email, full_name")
+      .eq("email_verified", false)
+      .lt("created_at", oneDayAgo.toISOString())
+      .gt("created_at", sevenDaysAgo.toISOString())
+
+    if (error) {
+      console.error("Error fetching unverified users:", error)
+      return NextResponse.json({ error: "Failed to fetch unverified users" }, { status: 500 })
     }
 
-    // Send reminder emails with rate limiting
-    // Process in batches to avoid overwhelming email service
-    const batchSize = 20
-    const batches = []
+    // Send reminder emails
+    const results = await Promise.all(
+      unverifiedUsers.map(async (user) => {
+        try {
+          // Generate a new verification token
+          const token = await generateVerificationToken(user.id)
 
-    for (let i = 0; i < unverifiedUsers.length; i += batchSize) {
-      batches.push(unverifiedUsers.slice(i, i + batchSize))
-    }
+          // Send the verification email
+          await sendVerificationEmail(user.email, token)
 
-    const results = []
-
-    for (const batch of batches) {
-      const batchResults = await Promise.all(
-        batch.map(async (user) => {
-          try {
-            // Check when the last reminder was sent
-            const { data: lastReminder } = await supabase
-              .from("verification_activity")
-              .select("created_at")
-              .eq("user_id", user.id)
-              .eq("activity_type", "verification_reminder")
-              .order("created_at", { ascending: false })
-              .limit(1)
-
-            // If a reminder was sent in the last 24 hours, skip this user
-            if (lastReminder && lastReminder.length > 0) {
-              const lastReminderDate = new Date(lastReminder[0].created_at)
-              const now = new Date()
-              const diffHours = (now.getTime() - lastReminderDate.getTime()) / (1000 * 60 * 60)
-
-              if (diffHours < 24) {
-                return {
-                  userId: user.id,
-                  email: user.email,
-                  success: false,
-                  skipped: true,
-                  reason: "Recent reminder already sent",
-                }
-              }
-            }
-
-            // Generate a new verification token
-            const token = await generateVerificationToken(user.id)
-
-            // Send the verification email
-            const emailSent = await sendVerificationEmail(user.email, token)
-
-            if (emailSent) {
-              // Record the reminder in the activity log
-              await supabase.from("verification_activity").insert({
-                user_id: user.id,
-                activity_type: "verification_reminder",
-                created_at: new Date().toISOString(),
-              })
-
-              // Increment verification attempts
-              await supabase.rpc("increment_verification_attempts", {
-                user_id: user.id,
-              })
-            }
-
-            return {
-              userId: user.id,
-              email: user.email,
-              success: emailSent,
-              skipped: false,
-            }
-          } catch (error) {
-            console.error(`Error sending reminder to user ${user.id}:`, error)
-            return {
-              userId: user.id,
-              email: user.email,
-              success: false,
-              skipped: false,
-              error,
-            }
-          }
-        }),
-      )
-
-      results.push(...batchResults)
-
-      // Add a small delay between batches to avoid rate limits
-      if (batches.length > 1) {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-      }
-    }
+          return { userId: user.id, success: true }
+        } catch (error) {
+          console.error(`Error sending reminder to user ${user.id}:`, error)
+          return { userId: user.id, success: false, error }
+        }
+      }),
+    )
 
     // Return the results
     return NextResponse.json({
       sent: results.filter((r) => r.success).length,
-      skipped: results.filter((r) => r.skipped).length,
-      failed: results.filter((r) => !r.success && !r.skipped).length,
+      failed: results.filter((r) => !r.success).length,
       total: results.length,
       timestamp: new Date().toISOString(),
     })

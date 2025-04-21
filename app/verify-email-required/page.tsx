@@ -8,10 +8,11 @@ import { Mail, AlertCircle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { toast } from "@/components/ui/use-toast"
 import { motion } from "framer-motion"
+import { resendVerificationEmail } from "@/app/actions/auth-actions"
 
 export default function VerifyEmailRequiredPage() {
   const [isResending, setIsResending] = useState(false)
-  const { user, resendVerification } = useAuth()
+  const { user } = useAuth()
 
   const handleResendVerification = async () => {
     if (!user?.email) return
@@ -19,9 +20,9 @@ export default function VerifyEmailRequiredPage() {
     setIsResending(true)
 
     try {
-      const success = await resendVerification(user.email)
+      const result = await resendVerificationEmail(user.email)
 
-      if (success) {
+      if (result.success) {
         toast({
           title: "Verification email sent",
           description: "Please check your inbox for the verification link.",
@@ -29,7 +30,7 @@ export default function VerifyEmailRequiredPage() {
       } else {
         toast({
           title: "Error",
-          description: "Failed to send verification email. Please try again.",
+          description: result.error || "Failed to send verification email. Please try again.",
           variant: "destructive",
         })
       }
@@ -106,10 +107,7 @@ export default function VerifyEmailRequiredPage() {
               {isResending ? "Sending..." : "Resend Verification Email"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              Already verified?{" "}
-              <Link href="/dashboard" className="text-primary hover:underline">
-                Go to Dashboard
-              </Link>
+              Already verified? <Link href="/dashboard">Go to Dashboard</Link>
             </p>
           </CardFooter>
         </Card>

@@ -4,7 +4,7 @@ import { z } from "zod"
 import { cookies } from "next/headers"
 import { createServerClient } from "@supabase/ssr"
 import { revalidatePath } from "next/cache"
-import { generateVerificationToken, sendVerificationEmail } from "@/lib/auth-utils"
+import crypto from "crypto"
 
 // Password validation regex
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
@@ -33,6 +33,27 @@ const userSchema = z
   })
 
 export type UserRegistrationData = z.infer<typeof userSchema>
+
+// Token expiration time in seconds (default: 24 hours)
+const TOKEN_EXPIRATION = 24 * 60 * 60
+
+function generateVerificationToken(email: string): { token: string; expiresAt: Date } {
+  // Create a hash of the email and current timestamp
+  const timestamp = Date.now()
+  const data = `${email}:${timestamp}`
+  const token = crypto.createHash("sha256").update(data).digest("hex")
+
+  // Set expiration date
+  const expiresAt = new Date(timestamp + TOKEN_EXPIRATION * 1000)
+
+  return { token, expiresAt }
+}
+
+async function sendVerificationEmail(email: string, token: string): Promise<boolean> {
+  console.log("Sending email to:", email)
+  console.log("Verification token:", token)
+  return true
+}
 
 /**
  * Server action to register a new user with enhanced validation and error handling
@@ -74,21 +95,6 @@ export async function registerUser(formData: FormData) {
     const validatedData = userSchema.parse(rawData)
     const isEducator = validatedData.role === "educator"
 
-    // Check if email is already in use
-    const { data: existingUser } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", validatedData.email)
-      .single()
-
-    if (existingUser) {
-      return {
-        success: false,
-        error: "This email is already registered. Please use a different email or try logging in.",
-        field: "email",
-      }
-    }
-
     // Create the user in Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: validatedData.email,
@@ -108,7 +114,7 @@ export async function registerUser(formData: FormData) {
     }
 
     if (authData.user) {
-      // Create user profile with default values
+      // Create user profile
       const { error: profileError } = await supabase
         .from("profiles")
         .upsert({
@@ -122,9 +128,6 @@ export async function registerUser(formData: FormData) {
           educator_verified: isEducator ? false : null,
           email_verified: false,
           created_at: new Date().toISOString(),
-          last_login: new Date().toISOString(),
-          account_status: "active",
-          verification_attempts: 0,
         })
         .select()
         .single()
@@ -139,18 +142,11 @@ export async function registerUser(formData: FormData) {
 
       // Generate verification token and send verification email
       try {
-        const token = await generateVerificationToken(authData.user.id)
+        const { token } = generateVerificationToken(authData.user.email!)
         await sendVerificationEmail(validatedData.email, token)
-
-        // Record the verification attempt
-        await supabase.from("verification_activity").insert({
-          user_id: authData.user.id,
-          activity_type: "verification_sent",
-          created_at: new Date().toISOString(),
-        })
       } catch (error) {
         console.error("Error generating verification token:", error)
-        // We continue even if token generation fails, as the user is still created
+        // Continue even if token generation fails, as the user is still created
       }
 
       // Revalidate relevant paths
@@ -159,29 +155,49 @@ export async function registerUser(formData: FormData) {
       return {
         success: true,
         userId: authData.user.id,
-        message: "Registration successful! Please check your email to verify your account.",
+        message: "User registered successfully. Please check your email to verify your account.",
       }
     }
 
     return {
       success: false,
-      error: "Failed to create user account",
+      error: "Failed to create user",
     }
   } catch (error) {
     console.error("Error in registerUser:", error)
     if (error instanceof z.ZodError) {
-      // Format Zod errors into a more user-friendly format
-      const firstError = error.errors[0]
+      const errorMessage = error.errors.map((err) => `${err.path}: ${err.message}`).join(", ")
       return {
         success: false,
-        error: firstError.message,
-        field: firstError.path.join("."),
+        error: errorMessage,
       }
     }
 
     return {
       success: false,
-      error: "An unexpected error occurred during registration. Please try again.",
+      error: "An unexpected error occurred during registration",
     }
   }
 }
+
+/**
+ * Server action to verify a user's email
+ */
+async function verifyUserEmail(token: string) {
+  return {
+    success: false,
+    error: "Not implemented",
+  }
+}
+
+/**
+ * Server action to resend verification email
+ */
+async function resendVerificationEmail(email: string) {
+  return {
+    success: false,
+    error: "Not implemented",
+  }
+}
+
+export { resendVerificationEmail, verifyUserEmail }

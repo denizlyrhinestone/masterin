@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell, Search, LogOut, User, Settings } from "lucide-react"
+import { Search, LogOut, User, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useAuth } from "@/contexts/auth-context"
+import { NotificationsDropdown } from "@/components/notifications/notifications-dropdown"
 
 export function AppHeader() {
   const pathname = usePathname()
@@ -59,11 +60,7 @@ export function AppHeader() {
         <Input type="search" placeholder="Search..." className="w-64 rounded-full bg-muted pl-8 md:w-80 lg:w-96" />
       </div>
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" className="rounded-full">
-          <Bell className="h-5 w-5" />
-          <span className="sr-only">Notifications</span>
-        </Button>
-
+        <NotificationsDropdown />
         {user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

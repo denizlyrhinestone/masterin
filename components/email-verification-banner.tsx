@@ -14,13 +14,13 @@ export function EmailVerificationBanner() {
   const [isResending, setIsResending] = useState(false)
   const [cooldown, setCooldown] = useState(0)
   const [lastSent, setLastSent] = useState<Date | null>(null)
-  const { user, isEmailVerified } = useAuth()
+  const { user, profile } = useAuth()
   const interval = useRef<NodeJS.Timeout | null>(null)
   const [isBannerVisible, setIsBannerVisible] = useState(false)
 
   useEffect(() => {
-    setIsBannerVisible(!isEmailVerified && !dismissed && !!user)
-  }, [isEmailVerified, dismissed, user])
+    setIsBannerVisible(!profile?.email_verified && !dismissed && !!user)
+  }, [profile?.email_verified, dismissed, user?.email])
 
   // Check for cooldown from localStorage
   useEffect(() => {
@@ -92,6 +92,12 @@ export function EmailVerificationBanner() {
           toast({
             title: "Already verified",
             description: "Your email has already been verified. Refresh the page to update your status.",
+          })
+        } else if (result.status === "not-found") {
+          toast({
+            title: "Account not found",
+            description: "No account found with this email address. Please check the email or create a new account.",
+            variant: "destructive",
           })
         } else if (result.status === "exceeded-attempts") {
           toast({

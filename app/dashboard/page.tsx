@@ -3,10 +3,27 @@ import { StatsCard } from "@/components/dashboard/stats-card"
 import { CourseCard } from "@/components/dashboard/course-card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { ProtectedRoute } from "@/components/protected-route"
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+import { EmailVerificationReminder } from "@/components/dashboard/email-verification-reminder"
 import { EmailVerificationBanner } from "@/components/email-verification-banner"
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const supabase = createServerComponentClient({ cookies })
+
+  // Get user session
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  if (!session) {
+    redirect("/auth/login")
+  }
+
+  // Get user profile
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", session.user.id).single()
+
   // In a real app, this data would come from an API or database
   const stats = {
     enrolledCourses: 5,
@@ -43,71 +60,75 @@ export default function DashboardPage() {
   ]
 
   return (
-    <ProtectedRoute>
-      <div className="container mx-auto p-6">
-        {/* Email Verification Banner */}
-        <EmailVerificationBanner />
+    <div className="container mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
 
-        {/* Welcome Banner */}
-        <div className="mb-8 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-8">
-          <h1 className="text-3xl font-bold">
-            Welcome to <span className="text-primary">Masterin</span>
-          </h1>
-          <p className="mb-6 text-muted-foreground">Your personalized learning journey starts here.</p>
-          <div className="flex flex-wrap gap-4">
-            <Button asChild>
-              <Link href="/my-courses">Continue Learning</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/categories">Explore Categories</Link>
-            </Button>
-          </div>
-        </div>
+      {/* Show email verification reminder if email is not verified */}
+      {profile && !profile.email_verified && <EmailVerificationReminder userEmail={session.user.email || ""} />}
 
-        {/* Stats Cards */}
-        <div className="mb-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <StatsCard
-            icon={<BookOpen className="h-6 w-6" />}
-            value={stats.enrolledCourses}
-            label="Enrolled Courses"
-            iconColor="text-blue-500"
-          />
-          <StatsCard
-            icon={<Clock className="h-6 w-6" />}
-            value={`${stats.learningTime} hrs`}
-            label="Learning Time"
-            iconColor="text-purple-500"
-          />
-          <StatsCard
-            icon={<Star className="h-6 w-6" />}
-            value={stats.completedLessons}
-            label="Completed Lessons"
-            iconColor="text-teal-500"
-          />
-          <StatsCard
-            icon={<Award className="h-6 w-6" />}
-            value={`${stats.averageScore}%`}
-            label="Average Score"
-            iconColor="text-amber-500"
-          />
-        </div>
+      {/* Rest of dashboard content */}
+      {/* Email Verification Banner */}
+      <EmailVerificationBanner />
 
-        {/* Continue Learning Section */}
-        <h2 className="mb-6 text-2xl font-bold">Continue Learning</h2>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {inProgressCourses.map((course) => (
-            <CourseCard
-              key={course.id}
-              id={course.id}
-              title={course.title}
-              description={course.description}
-              progress={course.progress}
-              image={course.image}
-              isAP={course.isAP}
-            />
-          ))}
+      {/* Welcome Banner */}
+      <div className="mb-8 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-8">
+        <h1 className="text-3xl font-bold">
+          Welcome to <span className="text-primary">Masterin</span>
+        </h1>
+        <p className="mb-6 text-muted-foreground">Your personalized learning journey starts here.</p>
+        <div className="flex flex-wrap gap-4">
+          <Button asChild>
+            <Link href="/my-courses">Continue Learning</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/categories">Explore Categories</Link>
+          </Button>
         </div>
       </div>
-    </ProtectedRoute>
+
+      {/* Stats Cards */}
+      <div className="mb-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          icon={<BookOpen className="h-6 w-6" />}
+          value={stats.enrolledCourses}
+          label="Enrolled Courses"
+          iconColor="text-blue-500"
+        />
+        <StatsCard
+          icon={<Clock className="h-6 w-6" />}
+          value={`${stats.learningTime} hrs`}
+          label="Learning Time"
+          iconColor="text-purple-500"
+        />
+        <StatsCard
+          icon={<Star className="h-6 w-6" />}
+          value={stats.completedLessons}
+          label="Completed Lessons"
+          iconColor="text-teal-500"
+        />
+        <StatsCard
+          icon={<Award className="h-6 w-6" />}
+          value={`${stats.averageScore}%`}
+          label="Average Score"
+          iconColor="text-amber-500"
+        />
+      </div>
+
+      {/* Continue Learning Section */}
+      <h2 className="mb-6 text-2xl font-bold">Continue Learning</h2>
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {inProgressCourses.map((course) => (
+          <CourseCard
+            key={course.id}
+            id={course.id}
+            title={course.title}
+            description={course.description}
+            progress={course.progress}
+            image={course.image}
+            isAP={course.isAP}
+          />
+        ))}
+      </div>
+    </div>
   )
 }

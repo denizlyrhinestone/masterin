@@ -241,7 +241,7 @@ export async function generateVerificationToken(userId: string): Promise<string>
   expiresAt.setHours(expiresAt.getHours() + VERIFICATION_TOKEN_EXPIRY)
 
   // Store the token in the database
-  const { error } = await supabase.from("verification_tokens").insert({
+  const { data, error } = await supabase.from("verification_tokens").insert({
     user_id: userId,
     token,
     expires_at: expiresAt.toISOString(),
@@ -256,58 +256,5 @@ export async function generateVerificationToken(userId: string): Promise<string>
   return token
 }
 
-/**
- * Verify a token and check if it's expired
- */
-export async function verifyEmailToken(token: string): Promise<{
-  valid: boolean
-  expired: boolean
-  userId?: string
-}> {
-  // Get the token from the database
-  const { data, error } = await supabase.from("verification_tokens").select("*").eq("token", token).single()
-
-  if (error || !data) {
-    return { valid: false, expired: false }
-  }
-
-  // Check if token is expired
-  const expiresAt = new Date(data.expires_at)
-  const now = new Date()
-
-  if (now > expiresAt) {
-    return { valid: false, expired: true, userId: data.user_id }
-  }
-
-  // Token is valid and not expired
-  return { valid: true, expired: false, userId: data.user_id }
-}
-
-/**
- * Consume a verification token (mark as used)
- */
-export async function consumeVerificationToken(token: string): Promise<boolean> {
-  const { error } = await supabase.from("verification_tokens").update({ used: true }).eq("token", token)
-
-  return !error
-}
-
-/**
- * Send verification email with the token
- */
-export async function sendVerificationEmail(email: string, token: string): Promise<boolean> {
-  try {
-    const verificationUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/verify-email?token=${token}`
-
-    // In a real implementation, you would use an email service like SendGrid, Postmark, etc.
-    // For now, we'll use Supabase's built-in email functionality
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: verificationUrl,
-    })
-
-    return !error
-  } catch (error) {
-    console.error("Error sending verification email:", error)
-    return false
-  }
-}
+// Add the missing export
+export * from "./auth-utils"
