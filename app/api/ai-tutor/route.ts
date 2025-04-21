@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { selectAIModel, generateFallbackResponse } from "@/lib/ai-utils"
 
 // Define the system prompts for different subjects
 const subjectPrompts: Record<string, string> = {
@@ -32,50 +32,8 @@ const subjectPrompts: Record<string, string> = {
   Help debug code by identifying common errors and explaining best practices.`,
 }
 
-// Simple in-memory rate limiting
-const rateLimits = new Map<string, { count: number; resetTime: number }>()
-const MAX_REQUESTS_PER_MINUTE = 10
-const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
-
-function isRateLimited(clientId: string): boolean {
-  const now = Date.now()
-  const clientRateLimit = rateLimits.get(clientId)
-
-  if (!clientRateLimit) {
-    // First request from this client
-    rateLimits.set(clientId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS })
-    return false
-  }
-
-  if (now > clientRateLimit.resetTime) {
-    // Reset window has passed
-    rateLimits.set(clientId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS })
-    return false
-  }
-
-  if (clientRateLimit.count >= MAX_REQUESTS_PER_MINUTE) {
-    // Rate limit exceeded
-    return true
-  }
-
-  // Increment request count
-  clientRateLimit.count++
-  return false
-}
-
 export async function POST(request: Request) {
   try {
-    // Get client IP for rate limiting
-    const clientIp = request.headers.get("x-forwarded-for") || "unknown"
-
-    // Check rate limit
-    if (isRateLimited(clientIp)) {
-      return NextResponse.json(
-        { error: "Rate limit exceeded. Please try again later.", success: false },
-        { status: 429 },
-      )
-    }
-
     // Parse the request body
     const body = await request.json()
     const { message, subject = "general", history = [] } = body
@@ -96,31 +54,59 @@ export async function POST(request: Request) {
       content: msg.content,
     }))
 
-    // Set up timeout for the request
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("Request timed out")), 30000) // 30 second timeout
-    })
+    // Select the best available AI model
+    const { model, provider } = selectAIModel()
 
-    // Generate response using AI SDK with timeout
-    const responsePromise = generateText({
-      model: openai("gpt-4o"),
-      system: systemPrompt,
-      messages: [...formattedHistory, { role: "user", content: message }],
-      temperature: 0.7, // Add some variability to responses
-      maxTokens: 1000, // Limit response length
-    })
+    // If we don't have a model available, use fallback response
+    if (provider === "fallback" || !model) {
+      console.log("No AI model available, using fallback response")
+      const fallbackResponse = generateFallbackResponse(subject, message)
 
-    // Race the response against the timeout
-    const { text } = (await Promise.race([responsePromise, timeoutPromise])) as { text: string }
+      return NextResponse.json({
+        response: fallbackResponse,
+        success: true,
+        fallback: true,
+        provider: "fallback",
+        timestamp: new Date().toISOString(),
+      })
+    }
 
-    console.log("AI Tutor response generated successfully")
+    try {
+      // Generate response using AI SDK with proper error handling
+      const response = await generateText({
+        model: model,
+        system: systemPrompt,
+        messages: [...formattedHistory, { role: "user", content: message }],
+        temperature: 0.7, // Add some variability to responses
+        maxTokens: 1000, // Limit response length
+      })
 
-    // Return the AI response
-    return NextResponse.json({
-      response: text,
-      success: true,
-      timestamp: new Date().toISOString(),
-    })
+      console.log(`AI Tutor response generated successfully using ${provider}`)
+
+      // Return the AI response
+      return NextResponse.json({
+        response: response.text,
+        success: true,
+        provider: provider,
+        timestamp: new Date().toISOString(),
+      })
+    } catch (aiError: any) {
+      console.error(`${provider} AI SDK Error:`, aiError)
+
+      // Create a fallback response for common AI service issues
+      const fallbackResponse =
+        "I'm currently experiencing some technical difficulties. Let me try a simpler approach to help you. What specific question do you have about this subject?"
+
+      // Return a fallback response with partial success
+      return NextResponse.json({
+        response: fallbackResponse,
+        success: true, // Mark as success to prevent error display
+        fallback: true,
+        provider: provider,
+        error: aiError.message,
+        timestamp: new Date().toISOString(),
+      })
+    }
   } catch (error: any) {
     console.error("Error in AI tutor API:", error)
 
@@ -128,10 +114,7 @@ export async function POST(request: Request) {
     let errorMessage = "Failed to process your request"
     let statusCode = 500
 
-    if (error.message === "Request timed out") {
-      errorMessage = "The AI tutor is taking too long to respond. Please try again with a simpler question."
-      statusCode = 408 // Request Timeout
-    } else if (error.code === "ECONNRESET" || error.code === "ETIMEDOUT") {
+    if (error.code === "ECONNRESET" || error.code === "ETIMEDOUT") {
       errorMessage = "Connection to AI service failed. Please try again later."
       statusCode = 503 // Service Unavailable
     } else if (error.message?.includes("rate limit")) {

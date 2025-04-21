@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw, AlertTriangle } from "lucide-react"
+import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 // Message type definition
@@ -19,6 +19,7 @@ type Message = {
   content: string
   timestamp: Date
   status?: "sending" | "error" | "success"
+  isFallback?: boolean
 }
 
 // Initial welcome message
@@ -33,6 +34,25 @@ const initialMessages: Message[] = [
   },
 ]
 
+// Sample responses for fallback mode (used when API is having issues)
+const fallbackResponses = {
+  math: [
+    "In mathematics, it's important to understand the underlying concepts rather than just memorizing formulas. Could you tell me more specifically what math topic you're working on?",
+    "Mathematics builds on foundational concepts. Let's break down your question step by step. Could you provide more details about what you're trying to solve?",
+    "When approaching math problems, I recommend starting with the basics and working your way up. What specific concept are you struggling with?",
+  ],
+  science: [
+    "Science is all about observation, hypothesis, and experimentation. Could you tell me more about the specific scientific concept you're interested in?",
+    "In science, we often use models to understand complex phenomena. What particular aspect of science are you studying?",
+    "Scientific understanding evolves over time as we gather more evidence. What specific science topic would you like to explore?",
+  ],
+  general: [
+    "Learning is most effective when we connect new information to what we already know. Could you tell me more about what you're trying to learn?",
+    "I'd be happy to help you understand this topic better. Could you provide more specific details about your question?",
+    "Education is a journey of discovery. Let's explore this topic together. What specific aspects are you curious about?",
+  ],
+}
+
 export function AITutorInterface() {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState("")
@@ -40,6 +60,8 @@ export function AITutorInterface() {
   const [selectedSubject, setSelectedSubject] = useState("general")
   const [activeTab, setActiveTab] = useState("chat")
   const [retryCount, setRetryCount] = useState(0)
+  const [isOfflineMode, setIsOfflineMode] = useState(false)
+  const [consecutiveErrors, setConsecutiveErrors] = useState(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -55,6 +77,13 @@ export function AITutorInterface() {
       textareaRef.current.focus()
     }
   }, [])
+
+  // Get a fallback response when API is having issues
+  const getFallbackResponse = (subject: string): string => {
+    const subjectResponses = fallbackResponses[subject as keyof typeof fallbackResponses] || fallbackResponses.general
+    const randomIndex = Math.floor(Math.random() * subjectResponses.length)
+    return subjectResponses[randomIndex]
+  }
 
   // Handle sending a message
   const handleSendMessage = async () => {
@@ -85,6 +114,28 @@ export function AITutorInterface() {
     setErrorMessage(null)
 
     try {
+      // If in offline mode, use fallback responses
+      if (isOfflineMode) {
+        // Simulate network delay
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+
+        // Update the placeholder message with a fallback response
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantPlaceholder.id
+              ? {
+                  ...msg,
+                  content: getFallbackResponse(selectedSubject),
+                  status: "success",
+                  isFallback: true,
+                }
+              : msg,
+          ),
+        )
+        setIsLoading(false)
+        return
+      }
+
       // Send message to AI and get response
       const response = await fetch("/api/ai-tutor", {
         method: "POST",
@@ -105,35 +156,98 @@ export function AITutorInterface() {
 
       const data = await response.json()
 
-      if (!response.ok || !data.success) {
+      if (!response.ok) {
         throw new Error(data.error || "Failed to get response from AI tutor")
       }
 
       // Update the placeholder message with the actual response
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === assistantPlaceholder.id ? { ...msg, content: data.response, status: "success" } : msg,
-        ),
-      )
-
-      // Reset retry count on successful response
-      setRetryCount(0)
-    } catch (error: any) {
-      console.error("Error getting AI response:", error)
-
-      // Update the placeholder message with error status
-      setMessages((prev) =>
-        prev.map((msg) =>
           msg.id === assistantPlaceholder.id
             ? {
                 ...msg,
-                content:
-                  "I'm sorry, I encountered an error processing your request. You can try again or ask a different question.",
-                status: "error",
+                content: data.response,
+                status: "success",
+                isFallback: data.fallback || false,
               }
             : msg,
         ),
       )
+
+      // Reset consecutive errors on successful response
+      setConsecutiveErrors(0)
+
+      // If we got a fallback response from the server, increment error count
+      if (data.fallback) {
+        setConsecutiveErrors((prev) => prev + 1)
+
+        // If we've had multiple fallback responses, switch to offline mode
+        if (consecutiveErrors >= 2) {
+          setIsOfflineMode(true)
+
+          // Add system message about offline mode
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString() + "-system",
+              role: "system",
+              content: "Switched to offline mode due to connectivity issues. Some features may be limited.",
+              timestamp: new Date(),
+              status: "success",
+            },
+          ])
+        }
+      }
+    } catch (error: any) {
+      console.error("Error getting AI response:", error)
+
+      // Increment consecutive errors
+      setConsecutiveErrors((prev) => prev + 1)
+
+      // If we've had multiple errors, switch to offline mode
+      if (consecutiveErrors >= 2) {
+        setIsOfflineMode(true)
+
+        // Update the placeholder message with a fallback response
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantPlaceholder.id
+              ? {
+                  ...msg,
+                  content: getFallbackResponse(selectedSubject),
+                  status: "success",
+                  isFallback: true,
+                }
+              : msg,
+          ),
+        )
+
+        // Add system message about offline mode
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString() + "-system",
+            role: "system",
+            content: "Switched to offline mode due to connectivity issues. Some features may be limited.",
+            timestamp: new Date(),
+            status: "success",
+          },
+        ])
+      } else {
+        // Update the placeholder message with error status
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantPlaceholder.id
+              ? {
+                  ...msg,
+                  content:
+                    "I'm sorry, I encountered an error processing your request. You can try again or ask a different question.",
+                  status: "error",
+                }
+              : msg,
+          ),
+        )
+      }
 
       // Show error toast
       toast({
@@ -174,6 +288,24 @@ export function AITutorInterface() {
     setTimeout(() => {
       handleSendMessage()
     }, 100)
+  }
+
+  // Try to reconnect to the AI service
+  const handleReconnect = () => {
+    setIsOfflineMode(false)
+    setConsecutiveErrors(0)
+
+    // Add system message about reconnecting
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString() + "-system",
+        role: "system",
+        content: "Attempting to reconnect to AI service...",
+        timestamp: new Date(),
+        status: "success",
+      },
+    ])
   }
 
   // Handle key press (Enter to send)
@@ -253,8 +385,26 @@ export function AITutorInterface() {
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-emerald-600" />
                   <h3 className="font-semibold">AI Tutor Chat</h3>
+                  {isOfflineMode && (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                      Offline Mode
+                    </span>
+                  )}
                 </div>
-                <SubjectSelector selectedSubject={selectedSubject} onSelectSubject={handleSubjectChange} />
+                <div className="flex items-center gap-2">
+                  {isOfflineMode && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleReconnect}
+                      className="text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+                    >
+                      <RefreshCw className="mr-1 h-3 w-3" />
+                      Reconnect
+                    </Button>
+                  )}
+                  <SubjectSelector selectedSubject={selectedSubject} onSelectSubject={handleSubjectChange} />
+                </div>
               </div>
             </CardHeader>
             <CardContent className="h-[500px] overflow-y-auto p-4 bg-gray-50/30">
@@ -276,7 +426,7 @@ export function AITutorInterface() {
                     Thinking...
                   </div>
                 )}
-                {errorMessage && retryCount > 0 && !isLoading && (
+                {retryCount > 0 && !isLoading && !isOfflineMode && (
                   <div className="flex items-center justify-center gap-2 my-2">
                     <Button
                       variant="outline"
@@ -285,14 +435,8 @@ export function AITutorInterface() {
                       className="flex items-center gap-1 text-xs"
                     >
                       <RefreshCw className="h-3 w-3" />
-                      Retry
+                      Retry Last Question
                     </Button>
-                    {retryCount > 2 && (
-                      <div className="flex items-center text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded-full">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        Having trouble? Try a different question
-                      </div>
-                    )}
                   </div>
                 )}
                 <div ref={messagesEndRef} />

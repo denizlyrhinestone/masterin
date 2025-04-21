@@ -61,8 +61,10 @@
     "@supabase/supabase-js": "latest",
     "@supabase/ssr": "latest",
     "uuid": "latest",
-    "ai": "latest",
-    "@ai-sdk/openai": "latest"
+    "@ai-sdk/openai": "latest",
+    "@ai-sdk/groq": "latest",
+    "@ai-sdk/xai": "latest",
+    "ai": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

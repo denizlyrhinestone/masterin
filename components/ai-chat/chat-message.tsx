@@ -1,6 +1,6 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
-import { Bot, User, Loader2 } from "lucide-react"
+import { Bot, User, Loader2, AlertCircle, WifiOff } from "lucide-react"
 
 type ChatMessageProps = {
   message: {
@@ -9,6 +9,7 @@ type ChatMessageProps = {
     content: string
     timestamp: Date
     status?: "sending" | "error" | "success"
+    isFallback?: boolean
   }
 }
 
@@ -16,13 +17,28 @@ export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === "user"
   const isSending = message.status === "sending"
   const isError = message.status === "error"
+  const isFallback = message.isFallback
 
   return (
     <div className={cn("flex w-full items-start gap-3", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
-        <Avatar className={cn("h-8 w-8", isError ? "bg-red-100" : "bg-emerald-100")}>
-          <AvatarFallback className={cn(isError ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700")}>
-            <Bot className="h-4 w-4" />
+        <Avatar className={cn("h-8 w-8", isError ? "bg-red-100" : isFallback ? "bg-amber-100" : "bg-emerald-100")}>
+          <AvatarFallback
+            className={cn(
+              isError
+                ? "bg-red-100 text-red-700"
+                : isFallback
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-emerald-100 text-emerald-700",
+            )}
+          >
+            {isError ? (
+              <AlertCircle className="h-4 w-4" />
+            ) : isFallback ? (
+              <WifiOff className="h-4 w-4" />
+            ) : (
+              <Bot className="h-4 w-4" />
+            )}
           </AvatarFallback>
         </Avatar>
       )}
@@ -33,7 +49,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
             ? "bg-emerald-600 text-white"
             : isError
               ? "bg-red-50 text-red-800 border border-red-200"
-              : "bg-gray-100 text-gray-800",
+              : isFallback
+                ? "bg-amber-50 text-amber-800 border border-amber-200"
+                : "bg-gray-100 text-gray-800",
           isSending && "animate-pulse",
         )}
       >
@@ -47,10 +65,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
         </div>
         <div
           className={cn(
-            "mt-1 text-right text-xs",
-            isUser ? "text-emerald-100" : isError ? "text-red-500" : "text-gray-500",
+            "mt-1 text-right text-xs flex items-center justify-end gap-1",
+            isUser ? "text-emerald-100" : isError ? "text-red-500" : isFallback ? "text-amber-500" : "text-gray-500",
           )}
         >
+          {isFallback && <WifiOff className="h-3 w-3" />}
           {formatTime(message.timestamp)}
         </div>
       </div>
