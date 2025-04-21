@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw } from "lucide-react"
+import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw, AlertTriangle } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
 // Message type definition
@@ -20,6 +20,7 @@ type Message = {
   timestamp: Date
   status?: "sending" | "error" | "success"
   isFallback?: boolean
+  diagnostics?: any
 }
 
 // Initial welcome message
@@ -63,6 +64,7 @@ export function AITutorInterface() {
   const [isOfflineMode, setIsOfflineMode] = useState(false)
   const [consecutiveErrors, setConsecutiveErrors] = useState(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -76,6 +78,32 @@ export function AITutorInterface() {
     if (textareaRef.current) {
       textareaRef.current.focus()
     }
+  }, [])
+
+  // Fetch diagnostic information on load
+  useEffect(() => {
+    async function fetchDiagnostics() {
+      try {
+        const response = await fetch("/api/ai-tutor")
+        if (response.ok) {
+          const data = await response.json()
+          setDiagnosticInfo(data)
+
+          // If OpenAI key is not validated, show a warning
+          if (!data.openAIKeyValidated && data.openAIKeyError) {
+            toast({
+              title: "AI Service Warning",
+              description: `There may be issues with the AI service: ${data.openAIKeyError}`,
+              variant: "destructive",
+            })
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching diagnostics:", error)
+      }
+    }
+
+    fetchDiagnostics()
   }, [])
 
   // Get a fallback response when API is having issues
@@ -136,7 +164,10 @@ export function AITutorInterface() {
         return
       }
 
-      // Send message to AI and get response
+      // Send message to AI and get response with a timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+
       const response = await fetch("/api/ai-tutor", {
         method: "POST",
         headers: {
@@ -152,9 +183,18 @@ export function AITutorInterface() {
               content: msg.content,
             })),
         }),
+        signal: controller.signal,
       })
 
+      // Clear the timeout
+      clearTimeout(timeoutId)
+
       const data = await response.json()
+
+      // Update diagnostic info if available
+      if (data.diagnostics) {
+        setDiagnosticInfo(data.diagnostics)
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to get response from AI tutor")
@@ -169,16 +209,17 @@ export function AITutorInterface() {
                 content: data.response,
                 status: "success",
                 isFallback: data.fallback || false,
+                diagnostics: data.diagnostics,
               }
             : msg,
         ),
       )
 
       // Reset consecutive errors on successful response
-      setConsecutiveErrors(0)
-
-      // If we got a fallback response from the server, increment error count
-      if (data.fallback) {
+      if (!data.fallback) {
+        setConsecutiveErrors(0)
+      } else {
+        // If we got a fallback response from the server, increment error count
         setConsecutiveErrors((prev) => prev + 1)
 
         // If we've had multiple fallback responses, switch to offline mode
@@ -196,6 +237,13 @@ export function AITutorInterface() {
               status: "success",
             },
           ])
+
+          // Show toast notification
+          toast({
+            title: "Offline Mode Activated",
+            description: "AI service is currently unavailable. Using simplified responses.",
+            variant: "destructive",
+          })
         }
       }
     } catch (error: any) {
@@ -233,6 +281,13 @@ export function AITutorInterface() {
             status: "success",
           },
         ])
+
+        // Show toast notification
+        toast({
+          title: "Offline Mode Activated",
+          description: "AI service is currently unavailable. Using simplified responses.",
+          variant: "destructive",
+        })
       } else {
         // Update the placeholder message with error status
         setMessages((prev) =>
@@ -247,14 +302,22 @@ export function AITutorInterface() {
               : msg,
           ),
         )
-      }
 
-      // Show error toast
-      toast({
-        title: "AI Tutor Error",
-        description: error.message || "Failed to get a response. Please try again.",
-        variant: "destructive",
-      })
+        // Show error toast with more specific information
+        let errorMessage = "Failed to get a response. Please try again."
+
+        if (error.name === "AbortError") {
+          errorMessage = "Request timed out. Please try with a simpler question."
+        } else if (error.message.includes("fetch")) {
+          errorMessage = "Network error. Please check your connection."
+        }
+
+        toast({
+          title: "AI Tutor Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      }
 
       // Track error message for retry button
       setErrorMessage(error.message || "Unknown error")
@@ -277,7 +340,7 @@ export function AITutorInterface() {
     // Remove the last assistant message if it was an error
     setMessages((prev) => {
       const lastMessage = prev[prev.length - 1]
-      if (lastMessage.role === "assistant" && lastMessage.status === "error") {
+      if (lastMessage.role === "assistant" && (lastMessage.status === "error" || lastMessage.isFallback)) {
         return prev.slice(0, -1)
       }
       return prev
@@ -291,21 +354,79 @@ export function AITutorInterface() {
   }
 
   // Try to reconnect to the AI service
-  const handleReconnect = () => {
-    setIsOfflineMode(false)
-    setConsecutiveErrors(0)
+  const handleReconnect = async () => {
+    setIsLoading(true)
 
-    // Add system message about reconnecting
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString() + "-system",
-        role: "system",
-        content: "Attempting to reconnect to AI service...",
-        timestamp: new Date(),
-        status: "success",
-      },
-    ])
+    try {
+      // Add system message about reconnecting
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString() + "-system",
+          role: "system",
+          content: "Attempting to reconnect to AI service...",
+          timestamp: new Date(),
+          status: "success",
+        },
+      ])
+
+      // Fetch diagnostic information to check service status
+      const response = await fetch("/api/ai-tutor")
+
+      if (response.ok) {
+        const data = await response.json()
+        setDiagnosticInfo(data)
+
+        if (data.status === "operational" && data.successRate > 50) {
+          setIsOfflineMode(false)
+          setConsecutiveErrors(0)
+
+          // Add system message about successful reconnection
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString() + "-system-reconnected",
+              role: "system",
+              content: "Successfully reconnected to AI service. Full functionality restored.",
+              timestamp: new Date(),
+              status: "success",
+            },
+          ])
+
+          toast({
+            title: "Reconnected",
+            description: "Successfully reconnected to AI service.",
+            variant: "default",
+          })
+        } else {
+          throw new Error("AI service still experiencing issues")
+        }
+      } else {
+        throw new Error("Failed to check AI service status")
+      }
+    } catch (error) {
+      console.error("Error reconnecting:", error)
+
+      // Add system message about failed reconnection
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString() + "-system-reconnect-failed",
+          role: "system",
+          content: "Failed to reconnect to AI service. Remaining in offline mode.",
+          timestamp: new Date(),
+          status: "success",
+        },
+      ])
+
+      toast({
+        title: "Reconnection Failed",
+        description: "Could not reconnect to AI service. Remaining in offline mode.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   // Handle key press (Enter to send)
@@ -390,6 +511,11 @@ export function AITutorInterface() {
                       Offline Mode
                     </span>
                   )}
+                  {diagnosticInfo && !diagnosticInfo.openAIKeyValidated && (
+                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">
+                      API Key Issue
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   {isOfflineMode && (
@@ -397,9 +523,14 @@ export function AITutorInterface() {
                       variant="outline"
                       size="sm"
                       onClick={handleReconnect}
+                      disabled={isLoading}
                       className="text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
                     >
-                      <RefreshCw className="mr-1 h-3 w-3" />
+                      {isLoading ? (
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-1 h-3 w-3" />
+                      )}
                       Reconnect
                     </Button>
                   )}
@@ -439,6 +570,19 @@ export function AITutorInterface() {
                     </Button>
                   </div>
                 )}
+                {diagnosticInfo && !diagnosticInfo.openAIKeyValidated && !isOfflineMode && (
+                  <div className="flex items-center justify-center my-2">
+                    <div className="flex items-center gap-2 text-xs text-red-700 bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">
+                      <AlertTriangle className="h-3 w-3" />
+                      <span>
+                        AI service configuration issue detected. Responses may be limited.
+                        {diagnosticInfo.openAIKeyError && (
+                          <span className="block mt-1 text-red-600">Error: {diagnosticInfo.openAIKeyError}</span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                )}
                 <div ref={messagesEndRef} />
               </div>
             </CardContent>
@@ -459,7 +603,7 @@ export function AITutorInterface() {
                     disabled={!input.trim() || isLoading}
                     className="bg-emerald-600 hover:bg-emerald-700 transition-all duration-200 hover:shadow-md"
                   >
-                    <Send className="h-4 w-4" />
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     <span className="sr-only">Send message</span>
                   </Button>
                   <Button
@@ -499,20 +643,108 @@ export function AITutorInterface() {
 
         <TabsContent value="history" className="mt-4">
           <Card>
-            <CardHeader>
-              <h3 className="text-lg font-semibold">Session History</h3>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <h3 className="text-lg font-semibold">System Status</h3>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const response = await fetch("/api/ai-tutor")
+                    if (response.ok) {
+                      const data = await response.json()
+                      setDiagnosticInfo(data)
+                      toast({
+                        title: "Status Updated",
+                        description: "System status information has been refreshed.",
+                      })
+                    }
+                  } catch (error) {
+                    console.error("Error fetching diagnostics:", error)
+                  }
+                }}
+                className="text-xs"
+              >
+                <RefreshCw className="mr-1 h-3 w-3" />
+                Refresh
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="rounded-lg bg-amber-50 p-4 text-amber-800">
-                <div className="flex items-center gap-2">
-                  <Info className="h-5 w-5" />
-                  <p className="font-medium">Coming Soon</p>
+              {diagnosticInfo ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="rounded-lg border p-4">
+                      <div className="text-sm font-medium text-gray-500">AI Service Status</div>
+                      <div className="mt-1 flex items-center">
+                        <span
+                          className={`mr-2 h-3 w-3 rounded-full ${diagnosticInfo.openAIKeyValidated ? "bg-green-500" : "bg-red-500"}`}
+                        ></span>
+                        <span className="text-lg font-semibold">
+                          {diagnosticInfo.openAIKeyValidated ? "Operational" : "Configuration Issue"}
+                        </span>
+                      </div>
+                      {diagnosticInfo.openAIKeyError && (
+                        <div className="mt-2 text-sm text-red-600">Error: {diagnosticInfo.openAIKeyError}</div>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border p-4">
+                      <div className="text-sm font-medium text-gray-500">Success Rate</div>
+                      <div className="mt-1 text-lg font-semibold">{diagnosticInfo.successRate || 0}%</div>
+                      <div className="mt-2 h-2 w-full rounded-full bg-gray-200">
+                        <div
+                          className="h-2 rounded-full bg-emerald-500"
+                          style={{ width: `${diagnosticInfo.successRate || 0}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {diagnosticInfo.recentRequests && (
+                    <div className="rounded-lg border p-4">
+                      <div className="mb-2 text-sm font-medium text-gray-500">Recent Requests</div>
+                      <div className="max-h-[200px] overflow-y-auto">
+                        <table className="min-w-full text-sm">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="pb-2 text-left font-medium text-gray-500">Time</th>
+                              <th className="pb-2 text-left font-medium text-gray-500">Subject</th>
+                              <th className="pb-2 text-left font-medium text-gray-500">Status</th>
+                              <th className="pb-2 text-left font-medium text-gray-500">Response Time</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {diagnosticInfo.recentRequests.map((req: any, i: number) => (
+                              <tr key={i} className="border-b last:border-0">
+                                <td className="py-2">{new Date(req.timestamp).toLocaleTimeString()}</td>
+                                <td className="py-2">{req.subject}</td>
+                                <td className="py-2">
+                                  <span
+                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                                      req.success ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                                    }`}
+                                  >
+                                    {req.success ? "Success" : "Failed"}
+                                  </span>
+                                </td>
+                                <td className="py-2">{req.responseTime ? `${req.responseTime}ms` : "-"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-xs text-gray-500">
+                    Last updated: {new Date(diagnosticInfo.timestamp).toLocaleString()}
+                  </div>
                 </div>
-                <p className="mt-2">
-                  Soon you'll be able to view and continue your past learning sessions. This feature is currently under
-                  development.
-                </p>
-              </div>
+              ) : (
+                <div className="flex items-center justify-center h-40">
+                  <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
