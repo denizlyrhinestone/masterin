@@ -15,8 +15,7 @@ const heroSlides = [
       "Tailored educational experiences powered by AI to meet each student's unique needs and learning style.",
     ctaText: "Start Learning",
     ctaLink: "/courses",
-    image: "/images/hero-personalized-learning.jpg",
-    query: "students learning with tablets in modern classroom with AI visualization overlay",
+    imageUrl: "/placeholder.svg?key=ti698",
   },
   {
     id: 2,
@@ -24,8 +23,7 @@ const heroSlides = [
     description: "Learn from verified educators who are passionate about their subjects and committed to your success.",
     ctaText: "Meet Our Educators",
     ctaLink: "/educators",
-    image: "/images/hero-expert-educators.jpg",
-    query: "diverse group of professional teachers collaborating in modern educational setting",
+    imageUrl: "/images/hero-expert-educators.jpg",
   },
   {
     id: 3,
@@ -33,8 +31,7 @@ const heroSlides = [
     description: "Get instant help and feedback from our advanced AI tutors available 24/7 to support your learning.",
     ctaText: "Try AI Tutor",
     ctaLink: "/ai-tutor",
-    image: "/images/hero-ai-tutoring.jpg",
-    query: "student interacting with futuristic AI tutor interface with holographic elements",
+    imageUrl: "/images/hero-ai-tutoring.jpg",
   },
   {
     id: 4,
@@ -42,8 +39,7 @@ const heroSlides = [
     description: "Visualize your learning journey with comprehensive analytics and achievement tracking.",
     ctaText: "View Dashboard",
     ctaLink: "/dashboard",
-    image: "/images/hero-progress-tracking.jpg",
-    query: "student looking at colorful learning analytics dashboard with progress charts",
+    imageUrl: "/student-dashboard-insights.png",
   },
   {
     id: 5,
@@ -51,8 +47,7 @@ const heroSlides = [
     description: "Connect with peers, collaborate on projects, and engage in meaningful educational discussions.",
     ctaText: "Join Community",
     ctaLink: "/community",
-    image: "/images/hero-community.jpg",
-    query: "diverse group of students collaborating in modern study space with digital devices",
+    imageUrl: "/images/hero-community.jpg",
   },
 ]
 
@@ -100,7 +95,7 @@ export function HeroCarousel() {
             {/* Background Image */}
             <div className="absolute inset-0 z-0">
               <Image
-                src={slide.image || `/placeholder.svg?height=1200&width=1920&query=${encodeURIComponent(slide.query)}`}
+                src={slide.imageUrl || "/placeholder.svg"}
                 alt={slide.title}
                 fill
                 className="object-cover opacity-40"

@@ -6,24 +6,21 @@ const testimonials = [
       "Masterin has completely transformed how I approach learning. The AI tutor is like having a personal teacher available 24/7.",
     author: "Sarah Johnson",
     role: "High School Student",
-    avatar: "/images/testimonial-1.jpg",
-    query: "portrait of female high school student smiling",
+    avatarUrl: "/placeholder.svg?height=48&width=48&query=portrait of female high school student smiling",
   },
   {
     quote:
       "As an educator, I've found Masterin to be an invaluable tool for extending my classroom beyond physical boundaries.",
     author: "Dr. Michael Chen",
     role: "University Professor",
-    avatar: "/images/testimonial-2.jpg",
-    query: "portrait of male university professor with glasses",
+    avatarUrl: "/placeholder.svg?height=48&width=48&query=portrait of male university professor with glasses",
   },
   {
     quote:
       "The progress tracking features have helped me identify areas where my students need additional support. It's revolutionized my teaching.",
     author: "Emma Rodriguez",
     role: "Middle School Teacher",
-    avatar: "/images/testimonial-3.jpg",
-    query: "portrait of female middle school teacher smiling",
+    avatarUrl: "/placeholder.svg?height=48&width=48&query=portrait of female middle school teacher smiling",
   },
 ]
 
@@ -50,10 +47,7 @@ export function TestimonialSection() {
               <div className="flex items-center">
                 <div className="mr-4 h-12 w-12 overflow-hidden rounded-full">
                   <Image
-                    src={
-                      testimonial.avatar ||
-                      `/placeholder.svg?height=48&width=48&query=${encodeURIComponent(testimonial.query)}`
-                    }
+                    src={testimonial.avatarUrl || "/placeholder.svg"}
                     alt={testimonial.author}
                     width={48}
                     height={48}
