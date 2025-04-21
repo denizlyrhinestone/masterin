@@ -1,9 +1,7 @@
-"use client"
-
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Bot, User, Loader2, AlertCircle, WifiOff, Info } from "lucide-react"
-import { useState } from "react"
 
 type ChatMessageProps = {
   message: {
@@ -13,17 +11,32 @@ type ChatMessageProps = {
     timestamp: Date
     status?: "sending" | "error" | "success"
     isFallback?: boolean
-    diagnostics?: any
+    errorCode?: string
+    provider?: string
   }
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
-  const [showDiagnostics, setShowDiagnostics] = useState(false)
   const isUser = message.role === "user"
   const isSending = message.status === "sending"
   const isError = message.status === "error"
   const isFallback = message.isFallback
-  const hasDiagnostics = message.diagnostics && Object.keys(message.diagnostics).length > 0
+
+  const getErrorLabel = (code?: string) => {
+    if (!code) return null
+
+    const errorLabels: Record<string, string> = {
+      RATE_LIMITED: "Rate Limited",
+      TIMEOUT: "Timeout",
+      CONTEXT_LENGTH_EXCEEDED: "Context Too Long",
+      CONNECTIVITY_FAILURE: "Connectivity Issue",
+      SERVICE_COOLDOWN: "Service Cooldown",
+      OFFLINE_MODE: "Offline Mode",
+      REQUEST_FAILED: "Request Failed",
+    }
+
+    return errorLabels[code] || code
+  }
 
   return (
     <div className={cn("flex w-full items-start gap-3", isUser ? "justify-end" : "justify-start")}>
@@ -69,64 +82,35 @@ export function ChatMessage({ message }: ChatMessageProps) {
             </span>
           )}
         </div>
-        <div
-          className={cn(
-            "mt-1 text-right text-xs flex items-center justify-end gap-1",
-            isUser ? "text-emerald-100" : isError ? "text-red-500" : isFallback ? "text-amber-500" : "text-gray-500",
-          )}
-        >
-          {isFallback && <WifiOff className="h-3 w-3" />}
-          {hasDiagnostics && (
-            <button onClick={() => setShowDiagnostics(!showDiagnostics)} className="hover:underline flex items-center">
-              <Info className="h-3 w-3 mr-1" />
-              {showDiagnostics ? "Hide info" : "Show info"}
-            </button>
-          )}
-          <span className="ml-1">{formatTime(message.timestamp)}</span>
-        </div>
-
-        {showDiagnostics && hasDiagnostics && (
-          <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
-            <div className="grid grid-cols-2 gap-1">
-              <div>Provider:</div>
-              <div className="font-medium">{message.diagnostics.provider || "unknown"}</div>
-
-              {message.diagnostics.responseTime && (
-                <>
-                  <div>Response time:</div>
-                  <div className="font-medium">{message.diagnostics.responseTime}ms</div>
-                </>
-              )}
-
-              {message.diagnostics.successRate !== undefined && (
-                <>
-                  <div>Success rate:</div>
-                  <div className="font-medium">{message.diagnostics.successRate}%</div>
-                </>
-              )}
-
-              {message.diagnostics.openAIKeyValidated !== undefined && (
-                <>
-                  <div>API key status:</div>
-                  <div
-                    className={
-                      message.diagnostics.openAIKeyValidated ? "text-green-600 font-medium" : "text-red-600 font-medium"
-                    }
-                  >
-                    {message.diagnostics.openAIKeyValidated ? "Valid" : "Invalid"}
-                  </div>
-                </>
-              )}
-
-              {message.diagnostics.errorType && (
-                <>
-                  <div>Error type:</div>
-                  <div className="font-medium text-red-600">{message.diagnostics.errorType}</div>
-                </>
-              )}
-            </div>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1">
+            {isFallback && message.errorCode && (
+              <Badge
+                variant="outline"
+                className={cn(
+                  "text-xs py-0 h-5",
+                  isError ? "border-red-200 text-red-700 bg-red-50" : "border-amber-200 text-amber-700 bg-amber-50",
+                )}
+              >
+                <Info className="h-3 w-3 mr-1" />
+                {getErrorLabel(message.errorCode)}
+              </Badge>
+            )}
+            {message.provider && !isUser && (
+              <Badge variant="outline" className="text-xs py-0 h-5 border-emerald-200 text-emerald-700 bg-emerald-50">
+                {message.provider}
+              </Badge>
+            )}
           </div>
-        )}
+          <div
+            className={cn(
+              "text-right text-xs flex items-center justify-end",
+              isUser ? "text-emerald-100" : isError ? "text-red-500" : isFallback ? "text-amber-500" : "text-gray-500",
+            )}
+          >
+            {formatTime(message.timestamp)}
+          </div>
+        </div>
       </div>
       {isUser && (
         <Avatar className="h-8 w-8 bg-gray-200">

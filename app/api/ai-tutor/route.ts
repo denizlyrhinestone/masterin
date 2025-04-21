@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
 import { selectAIModel, generateFallbackResponse } from "@/lib/ai-utils"
-import { isValidOpenAIKey, testOpenAIKey } from "@/lib/api-key-validator"
 
 // Define the system prompts for different subjects
 const subjectPrompts: Record<string, string> = {
@@ -33,65 +32,24 @@ const subjectPrompts: Record<string, string> = {
   Help debug code by identifying common errors and explaining best practices.`,
 }
 
-// Track API key validation status
-let openAIKeyValidated = false
-let openAIKeyError: string | null = null
-
-// In-memory request tracking for diagnostics
-const requestLog: {
-  timestamp: Date
-  subject: string
-  success: boolean
-  provider?: string
-  error?: string
-  responseTime?: number
-}[] = []
+// Track API health status
+let lastSuccessfulCall = Date.now()
+let consecutiveErrors = 0
+const ERROR_THRESHOLD = 5
+const ERROR_COOLDOWN_MS = 60000 // 1 minute cooldown after consecutive errors
 
 export async function POST(request: Request) {
-  const startTime = Date.now()
-  const requestEntry = {
-    timestamp: new Date(),
-    subject: "unknown",
-    success: false,
-  }
-
   try {
     // Parse the request body
     const body = await request.json()
     const { message, subject = "general", history = [] } = body
-
-    requestEntry.subject = subject
 
     // Validate inputs
     if (!message || typeof message !== "string") {
       return NextResponse.json({ error: "Invalid message format", success: false }, { status: 400 })
     }
 
-    console.log(`AI Tutor request received - Subject: ${subject}`)
-
-    // Validate OpenAI API key if not already validated
-    const openaiKey = process.env.OPENAI_API_KEY
-    if (openaiKey && !openAIKeyValidated && !openAIKeyError) {
-      if (!isValidOpenAIKey(openaiKey)) {
-        openAIKeyError = "Invalid OpenAI API key format"
-        console.error(openAIKeyError)
-      } else {
-        try {
-          console.log("Validating OpenAI API key...")
-          const keyTest = await testOpenAIKey(openaiKey)
-          if (keyTest.valid) {
-            openAIKeyValidated = true
-            console.log("OpenAI API key validated successfully")
-          } else {
-            openAIKeyError = keyTest.error || "Unknown API key validation error"
-            console.error("OpenAI API key validation failed:", openAIKeyError)
-          }
-        } catch (error: any) {
-          openAIKeyError = error.message || "Error validating OpenAI API key"
-          console.error(openAIKeyError)
-        }
-      }
-    }
+    console.log(`AI Tutor request received - Subject: ${subject}, Message length: ${message.length}`)
 
     // Get the appropriate system prompt based on the selected subject
     const systemPrompt = subjectPrompts[subject] || subjectPrompts.general
@@ -103,42 +61,41 @@ export async function POST(request: Request) {
     }))
 
     // Select the best available AI model
-    const { model, provider } = await selectAIModel()
+    const { model, provider } = selectAIModel()
 
     // If we don't have a model available, use fallback response
     if (provider === "fallback" || !model) {
       console.log("No AI model available, using fallback response")
       const fallbackResponse = generateFallbackResponse(subject, message)
 
-      requestEntry.success = true
-      requestEntry.provider = "fallback"
-      requestEntry.responseTime = Date.now() - startTime
-      requestLog.push(requestEntry)
-
-      // Keep only the last 100 requests
-      if (requestLog.length > 100) requestLog.shift()
-
       return NextResponse.json({
         response: fallbackResponse,
         success: true,
         fallback: true,
         provider: "fallback",
-        diagnostics: {
-          openAIKeyValidated,
-          openAIKeyError,
-          requestCount: requestLog.length,
-          successRate: calculateSuccessRate(),
-        },
+        timestamp: new Date().toISOString(),
+      })
+    }
+
+    // Check if we're in the error threshold cooldown period
+    const timeSinceLastSuccess = Date.now() - lastSuccessfulCall
+    if (consecutiveErrors >= ERROR_THRESHOLD && timeSinceLastSuccess < ERROR_COOLDOWN_MS) {
+      console.log(`AI service in cooldown period after ${consecutiveErrors} consecutive errors`)
+      const fallbackResponse = generateFallbackResponse(subject, message)
+
+      return NextResponse.json({
+        response: fallbackResponse,
+        success: true,
+        fallback: true,
+        provider: "cooldown",
+        errorCode: "SERVICE_COOLDOWN",
         timestamp: new Date().toISOString(),
       })
     }
 
     try {
-      console.log(`Generating response using ${provider} model...`)
-
-      // Create a timeout for the request
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+      // Start time for performance monitoring
+      const startTime = Date.now()
 
       // Generate response using AI SDK with proper error handling
       const response = await generateText({
@@ -149,138 +106,90 @@ export async function POST(request: Request) {
         maxTokens: 1000, // Limit response length
       })
 
-      // Clear the timeout
-      clearTimeout(timeoutId)
+      // Calculate response time for monitoring
+      const responseTime = Date.now() - startTime
+      console.log(`AI Tutor response generated successfully using ${provider} in ${responseTime}ms`)
 
-      console.log(`AI Tutor response generated successfully using ${provider}`)
-
-      requestEntry.success = true
-      requestEntry.provider = provider
-      requestEntry.responseTime = Date.now() - startTime
-      requestLog.push(requestEntry)
-
-      // Keep only the last 100 requests
-      if (requestLog.length > 100) requestLog.shift()
+      // Reset error tracking
+      lastSuccessfulCall = Date.now()
+      consecutiveErrors = 0
 
       // Return the AI response
       return NextResponse.json({
         response: response.text,
         success: true,
         provider: provider,
-        diagnostics: {
-          openAIKeyValidated,
-          requestCount: requestLog.length,
-          successRate: calculateSuccessRate(),
-          responseTime: Date.now() - startTime,
-        },
+        responseTime,
         timestamp: new Date().toISOString(),
       })
     } catch (aiError: any) {
-      console.error(`${provider} AI SDK Error:`, aiError)
+      // Increment consecutive error count
+      consecutiveErrors++
 
-      requestEntry.success = false
-      requestEntry.provider = provider
-      requestEntry.error = aiError.message
-      requestEntry.responseTime = Date.now() - startTime
-      requestLog.push(requestEntry)
+      console.error(`${provider} AI SDK Error (${consecutiveErrors}/${ERROR_THRESHOLD}):`, aiError)
 
-      // Detailed error logging for diagnosis
-      const errorDetails = {
-        message: aiError.message,
-        stack: aiError.stack,
-        provider,
-        timestamp: new Date().toISOString(),
+      // Generate a more specific fallback response based on error type
+      let fallbackResponse = ""
+      let errorCode = "GENERAL_ERROR"
+
+      if (aiError.message?.includes("rate limit") || aiError.message?.includes("429")) {
+        fallbackResponse = "I'm receiving too many questions right now. Can you try again in a moment?"
+        errorCode = "RATE_LIMITED"
+      } else if (aiError.message?.includes("timeout") || aiError.message?.includes("ETIMEDOUT")) {
+        fallbackResponse =
+          "It's taking me longer than expected to process your question. Let me try a simpler approach. What specific part of this subject are you interested in?"
+        errorCode = "TIMEOUT"
+      } else if (aiError.message?.includes("context length") || aiError.message?.includes("token limit")) {
+        fallbackResponse =
+          "Your question and our conversation history have become quite lengthy. Could you ask a more focused question?"
+        errorCode = "CONTEXT_LENGTH_EXCEEDED"
+      } else {
+        fallbackResponse =
+          "I'm temporarily having trouble accessing my advanced tutoring capabilities. Let me help with a simpler explanation instead. What specific concept would you like me to clarify?"
       }
 
-      console.error("AI Error Details:", JSON.stringify(errorDetails, null, 2))
-
-      // Create a fallback response for common AI service issues
-      const fallbackResponse =
-        "I'm currently experiencing some technical difficulties. Let me try a simpler approach to help you. What specific question do you have about this subject?"
-
-      // Return a fallback response with partial success
+      // Return a more informative fallback response
       return NextResponse.json({
         response: fallbackResponse,
-        success: true, // Mark as success to prevent error display
+        success: true, // Mark as success to prevent frontend error display
         fallback: true,
         provider: provider,
         error: aiError.message,
-        diagnostics: {
-          openAIKeyValidated,
-          openAIKeyError,
-          errorType: aiError.name,
-          errorMessage: aiError.message,
-          requestCount: requestLog.length,
-          successRate: calculateSuccessRate(),
-        },
+        errorCode,
+        consecutiveErrors,
         timestamp: new Date().toISOString(),
       })
     }
   } catch (error: any) {
     console.error("Error in AI tutor API:", error)
 
-    requestEntry.success = false
-    requestEntry.error = error.message
-    requestEntry.responseTime = Date.now() - startTime
-    requestLog.push(requestEntry)
-
     // Determine the appropriate error message and status code
     let errorMessage = "Failed to process your request"
     let statusCode = 500
+    let errorCode = "SERVER_ERROR"
 
     if (error.code === "ECONNRESET" || error.code === "ETIMEDOUT") {
       errorMessage = "Connection to AI service failed. Please try again later."
       statusCode = 503 // Service Unavailable
+      errorCode = "CONNECTION_FAILED"
     } else if (error.message?.includes("rate limit")) {
       errorMessage = "AI service rate limit exceeded. Please try again in a few moments."
       statusCode = 429 // Too Many Requests
-    } else if (error.name === "AbortError") {
-      errorMessage = "Request timed out. Please try again with a simpler question."
-      statusCode = 408 // Request Timeout
+      errorCode = "RATE_LIMITED"
+    } else if (error.message?.includes("parse") || error instanceof SyntaxError) {
+      errorMessage = "Invalid request format. Please check your input."
+      statusCode = 400 // Bad Request
+      errorCode = "INVALID_REQUEST"
     }
 
     return NextResponse.json(
       {
         error: errorMessage,
         success: false,
-        errorCode: statusCode,
-        diagnostics: {
-          openAIKeyValidated,
-          openAIKeyError,
-          errorType: error.name,
-          errorMessage: error.message,
-          requestCount: requestLog.length,
-          successRate: calculateSuccessRate(),
-        },
+        errorCode,
         timestamp: new Date().toISOString(),
       },
       { status: statusCode },
     )
   }
-}
-
-// Calculate success rate from request log
-function calculateSuccessRate(): number {
-  if (requestLog.length === 0) return 0
-  const successfulRequests = requestLog.filter((req) => req.success).length
-  return Math.round((successfulRequests / requestLog.length) * 100)
-}
-
-// Endpoint to get diagnostic information
-export async function GET() {
-  return NextResponse.json({
-    status: "operational",
-    openAIKeyValidated,
-    openAIKeyError,
-    requestCount: requestLog.length,
-    successRate: calculateSuccessRate(),
-    recentRequests: requestLog.slice(-10).map((req) => ({
-      timestamp: req.timestamp,
-      subject: req.subject,
-      success: req.success,
-      provider: req.provider,
-      responseTime: req.responseTime,
-    })),
-    timestamp: new Date().toISOString(),
-  })
 }
