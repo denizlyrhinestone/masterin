@@ -1,6 +1,7 @@
 "use client"
 
 import type React from "react"
+
 import { useState, useRef, useEffect } from "react"
 import { ChatMessage } from "./chat-message"
 import { SubjectSelector } from "./subject-selector"
@@ -8,10 +9,10 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw, AlertTriangle } from "lucide-react"
+import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
-// Message type definition
+// Message type definition with extended properties
 type Message = {
   id: string
   role: "user" | "assistant" | "system"
@@ -35,6 +36,25 @@ const initialMessages: Message[] = [
   },
 ]
 
+// Sample responses for fallback mode (used when API is having issues)
+const fallbackResponses = {
+  math: [
+    "In mathematics, it's important to understand the underlying concepts rather than just memorizing formulas. Could you tell me more specifically what math topic you're working on?",
+    "Mathematics builds on foundational concepts. Let's break down your question step by step. Could you provide more details about what you're trying to solve?",
+    "When approaching math problems, I recommend starting with the basics and working your way up. What specific concept are you struggling with?",
+  ],
+  science: [
+    "Science is all about observation, hypothesis, and experimentation. Could you tell me more about the specific scientific concept you're interested in?",
+    "In science, we often use models to understand complex phenomena. What particular aspect of science are you studying?",
+    "Scientific understanding evolves over time as we gather more evidence. What specific science topic would you like to explore?",
+  ],
+  general: [
+    "Learning is most effective when we connect new information to what we already know. Could you tell me more about what you're trying to learn?",
+    "I'd be happy to help you understand this topic better. Could you provide more specific details about your question?",
+    "Education is a journey of discovery. Let's explore this topic together. What specific aspects are you curious about?",
+  ],
+}
+
 export function AITutorInterface() {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [input, setInput] = useState("")
@@ -45,14 +65,16 @@ export function AITutorInterface() {
   const [isOfflineMode, setIsOfflineMode] = useState(false)
   const [consecutiveErrors, setConsecutiveErrors] = useState(0)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [serviceStatus, setServiceStatus] = useState<{
-    status: "operational" | "degraded" | "offline" | "unknown"
-    provider?: string
+  const [serviceHealth, setServiceHealth] = useState<{
+    status: "operational" | "degraded" | "offline"
     lastChecked: Date | null
+    provider?: string
   }>({
-    status: "unknown",
+    status: "operational",
     lastChecked: null,
   })
+  const [isAutoRetryEnabled, setIsAutoRetryEnabled] = useState(true)
+  const [retryDelay, setRetryDelay] = useState(30) // seconds
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -78,107 +100,140 @@ export function AITutorInterface() {
     }
   }, [])
 
-  // Check AI service health on component mount
-  useEffect(() => {
-    checkServiceHealth()
-  }, [])
+  // Get a fallback response when API is having issues
+  const getFallbackResponse = (subject: string): string => {
+    const subjectResponses = fallbackResponses[subject as keyof typeof fallbackResponses] || fallbackResponses.general
+    const randomIndex = Math.floor(Math.random() * subjectResponses.length)
+    return subjectResponses[randomIndex]
+  }
 
-  // Check AI service health
-  const checkServiceHealth = async () => {
-    try {
-      const response = await fetch("/api/ai-health")
-      if (!response.ok) throw new Error("Health check failed")
+  // Update service health status
+  const updateServiceHealth = (status: "operational" | "degraded" | "offline", provider?: string) => {
+    setServiceHealth({
+      status,
+      lastChecked: new Date(),
+      provider,
+    })
 
-      const data = await response.json()
-
-      setServiceStatus({
-        status: data.status,
-        provider: data.activeProvider,
-        lastChecked: new Date(),
-      })
-
-      // If service is operational but we're in offline mode, switch back
-      if (data.status === "operational" && isOfflineMode) {
+    // If service is operational, we can switch out of offline mode
+    if (status === "operational" && isOfflineMode) {
+      // Add a small delay to avoid immediate switching
+      setTimeout(() => {
         setIsOfflineMode(false)
-        setConsecutiveErrors(0)
-
-        // Add system message about reconnection
+        // Add system message about reconnecting
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now().toString() + "-system",
             role: "system",
-            content: "AI service is now available. Full capabilities restored.",
+            content: "Successfully reconnected to AI service. Full capabilities restored.",
+            timestamp: new Date(),
+            status: "success",
+          },
+        ])
+      }, 1000)
+    }
+  }
+
+  // Setup auto-retry based on service health
+  useEffect(() => {
+    if (!isAutoRetryEnabled || serviceHealth.status === "operational" || isLoading) {
+      // Clear any existing timeout
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+        retryTimeoutRef.current = null
+      }
+      return
+    }
+
+    // If service is degraded or offline, setup auto-retry
+    if (serviceHealth.status !== "operational" && !retryTimeoutRef.current) {
+      retryTimeoutRef.current = setTimeout(() => {
+        // Clear timeout reference
+        retryTimeoutRef.current = null
+
+        // Add system message about retry attempt
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString() + "-system",
+            role: "system",
+            content: "Automatically checking AI service availability...",
+            timestamp: new Date(),
+            status: "success",
+          },
+        ])
+
+        // Perform health check by sending a simple request
+        handleHealthCheck()
+      }, retryDelay * 1000)
+    }
+  }, [serviceHealth.status, isAutoRetryEnabled, isLoading, retryDelay])
+
+  // Perform a health check on the AI service
+  const handleHealthCheck = async () => {
+    try {
+      const response = await fetch("/api/ai-tutor", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: "Hello, this is a health check. Please respond with 'operational' if you can process requests.",
+          subject: "general",
+          healthCheck: true,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Health check failed")
+      }
+
+      // Update service health based on response
+      if (data.fallback) {
+        updateServiceHealth("degraded", data.provider)
+
+        // Add system message about degraded service
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString() + "-system",
+            role: "system",
+            content:
+              "AI service is responding but with limited capabilities. Some advanced features may be unavailable.",
+            timestamp: new Date(),
+            status: "success",
+          },
+        ])
+      } else {
+        updateServiceHealth("operational", data.provider)
+        setConsecutiveErrors(0)
+
+        // Add system message about restored service
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString() + "-system",
+            role: "system",
+            content: "AI service is fully operational. All capabilities have been restored.",
             timestamp: new Date(),
             status: "success",
           },
         ])
       }
     } catch (error) {
-      console.error("Error checking AI service health:", error)
-      setServiceStatus({
-        status: "unknown",
-        lastChecked: new Date(),
-      })
-    }
-  }
+      console.error("Health check failed:", error)
+      updateServiceHealth("offline")
 
-  // Force a health check on all providers
-  const forceHealthCheck = async () => {
-    try {
+      // Add system message about offline service
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString() + "-system",
           role: "system",
-          content: "Running AI service diagnostics...",
-          timestamp: new Date(),
-          status: "success",
-        },
-      ])
-
-      const response = await fetch("/api/ai-health", {
-        method: "POST",
-      })
-
-      if (!response.ok) throw new Error("Health check failed")
-
-      const data = await response.json()
-
-      // Update service status based on results
-      const anyAvailable = Object.values(data.results).some(Boolean)
-
-      setServiceStatus({
-        status: anyAvailable ? "operational" : "offline",
-        lastChecked: new Date(),
-      })
-
-      // Add system message with results
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString() + "-system",
-          role: "system",
-          content: `Diagnostics complete. AI service status: ${anyAvailable ? "Available" : "Unavailable"}`,
-          timestamp: new Date(),
-          status: "success",
-        },
-      ])
-
-      // If any service is available but we're in offline mode, switch back
-      if (anyAvailable && isOfflineMode) {
-        setIsOfflineMode(false)
-        setConsecutiveErrors(0)
-      }
-    } catch (error) {
-      console.error("Error running health checks:", error)
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString() + "-system",
-          role: "system",
-          content: "Diagnostics failed. Unable to determine AI service status.",
+          content: "AI service appears to be offline. Continuing in offline mode with limited capabilities.",
           timestamp: new Date(),
           status: "success",
         },
@@ -215,30 +270,6 @@ export function AITutorInterface() {
     setErrorMessage(null)
 
     try {
-      // If in offline mode, use fallback responses
-      if (isOfflineMode) {
-        // Simulate network delay
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-
-        // Update the placeholder message with a fallback response
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantPlaceholder.id
-              ? {
-                  ...msg,
-                  content:
-                    "I'm currently in offline mode with limited capabilities. To provide better assistance, please try reconnecting when the AI service is available again. In the meantime, could you specify what you'd like to learn about?",
-                  status: "success",
-                  isFallback: true,
-                  errorCode: "OFFLINE_MODE",
-                }
-              : msg,
-          ),
-        )
-        setIsLoading(false)
-        return
-      }
-
       // Send message to AI and get response
       const response = await fetch("/api/ai-tutor", {
         method: "POST",
@@ -257,18 +288,45 @@ export function AITutorInterface() {
         }),
       })
 
-      const data = await response.json()
-
       if (!response.ok) {
-        throw new Error(data.error || "Failed to get response from AI tutor")
+        const errorData = await response.json()
+        throw new Error(errorData.error || `Server responded with status: ${response.status}`)
       }
 
-      // Update service status based on response
-      setServiceStatus({
-        status: data.fallback ? "degraded" : "operational",
-        provider: data.provider,
-        lastChecked: new Date(),
-      })
+      const data = await response.json()
+
+      // Add detailed diagnostics if available
+      if (data.diagnostics) {
+        console.log("AI Service Diagnostics:", data.diagnostics)
+      }
+
+      // Update the service health based on response
+      if (data.fallback) {
+        updateServiceHealth(
+          data.errorCode === "CONNECTION_ERROR" || data.errorCode === "AUTHENTICATION_ERROR" ? "offline" : "degraded",
+          data.provider,
+        )
+
+        // If we got an authentication error, show a more helpful message
+        if (data.errorCode === "AUTHENTICATION_ERROR") {
+          setErrorMessage("API key validation failed. Please check your AI service configuration.")
+
+          // Add system message about API key issue
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: Date.now().toString() + "-system",
+              role: "system",
+              content:
+                "There appears to be an issue with the AI service authentication. Please contact the administrator to verify API keys.",
+              timestamp: new Date(),
+              status: "success",
+            },
+          ])
+        }
+      } else {
+        updateServiceHealth("operational", data.provider)
+      }
 
       // Update the placeholder message with the actual response
       setMessages((prev) =>
@@ -281,12 +339,13 @@ export function AITutorInterface() {
                 isFallback: data.fallback || false,
                 errorCode: data.errorCode,
                 provider: data.provider,
+                diagnosticInfo: data.diagnostics, // Store diagnostic info for debugging
               }
             : msg,
         ),
       )
 
-      // If we got a fallback response from the server, increment error count
+      // If we got a fallback response or specific error code from the server, handle accordingly
       if (data.fallback) {
         setConsecutiveErrors((prev) => prev + 1)
 
@@ -294,13 +353,13 @@ export function AITutorInterface() {
         if (consecutiveErrors >= 2 || data.errorCode === "SERVICE_COOLDOWN") {
           setIsOfflineMode(true)
 
-          // Add system message about offline mode
+          // Add system message about offline mode with more details
           setMessages((prev) => [
             ...prev,
             {
               id: Date.now().toString() + "-system",
               role: "system",
-              content: "Switched to offline mode due to AI service issues. Some features may be limited.",
+              content: `Switched to offline mode due to ${data.errorCode || "connectivity issues"}. Some features may be limited. ${data.errorDetails ? `Details: ${data.errorDetails}` : ""}`,
               timestamp: new Date(),
               status: "success",
             },
@@ -313,11 +372,16 @@ export function AITutorInterface() {
     } catch (error: any) {
       console.error("Error getting AI response:", error)
 
-      // Update service status to reflect the error
-      setServiceStatus({
-        status: "offline",
-        lastChecked: new Date(),
+      // Log detailed error information
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack?.split("\n")[0],
+        isOfflineMode,
+        consecutiveErrors,
       })
+
+      // Update service health to reflect the error
+      updateServiceHealth("offline")
 
       // Increment consecutive errors
       setConsecutiveErrors((prev) => prev + 1)
@@ -332,23 +396,23 @@ export function AITutorInterface() {
             msg.id === assistantPlaceholder.id
               ? {
                   ...msg,
-                  content:
-                    "I'm having trouble connecting to my knowledge base. Could you ask a more specific question that I might be able to answer with my basic capabilities?",
+                  content: getFallbackResponse(selectedSubject),
                   status: "success",
                   isFallback: true,
                   errorCode: "CONNECTIVITY_FAILURE",
+                  errorDetails: error.message,
                 }
               : msg,
           ),
         )
 
-        // Add system message about offline mode
+        // Add system message about offline mode with error details
         setMessages((prev) => [
           ...prev,
           {
             id: Date.now().toString() + "-system",
             role: "system",
-            content: "Switched to offline mode due to connectivity issues. Some features may be limited.",
+            content: `Switched to offline mode due to connectivity issues. Error: ${error.message || "Unknown error"}`,
             timestamp: new Date(),
             status: "success",
           },
@@ -361,19 +425,20 @@ export function AITutorInterface() {
               ? {
                   ...msg,
                   content:
-                    "I encountered an error processing your request. Please try again or ask a different question.",
+                    "I'm sorry, I encountered an error processing your request. You can try again or ask a different question.",
                   status: "error",
                   errorCode: "REQUEST_FAILED",
+                  errorDetails: error.message,
                 }
               : msg,
           ),
         )
       }
 
-      // Show error toast
+      // Show error toast with more specific information
       toast({
         title: "AI Tutor Error",
-        description: error.message || "Failed to get a response. Please try again.",
+        description: `${error.message || "Failed to get a response"}. Try switching subjects or simplifying your question.`,
         variant: "destructive",
       })
 
@@ -398,7 +463,7 @@ export function AITutorInterface() {
     // Remove the last assistant message if it was an error
     setMessages((prev) => {
       const lastMessage = prev[prev.length - 1]
-      if (lastMessage.role === "assistant" && (lastMessage.status === "error" || lastMessage.isFallback)) {
+      if (lastMessage.role === "assistant" && lastMessage.status === "error") {
         return prev.slice(0, -1)
       }
       return prev
@@ -428,8 +493,8 @@ export function AITutorInterface() {
       },
     ])
 
-    // Run health check
-    forceHealthCheck()
+    // Perform health check
+    handleHealthCheck()
   }
 
   // Handle key press (Enter to send)
@@ -475,6 +540,25 @@ export function AITutorInterface() {
     setMessages((prev) => [...prev, systemMessage])
   }
 
+  // Toggle auto retry feature
+  const toggleAutoRetry = () => {
+    setIsAutoRetryEnabled(!isAutoRetryEnabled)
+
+    // Add system message about auto retry status
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString() + "-system",
+        role: "system",
+        content: !isAutoRetryEnabled
+          ? "Auto-retry enabled. System will periodically check for service availability."
+          : "Auto-retry disabled. You'll need to manually reconnect when ready.",
+        timestamp: new Date(),
+        status: "success",
+      },
+    ])
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -514,19 +598,19 @@ export function AITutorInterface() {
                       Offline Mode
                     </span>
                   )}
-                  {serviceStatus.status === "degraded" && !isOfflineMode && (
+                  {serviceHealth.status === "degraded" && !isOfflineMode && (
                     <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                       Limited Capabilities
                     </span>
                   )}
-                  {serviceStatus.status === "operational" && serviceStatus.provider && (
+                  {serviceHealth.status === "operational" && serviceHealth.provider && (
                     <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">
-                      {serviceStatus.provider} Active
+                      {serviceHealth.provider} Active
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {(isOfflineMode || serviceStatus.status !== "operational") && (
+                  {(isOfflineMode || serviceHealth.status !== "operational") && (
                     <Button
                       variant="outline"
                       size="sm"
@@ -560,7 +644,7 @@ export function AITutorInterface() {
                     Thinking...
                   </div>
                 )}
-                {retryCount > 0 && !isLoading && (
+                {retryCount > 0 && !isLoading && !isOfflineMode && (
                   <div className="flex items-center justify-center gap-2 my-2">
                     <Button
                       variant="outline"
@@ -574,11 +658,12 @@ export function AITutorInterface() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={forceHealthCheck}
-                      className="flex items-center gap-1 text-xs"
+                      onClick={toggleAutoRetry}
+                      className={`flex items-center gap-1 text-xs ${
+                        isAutoRetryEnabled ? "bg-emerald-50 text-emerald-700 border-emerald-200" : ""
+                      }`}
                     >
-                      <AlertTriangle className="h-3 w-3" />
-                      Run Diagnostics
+                      {isAutoRetryEnabled ? "Auto-Retry On" : "Auto-Retry Off"}
                     </Button>
                   </div>
                 )}

@@ -13,6 +13,7 @@ type ChatMessageProps = {
     isFallback?: boolean
     errorCode?: string
     provider?: string
+    diagnosticInfo?: any
   }
 }
 
@@ -33,9 +34,6 @@ export function ChatMessage({ message }: ChatMessageProps) {
       SERVICE_COOLDOWN: "Service Cooldown",
       OFFLINE_MODE: "Offline Mode",
       REQUEST_FAILED: "Request Failed",
-      GENERAL_ERROR: "Service Issue",
-      INVALID_API_KEY: "Configuration Error",
-      NO_MODEL_AVAILABLE: "No Model Available",
     }
 
     return errorLabels[code] || code
@@ -79,6 +77,32 @@ export function ChatMessage({ message }: ChatMessageProps) {
       >
         <div className="whitespace-pre-wrap">
           {message.content}
+          {message.role === "assistant" && message.diagnosticInfo && (isError || isFallback) && (
+            <div className="mt-2 border-t border-dashed border-gray-200 pt-2 text-xs text-gray-500">
+              <details className="group">
+                <summary className="cursor-pointer text-xs font-medium hover:text-emerald-600">
+                  Diagnostic Information
+                </summary>
+                <div className="mt-1 space-y-1 pl-2 text-xs">
+                  {message.diagnosticInfo.errorType && (
+                    <div>
+                      <span className="font-medium">Type:</span> {message.diagnosticInfo.errorType}
+                    </div>
+                  )}
+                  {message.diagnosticInfo.recommendation && (
+                    <div>
+                      <span className="font-medium">Recommendation:</span> {message.diagnosticInfo.recommendation}
+                    </div>
+                  )}
+                  {message.diagnosticInfo.provider && (
+                    <div>
+                      <span className="font-medium">Provider:</span> {message.diagnosticInfo.provider}
+                    </div>
+                  )}
+                </div>
+              </details>
+            </div>
+          )}
           {isSending && (
             <span className="inline-flex items-center ml-2">
               <Loader2 className="h-3 w-3 animate-spin text-gray-400" />
