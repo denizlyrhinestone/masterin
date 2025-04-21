@@ -33,6 +33,9 @@ export function ChatMessage({ message }: ChatMessageProps) {
       SERVICE_COOLDOWN: "Service Cooldown",
       OFFLINE_MODE: "Offline Mode",
       REQUEST_FAILED: "Request Failed",
+      GENERAL_ERROR: "Service Issue",
+      INVALID_API_KEY: "Configuration Error",
+      NO_MODEL_AVAILABLE: "No Model Available",
     }
 
     return errorLabels[code] || code

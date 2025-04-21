@@ -1,6 +1,7 @@
 import { openai } from "@ai-sdk/openai"
 import { groq } from "@ai-sdk/groq"
 import { xai } from "@ai-sdk/xai"
+import { generateText } from "ai"
 
 type ModelProvider = "openai" | "groq" | "xai" | "fallback"
 
@@ -11,9 +12,10 @@ interface AIServiceHealth {
   status: "available" | "unavailable" | "unknown"
   responseTime?: number
   errorCount: number
+  lastError?: string
 }
 
-// Track AI service health
+// Track AI service health - using a global variable to persist across requests
 const serviceHealth: Record<string, AIServiceHealth> = {
   openai: { provider: "openai", lastChecked: 0, status: "unknown", errorCount: 0 },
   groq: { provider: "groq", lastChecked: 0, status: "unknown", errorCount: 0 },
@@ -60,12 +62,13 @@ export function updateServiceHealth(
 
   if (status === "unavailable") {
     health.errorCount++
-    console.warn(`AI provider ${provider} reported unavailable. Error count: ${health.errorCount}`)
     if (error) {
-      console.error(`Error with ${provider}:`, error.message)
+      health.lastError = error.message
     }
+    console.warn(`AI provider ${provider} reported unavailable. Error count: ${health.errorCount}`)
   } else {
     health.errorCount = 0
+    health.lastError = undefined
   }
 
   // Log service health to aid debugging
@@ -80,65 +83,74 @@ export function getAIServiceHealthReport(): Record<string, AIServiceHealth> {
 }
 
 /**
+ * Performs a health check on a specific AI provider
+ */
+export async function checkProviderHealth(provider: ModelProvider): Promise<boolean> {
+  if (provider === "fallback") return false
+
+  try {
+    const model = getModelForProvider(provider)
+    if (!model) return false
+
+    const startTime = Date.now()
+
+    // Simple health check query
+    await generateText({
+      model,
+      prompt: "Health check. Please respond with 'OK'.",
+      maxTokens: 5,
+    })
+
+    const responseTime = Date.now() - startTime
+    updateServiceHealth(provider, "available", responseTime)
+    return true
+  } catch (error: any) {
+    updateServiceHealth(provider, "unavailable", undefined, error)
+    console.error(`Health check failed for ${provider}:`, error.message)
+    return false
+  }
+}
+
+/**
+ * Gets the appropriate model for a provider
+ */
+function getModelForProvider(provider: ModelProvider) {
+  switch (provider) {
+    case "openai":
+      return process.env.OPENAI_API_KEY ? openai("gpt-4o") : null
+    case "groq":
+      return process.env.GROQ_API_KEY ? groq("llama3-70b-8192") : null
+    case "xai":
+      return process.env.XAI_API_KEY ? xai("grok-1") : null
+    default:
+      return null
+  }
+}
+
+/**
  * Selects the best available AI model based on environment variables and health status
  */
 export function selectAIModel() {
-  // Primary model selection with better validation
-  // Check for OpenAI API key
-  if (
-    process.env.OPENAI_API_KEY &&
-    validateApiKey(process.env.OPENAI_API_KEY, "openai") &&
-    (serviceHealth.openai.status !== "unavailable" || serviceHealth.openai.errorCount < 3)
-  ) {
-    return {
-      model: openai("gpt-4o"),
-      provider: "openai" as ModelProvider,
+  // Check if we have valid API keys and select the best available model
+  const providers: ModelProvider[] = ["openai", "groq", "xai"]
+
+  // First try providers that are known to be available
+  for (const provider of providers) {
+    if (isProviderAvailable(provider)) {
+      return {
+        model: getModelForProvider(provider),
+        provider,
+      }
     }
   }
 
-  // Check for Groq API key
-  if (
-    process.env.GROQ_API_KEY &&
-    validateApiKey(process.env.GROQ_API_KEY, "groq") &&
-    (serviceHealth.groq.status !== "unavailable" || serviceHealth.groq.errorCount < 3)
-  ) {
-    return {
-      model: groq("llama3-70b-8192"),
-      provider: "groq" as ModelProvider,
-    }
-  }
-
-  // Check for XAI (Grok) API key
-  if (
-    process.env.XAI_API_KEY &&
-    validateApiKey(process.env.XAI_API_KEY, "xai") &&
-    (serviceHealth.xai.status !== "unavailable" || serviceHealth.xai.errorCount < 3)
-  ) {
-    return {
-      model: xai("grok-1"),
-      provider: "xai" as ModelProvider,
-    }
-  }
-
-  // Fallback: try any provider that hasn't failed too many times, even if marked unavailable
-  if (process.env.OPENAI_API_KEY && serviceHealth.openai.errorCount < 5) {
-    return {
-      model: openai("gpt-4o"),
-      provider: "openai" as ModelProvider,
-    }
-  }
-
-  if (process.env.GROQ_API_KEY && serviceHealth.groq.errorCount < 5) {
-    return {
-      model: groq("llama3-70b-8192"),
-      provider: "groq" as ModelProvider,
-    }
-  }
-
-  if (process.env.XAI_API_KEY && serviceHealth.xai.errorCount < 5) {
-    return {
-      model: xai("grok-1"),
-      provider: "xai" as ModelProvider,
+  // If no provider is known to be available, try any provider that hasn't failed too many times
+  for (const provider of providers) {
+    if (canTryProvider(provider)) {
+      return {
+        model: getModelForProvider(provider),
+        provider,
+      }
     }
   }
 
@@ -148,6 +160,40 @@ export function selectAIModel() {
     model: null,
     provider: "fallback" as ModelProvider,
   }
+}
+
+/**
+ * Checks if a provider is available based on API key and health status
+ */
+function isProviderAvailable(provider: ModelProvider): boolean {
+  const apiKeys = {
+    openai: process.env.OPENAI_API_KEY,
+    groq: process.env.GROQ_API_KEY,
+    xai: process.env.XAI_API_KEY,
+  }
+
+  const key = apiKeys[provider as keyof typeof apiKeys]
+
+  return !!key && validateApiKey(key, provider) && serviceHealth[provider]?.status === "available"
+}
+
+/**
+ * Checks if we can try a provider even if it's not known to be available
+ */
+function canTryProvider(provider: ModelProvider): boolean {
+  const apiKeys = {
+    openai: process.env.OPENAI_API_KEY,
+    groq: process.env.GROQ_API_KEY,
+    xai: process.env.XAI_API_KEY,
+  }
+
+  const key = apiKeys[provider as keyof typeof apiKeys]
+
+  return (
+    !!key &&
+    validateApiKey(key, provider) &&
+    (serviceHealth[provider]?.status !== "unavailable" || serviceHealth[provider]?.errorCount < 3)
+  )
 }
 
 /**
