@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { MainNav } from "@/components/main-nav"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
+import "../lib/init-services" // Import to initialize services
 
 const inter = Inter({ subsets: ["latin"] })
 

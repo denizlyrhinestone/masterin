@@ -1,7 +1,6 @@
 "use client"
 
-import React from "react"
-
+import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { ChatMessage } from "./chat-message"
 import { SubjectSelector } from "./subject-selector"
@@ -13,6 +12,10 @@ import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw, AlertTrian
 import { showErrorToast, ErrorSeverity, ErrorCategory, ErrorCodes } from "@/lib/error-handling"
 import type { FallbackTier } from "@/lib/tiered-fallback-strategy"
 import { FallbackTrigger } from "@/lib/fallback-analyzer"
+import { ServiceStatusIndicator } from "@/components/service-status-indicator"
+import { ServiceType } from "@/lib/service-health"
+import { FeatureAvailability } from "@/components/feature-availability"
+import { FeatureType } from "@/lib/feature-flags"
 
 // Message type definition with extended properties
 type Message = {
@@ -673,6 +676,7 @@ export function AITutorInterface() {
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-emerald-600" />
                   <h3 className="font-semibold">AI Tutor Chat</h3>
+                  <FeatureAvailability featureType={FeatureType.AI_TUTOR} />
                   {isOfflineMode && (
                     <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
                       Offline Mode
@@ -718,6 +722,13 @@ export function AITutorInterface() {
                   </Button>
                 </div>
               </div>
+              {diagnosticMode && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <ServiceStatusIndicator serviceType={ServiceType.OPENAI} showLabel />
+                  <ServiceStatusIndicator serviceType={ServiceType.GROQ} showLabel />
+                  <ServiceStatusIndicator serviceType={ServiceType.XAI} showLabel />
+                </div>
+              )}
             </CardHeader>
             <CardContent className="h-[500px] overflow-y-auto p-4 bg-gray-50/30">
               <div className="flex flex-col space-y-4">
@@ -730,54 +741,6 @@ export function AITutorInterface() {
                     </div>
                   ) : (
                     <ChatMessage key={message.id} message={message} showDiagnostics={diagnosticMode} />
-                  ),
-                )}
-                {messages.map((message) =>
-                  message.role !== "system" ? (
-                    <React.Fragment key={message.id}>
-                      <ChatMessage message={message} showDiagnostics={diagnosticMode} />
-                      {message.isFallback && diagnosticMode && (
-                        <div className="mt-2 border-t border-dashed border-amber-200 pt-2 text-xs text-amber-700">
-                          <details className="group">
-                            <summary className="cursor-pointer text-xs font-medium hover:text-amber-800">
-                              Fallback Response Details
-                            </summary>
-                            <div className="mt-1 space-y-1 pl-2 text-xs">
-                              {message.fallbackTier && (
-                                <div>
-                                  <span className="font-medium">Fallback Tier:</span> {message.fallbackTier}
-                                </div>
-                              )}
-                              {message.fallbackTrigger && (
-                                <div>
-                                  <span className="font-medium">Trigger:</span> {message.fallbackTrigger}
-                                </div>
-                              )}
-                              {message.fallbackContentType && (
-                                <div>
-                                  <span className="font-medium">Content Type:</span> {message.fallbackContentType}
-                                </div>
-                              )}
-                              {message.errorCode && (
-                                <div>
-                                  <span className="font-medium">Error Code:</span> {message.errorCode}
-                                </div>
-                              )}
-                              <div>
-                                <span className="font-medium">Recommendation:</span>{" "}
-                                {getFallbackRecommendation(message.fallbackTrigger)}
-                              </div>
-                            </div>
-                          </details>
-                        </div>
-                      )}
-                    </React.Fragment>
-                  ) : (
-                    <div key={message.id} className="flex justify-center my-2">
-                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                        {message.content}
-                      </span>
-                    </div>
                   ),
                 )}
                 {isLoading && messages[messages.length - 1]?.status !== "sending" && (

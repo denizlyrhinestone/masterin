@@ -15,36 +15,50 @@ import {
 } from "@/components/ui/navigation-menu"
 import { Button } from "@/components/ui/button"
 import { Search, Menu, X } from "lucide-react"
+import { ServiceStatusIndicator } from "@/components/service-status-indicator"
+import { ServiceType } from "@/lib/service-health"
+
+// Define which features are implemented
+const IMPLEMENTED_FEATURES = {
+  AI_TUTOR: true,
+  AI_STUDY_ASSISTANT: false,
+  AI_WRITING_HELPER: false,
+  AI_PROBLEM_SOLVER: false,
+  COURSES: false,
+  EDUCATORS: false,
+  COMMUNITY: false,
+  ABOUT: false,
+}
 
 const courseCategories = [
   {
     title: "Mathematics",
-    href: "/courses/mathematics",
+    href: IMPLEMENTED_FEATURES.COURSES ? "/courses/mathematics" : "/coming-soon",
     description: "Algebra, Calculus, Geometry, and more",
   },
   {
     title: "Science",
-    href: "/courses/science",
+    href: IMPLEMENTED_FEATURES.COURSES ? "/courses/science" : "/coming-soon",
     description: "Physics, Chemistry, Biology, and Earth Sciences",
   },
   {
     title: "Language Arts",
-    href: "/courses/language-arts",
+    href: IMPLEMENTED_FEATURES.COURSES ? "/courses/language-arts" : "/coming-soon",
     description: "Reading, Writing, Literature, and Communication",
   },
   {
     title: "Social Studies",
-    href: "/courses/social-studies",
+    href: IMPLEMENTED_FEATURES.COURSES ? "/courses/social-studies" : "/coming-soon",
     description: "History, Geography, Economics, and Civics",
   },
   {
     title: "Computer Science",
-    href: "/courses/computer-science",
+    href: IMPLEMENTED_FEATURES.COURSES ? "/courses/computer-science" : "/coming-soon",
     description: "Programming, Web Development, and Data Science",
   },
   {
     title: "Arts & Music",
-    href: "/courses/arts-music",
+    href: IMPLEMENTED_FEATURES.COURSES ? "/courses/arts-music" : "/coming-soon",
     description: "Visual Arts, Music Theory, and Creative Expression",
   },
 ]
@@ -52,23 +66,31 @@ const courseCategories = [
 const aiFeatures = [
   {
     title: "AI Tutor",
-    href: "/ai-tutor",
+    href: IMPLEMENTED_FEATURES.AI_TUTOR ? "/ai-tutor" : "/coming-soon",
     description: "Get personalized help with homework and learning concepts",
+    implemented: IMPLEMENTED_FEATURES.AI_TUTOR,
+    serviceType: ServiceType.OPENAI,
   },
   {
     title: "Study Assistant",
-    href: "/ai-study-assistant",
+    href: IMPLEMENTED_FEATURES.AI_STUDY_ASSISTANT ? "/ai-study-assistant" : "/coming-soon",
     description: "Create study plans, flashcards, and practice quizzes",
+    implemented: IMPLEMENTED_FEATURES.AI_STUDY_ASSISTANT,
+    serviceType: ServiceType.OPENAI,
   },
   {
     title: "Writing Helper",
-    href: "/ai-writing-helper",
+    href: IMPLEMENTED_FEATURES.AI_WRITING_HELPER ? "/ai-writing-helper" : "/coming-soon",
     description: "Improve your essays with feedback and suggestions",
+    implemented: IMPLEMENTED_FEATURES.AI_WRITING_HELPER,
+    serviceType: ServiceType.OPENAI,
   },
   {
     title: "Problem Solver",
-    href: "/ai-problem-solver",
+    href: IMPLEMENTED_FEATURES.AI_PROBLEM_SOLVER ? "/ai-problem-solver" : "/coming-soon",
     description: "Step-by-step solutions for math and science problems",
+    implemented: IMPLEMENTED_FEATURES.AI_PROBLEM_SOLVER,
+    serviceType: ServiceType.OPENAI,
   },
 ]
 
@@ -101,6 +123,11 @@ export function MainNav() {
                           >
                             <div className="text-sm font-medium leading-none">{category.title}</div>
                             <p className="line-clamp-2 text-sm leading-snug text-slate-500">{category.description}</p>
+                            {!IMPLEMENTED_FEATURES.COURSES && (
+                              <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                Coming Soon
+                              </span>
+                            )}
                           </Link>
                         </NavigationMenuLink>
                       </li>
@@ -121,8 +148,16 @@ export function MainNav() {
                             href={feature.href}
                             className="block select-none space-y-1 rounded-md p-3 leading-none no-underline outline-none transition-colors duration-200 hover:bg-slate-100 focus:bg-slate-100"
                           >
-                            <div className="text-sm font-medium leading-none">{feature.title}</div>
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-medium leading-none">{feature.title}</div>
+                              {feature.implemented && <ServiceStatusIndicator serviceType={feature.serviceType} />}
+                            </div>
                             <p className="line-clamp-2 text-sm leading-snug text-slate-500">{feature.description}</p>
+                            {!feature.implemented && (
+                              <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                                Coming Soon
+                              </span>
+                            )}
                           </Link>
                         </NavigationMenuLink>
                       </li>
@@ -131,21 +166,21 @@ export function MainNav() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link href="/educators" legacyBehavior passHref>
+                <Link href={IMPLEMENTED_FEATURES.EDUCATORS ? "/educators" : "/coming-soon"} legacyBehavior passHref>
                   <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "transition-colors duration-200")}>
                     Educators
                   </NavigationMenuLink>
                 </Link>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link href="/community" legacyBehavior passHref>
+                <Link href={IMPLEMENTED_FEATURES.COMMUNITY ? "/community" : "/coming-soon"} legacyBehavior passHref>
                   <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "transition-colors duration-200")}>
                     Community
                   </NavigationMenuLink>
                 </Link>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link href="/about" legacyBehavior passHref>
+                <Link href={IMPLEMENTED_FEATURES.ABOUT ? "/about" : "/coming-soon"} legacyBehavior passHref>
                   <NavigationMenuLink className={cn(navigationMenuTriggerStyle(), "transition-colors duration-200")}>
                     About
                   </NavigationMenuLink>
@@ -189,7 +224,7 @@ export function MainNav() {
         <div className="md:hidden">
           <div className="space-y-1 px-4 pb-3 pt-2">
             <Link
-              href="/courses"
+              href={IMPLEMENTED_FEATURES.COURSES ? "/courses" : "/coming-soon"}
               className={cn(
                 "block rounded-md px-3 py-2 text-base font-medium transition-colors duration-200",
                 pathname.startsWith("/courses")
@@ -198,9 +233,14 @@ export function MainNav() {
               )}
             >
               Courses
+              {!IMPLEMENTED_FEATURES.COURSES && (
+                <span className="ml-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                  Coming Soon
+                </span>
+              )}
             </Link>
             <Link
-              href="/ai-tutor"
+              href={IMPLEMENTED_FEATURES.AI_TUTOR ? "/ai-tutor" : "/coming-soon"}
               className={cn(
                 "block rounded-md px-3 py-2 text-base font-medium text-emerald-600 relative transition-colors duration-200",
                 pathname.startsWith("/ai")
@@ -212,7 +252,7 @@ export function MainNav() {
               <span className="absolute top-0 right-0 -mt-1 -mr-1 w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
             </Link>
             <Link
-              href="/educators"
+              href={IMPLEMENTED_FEATURES.EDUCATORS ? "/educators" : "/coming-soon"}
               className={cn(
                 "block rounded-md px-3 py-2 text-base font-medium transition-colors duration-200",
                 pathname.startsWith("/educators")
@@ -221,9 +261,14 @@ export function MainNav() {
               )}
             >
               Educators
+              {!IMPLEMENTED_FEATURES.EDUCATORS && (
+                <span className="ml-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                  Coming Soon
+                </span>
+              )}
             </Link>
             <Link
-              href="/community"
+              href={IMPLEMENTED_FEATURES.COMMUNITY ? "/community" : "/coming-soon"}
               className={cn(
                 "block rounded-md px-3 py-2 text-base font-medium transition-colors duration-200",
                 pathname.startsWith("/community")
@@ -232,9 +277,14 @@ export function MainNav() {
               )}
             >
               Community
+              {!IMPLEMENTED_FEATURES.COMMUNITY && (
+                <span className="ml-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                  Coming Soon
+                </span>
+              )}
             </Link>
             <Link
-              href="/about"
+              href={IMPLEMENTED_FEATURES.ABOUT ? "/about" : "/coming-soon"}
               className={cn(
                 "block rounded-md px-3 py-2 text-base font-medium transition-colors duration-200",
                 pathname.startsWith("/about")
@@ -243,6 +293,11 @@ export function MainNav() {
               )}
             >
               About
+              {!IMPLEMENTED_FEATURES.ABOUT && (
+                <span className="ml-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                  Coming Soon
+                </span>
+              )}
             </Link>
             <div className="mt-4 flex flex-col space-y-2">
               <Button variant="outline" asChild className="w-full justify-center transition-colors duration-200">
