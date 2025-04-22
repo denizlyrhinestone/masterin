@@ -299,12 +299,29 @@ export function AITutorInterface() {
         }),
       })
 
+      // Check if the response is ok before trying to parse JSON
       if (!response.ok) {
-        const errorData = await response.json()
+        // Try to parse the error response as JSON
+        let errorData
+        try {
+          errorData = await response.json()
+        } catch (jsonError) {
+          // If we can't parse as JSON, get the text content
+          const textContent = await response.text()
+          throw new Error(`Server error (${response.status}): ${textContent.substring(0, 100)}...`)
+        }
         throw new Error(errorData.error || `Server responded with status: ${response.status}`)
       }
 
-      const data = await response.json()
+      // Parse the JSON response
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        throw new Error(
+          `Failed to parse response as JSON: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`,
+        )
+      }
 
       // Add detailed diagnostics if available
       if (data.diagnostics && diagnosticMode) {

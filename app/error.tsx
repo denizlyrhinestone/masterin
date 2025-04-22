@@ -1,8 +1,9 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
 import { useEffect } from "react"
-import { AlertTriangle, RefreshCcw } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { AlertTriangle, Home, RefreshCw } from "lucide-react"
 
 export default function Error({
   error,
@@ -13,23 +14,39 @@ export default function Error({
 }) {
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error("Unhandled error:", error)
+    console.error("Application error:", error)
   }, [error])
 
   return (
-    <div className="container mx-auto flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-4 py-8 text-center">
-      <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-red-100">
-        <AlertTriangle className="h-12 w-12 text-red-600" />
-      </div>
-      <h1 className="mb-2 text-4xl font-bold">Something Went Wrong</h1>
-      <p className="mb-8 max-w-md text-gray-600">
-        We encountered an unexpected error. Our team has been notified and is working to fix the issue.
-      </p>
-      <div className="flex flex-wrap gap-4">
-        <Button onClick={reset} className="gap-2">
-          <RefreshCcw className="h-4 w-4" />
-          Try Again
-        </Button>
+    <div className="flex min-h-[70vh] flex-col items-center justify-center text-center">
+      <div className="mx-auto max-w-md px-6">
+        <div className="flex justify-center">
+          <div className="rounded-full bg-red-100 p-4">
+            <AlertTriangle className="h-10 w-10 text-red-600" />
+          </div>
+        </div>
+        <h1 className="mt-6 text-3xl font-bold">Something went wrong</h1>
+        <p className="mt-4 text-gray-600">
+          We apologize for the inconvenience. The application encountered an unexpected error.
+        </p>
+        {error.message && (
+          <div className="mt-6 rounded-md bg-red-50 p-4 text-left">
+            <p className="text-sm font-medium text-red-800">Error details:</p>
+            <p className="mt-1 text-sm text-red-700">{error.message}</p>
+          </div>
+        )}
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-center">
+          <Button onClick={reset} className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Try again
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/" className="flex items-center gap-2">
+              <Home className="h-4 w-4" />
+              Go to homepage
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   )

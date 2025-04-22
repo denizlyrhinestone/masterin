@@ -1,24 +1,30 @@
-import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { ArrowLeft, Search } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Home, Search } from "lucide-react"
 
 export default function NotFound() {
   return (
-    <div className="container mx-auto flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center px-4 py-8 text-center">
-      <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
-        <Search className="h-12 w-12 text-gray-400" />
-      </div>
-      <h1 className="mb-2 text-4xl font-bold">Page Not Found</h1>
-      <p className="mb-8 max-w-md text-gray-600">
-        We couldn't find the page you're looking for. It might have been moved, deleted, or never existed.
-      </p>
-      <div className="flex flex-wrap gap-4">
-        <Button asChild variant="outline" className="gap-2">
-          <Link href="/">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Home
-          </Link>
-        </Button>
+    <div className="flex min-h-[70vh] flex-col items-center justify-center text-center">
+      <div className="mx-auto max-w-md px-6">
+        <h1 className="text-6xl font-bold text-gray-900">404</h1>
+        <h2 className="mt-4 text-3xl font-bold tracking-tight">Page not found</h2>
+        <p className="mt-4 text-gray-600">
+          Sorry, we couldn't find the page you're looking for. It might have been moved, deleted, or never existed.
+        </p>
+        <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:justify-center">
+          <Button asChild>
+            <Link href="/" className="flex items-center gap-2">
+              <Home className="h-4 w-4" />
+              Go to homepage
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/courses" className="flex items-center gap-2">
+              <Search className="h-4 w-4" />
+              Browse courses
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   )
