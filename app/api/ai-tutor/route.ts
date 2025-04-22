@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server"
 import { generateText } from "ai"
-import { selectAIModel, updateServiceHealth } from "@/lib/ai-utils"
-import { logError, ErrorCodes, getUserFriendlyErrorMessage } from "@/lib/error-handling"
+import { selectAIModel, updateServiceHealth, generateFallbackResponse } from "@/lib/ai-utils"
+import { logError, ErrorCodes, ErrorCategory, getUserFriendlyErrorMessage } from "@/lib/error-handling"
+import { FallbackAnalyzer } from "@/lib/fallback-analyzer"
+import { TieredFallbackStrategy } from "@/lib/tiered-fallback-strategy"
+import { FallbackMonitor } from "@/lib/fallback-monitor"
 
 // Simple system prompt
 const SYSTEM_PROMPT = `You are an educational AI tutor. Your goal is to help students learn and understand concepts across various subjects. 
@@ -23,7 +26,7 @@ export async function POST(request: Request) {
   try {
     // Parse the request body
     const body = await request.json()
-    const { message, subject = "general", history = [], healthCheck = false, sessionId } = body
+    const { message, subject = "general", topic = "general", history = [], healthCheck = false, sessionId } = body
 
     // Validate inputs
     if (!message || typeof message !== "string") {
@@ -36,17 +39,92 @@ export async function POST(request: Request) {
       )
     }
 
+    // Get instances of fallback services
+    const fallbackAnalyzer = FallbackAnalyzer.getInstance()
+    const fallbackStrategy = TieredFallbackStrategy.getInstance()
+    const fallbackMonitor = FallbackMonitor.getInstance()
+
     // Select the best available AI model
     const { model, provider } = selectAIModel()
 
-    // If no model is available, return a simple message
+    // Track consecutive errors for this session
+    const consecutiveErrors = 0
+    const startTime = Date.now()
+
+    // If no model is available, return a fallback response
     if (!model) {
+      const errorCode = ErrorCodes.CONN_SERVICE_UNAVAILABLE
+      const errorCategory = ErrorCategory.CONNECTIVITY
+
+      // Log the error
+      const errorLog = logError(
+        "No AI models available",
+        "AITutor.noModelsAvailable",
+        {
+          subject,
+          provider: "none",
+          sessionId,
+        },
+        undefined,
+        sessionId,
+      )
+
+      // Analyze the fallback
+      const trigger = fallbackAnalyzer.analyzeFallback("No AI models available", errorCode, errorCategory)
+
+      // Record the fallback incident
+      const incident = fallbackAnalyzer.recordFallback(trigger, "No AI models available", {
+        errorCode,
+        errorCategory,
+        subject,
+        topic,
+        query: message,
+        sessionId,
+      })
+
+      // Determine fallback tier
+      const tier = fallbackStrategy.determineFallbackTier(consecutiveErrors, undefined, trigger)
+
+      // Get fallback content
+      const fallbackContent = fallbackStrategy.getFallbackContent(subject, topic, {
+        tier,
+        trigger,
+        errorCode,
+        isOfflineMode: true,
+        query: message,
+      })
+
+      // Record fallback response for monitoring
+      fallbackMonitor.recordFallbackResponse(incident, tier, {
+        subject,
+        topic,
+        responseTime: Date.now() - startTime,
+      })
+
+      // Create diagnostics for debugging
+      const diagnostics = {
+        errorType: "NoModelsAvailable",
+        errorMessage: "No AI models are currently available",
+        provider: "none",
+        consecutiveErrors,
+        recommendation: "Configure at least one AI provider (OpenAI, Groq, or XAI)",
+        userMessage: getUserFriendlyErrorMessage(errorLog.errorCode),
+        fallbackTier: tier,
+        fallbackTrigger: trigger,
+        fallbackContentType: fallbackContent.type,
+      }
+
       return NextResponse.json({
-        response: "I'm currently experiencing some technical difficulties. Please try again in a moment.",
+        response: fallbackContent.content,
         success: true,
         fallback: true,
         provider: "none",
-        errorCode: ErrorCodes.CONN_SERVICE_UNAVAILABLE,
+        errorCode,
+        errorCategory,
+        fallbackTier: tier,
+        fallbackTrigger: trigger,
+        fallbackContentType: fallbackContent.type,
+        diagnostics,
       })
     }
 
@@ -54,13 +132,10 @@ export async function POST(request: Request) {
     const systemPrompt = subjectPrompts[subject] || subjectPrompts.general
 
     // Format the conversation history
-    const formattedHistory = history.map((msg) => ({
+    const formattedHistory = history.map((msg: any) => ({
       role: msg.role,
       content: msg.content,
     }))
-
-    // Track consecutive errors for this session
-    const consecutiveErrors = 0
 
     try {
       // Generate response using AI SDK
@@ -74,6 +149,12 @@ export async function POST(request: Request) {
 
       // Update service health to operational
       updateServiceHealth(provider, "available")
+
+      // Cache the successful response for potential future fallback
+      fallbackStrategy.cacheResponse(subject, topic, message, response.text)
+
+      // Record successful request for monitoring
+      fallbackMonitor.recordSuccessfulRequest()
 
       // Return the AI response
       return NextResponse.json({
@@ -105,24 +186,66 @@ export async function POST(request: Request) {
         aiError instanceof Error ? aiError : new Error(String(aiError)),
       )
 
+      // Analyze the fallback
+      const trigger = fallbackAnalyzer.analyzeFallback(
+        aiError instanceof Error ? aiError : String(aiError),
+        errorLog.errorCode,
+        errorLog.category,
+      )
+
+      // Record the fallback incident
+      const incident = fallbackAnalyzer.recordFallback(trigger, String(aiError), {
+        errorCode: errorLog.errorCode,
+        errorCategory: errorLog.category,
+        subject,
+        topic,
+        query: message,
+        responseTime: Date.now() - startTime,
+        sessionId,
+      })
+
+      // Determine fallback tier
+      const tier = fallbackStrategy.determineFallbackTier(consecutiveErrors, Date.now() - startTime, trigger)
+
+      // Get fallback content
+      const fallbackContent = fallbackStrategy.getFallbackContent(subject, topic, {
+        tier,
+        trigger,
+        errorCode: errorLog.errorCode,
+        query: message,
+      })
+
+      // Record fallback response for monitoring
+      fallbackMonitor.recordFallbackResponse(incident, tier, {
+        subject,
+        topic,
+        responseTime: Date.now() - startTime,
+      })
+
       // Create diagnostics for debugging
       const diagnostics = {
         errorType: aiError instanceof Error ? aiError.constructor.name : "Unknown",
-        errorMessage: aiError.message || "No message available",
+        errorMessage: aiError instanceof Error ? aiError.message : "No message available",
         provider,
         consecutiveErrors,
         recommendation: consecutiveErrors > 2 ? "Consider switching to a different AI provider" : "Retry your request",
         userMessage: getUserFriendlyErrorMessage(errorLog.errorCode),
+        fallbackTier: tier,
+        fallbackTrigger: trigger,
+        fallbackContentType: fallbackContent.type,
       }
 
-      // Return a simple fallback response
+      // Return a fallback response
       return NextResponse.json({
-        response: "I'm having trouble processing your request right now. Could you try asking a simpler question?",
+        response: fallbackContent.content,
         success: true,
         fallback: true,
         provider: provider,
         errorCode: errorLog.errorCode,
         errorCategory: errorLog.category,
+        fallbackTier: tier,
+        fallbackTrigger: trigger,
+        fallbackContentType: fallbackContent.type,
         diagnostics,
       })
     }
@@ -133,6 +256,7 @@ export async function POST(request: Request) {
       {
         error: "An unexpected error occurred",
         success: false,
+        response: generateFallbackResponse("general", "An error occurred processing your request."),
       },
       { status: 500 },
     )
