@@ -1,6 +1,6 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
 import { useState, useRef, useEffect } from "react"
 import { ChatMessage } from "./chat-message"
@@ -11,6 +11,8 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Send, Sparkles, BookOpen, History, Info, Loader2, RefreshCw, AlertTriangle, Shield } from "lucide-react"
 import { showErrorToast, ErrorSeverity, ErrorCategory, ErrorCodes } from "@/lib/error-handling"
+import type { FallbackTier } from "@/lib/tiered-fallback-strategy"
+import { FallbackTrigger } from "@/lib/fallback-analyzer"
 
 // Message type definition with extended properties
 type Message = {
@@ -24,6 +26,9 @@ type Message = {
   errorCategory?: string
   provider?: string
   cached?: boolean
+  fallbackTier?: FallbackTier
+  fallbackTrigger?: FallbackTrigger
+  fallbackContentType?: string
   diagnosticInfo?: any
 }
 
@@ -350,6 +355,9 @@ export function AITutorInterface() {
                 errorCategory: data.errorCategory,
                 provider: data.provider,
                 diagnosticInfo: data.diagnostics, // Store diagnostic info for debugging
+                fallbackTier: data.fallbackTier,
+                fallbackTrigger: data.fallbackTrigger,
+                fallbackContentType: data.fallbackContentType,
               }
             : msg,
         ),
@@ -608,6 +616,29 @@ export function AITutorInterface() {
     ])
   }
 
+  function getFallbackRecommendation(trigger?: FallbackTrigger): string {
+    if (!trigger) return "Try asking a more specific question."
+
+    switch (trigger) {
+      case FallbackTrigger.API_UNAVAILABLE:
+        return "The AI service is currently unavailable. Please try again later or ask a simpler question."
+      case FallbackTrigger.RATE_LIMITED:
+        return "The AI service is experiencing high demand. Please wait a moment before trying again."
+      case FallbackTrigger.CONTEXT_EXCEEDED:
+        return "Your conversation is too long for the AI to process. Try starting a new conversation or asking a more focused question."
+      case FallbackTrigger.TIMEOUT:
+        return "The AI service took too long to respond. Try asking a simpler question."
+      case FallbackTrigger.CONTENT_FILTERED:
+        return "Your question may contain content that can't be processed. Try rephrasing your question."
+      case FallbackTrigger.AUTHENTICATION_FAILURE:
+        return "There's an issue with the AI service authentication. Please contact support."
+      case FallbackTrigger.MODEL_OVERLOADED:
+        return "The AI model is currently overloaded. Please try again later or ask a simpler question."
+      default:
+        return "Try asking a more specific or simpler question."
+    }
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -699,6 +730,54 @@ export function AITutorInterface() {
                     </div>
                   ) : (
                     <ChatMessage key={message.id} message={message} showDiagnostics={diagnosticMode} />
+                  ),
+                )}
+                {messages.map((message) =>
+                  message.role !== "system" ? (
+                    <React.Fragment key={message.id}>
+                      <ChatMessage message={message} showDiagnostics={diagnosticMode} />
+                      {message.isFallback && diagnosticMode && (
+                        <div className="mt-2 border-t border-dashed border-amber-200 pt-2 text-xs text-amber-700">
+                          <details className="group">
+                            <summary className="cursor-pointer text-xs font-medium hover:text-amber-800">
+                              Fallback Response Details
+                            </summary>
+                            <div className="mt-1 space-y-1 pl-2 text-xs">
+                              {message.fallbackTier && (
+                                <div>
+                                  <span className="font-medium">Fallback Tier:</span> {message.fallbackTier}
+                                </div>
+                              )}
+                              {message.fallbackTrigger && (
+                                <div>
+                                  <span className="font-medium">Trigger:</span> {message.fallbackTrigger}
+                                </div>
+                              )}
+                              {message.fallbackContentType && (
+                                <div>
+                                  <span className="font-medium">Content Type:</span> {message.fallbackContentType}
+                                </div>
+                              )}
+                              {message.errorCode && (
+                                <div>
+                                  <span className="font-medium">Error Code:</span> {message.errorCode}
+                                </div>
+                              )}
+                              <div>
+                                <span className="font-medium">Recommendation:</span>{" "}
+                                {getFallbackRecommendation(message.fallbackTrigger)}
+                              </div>
+                            </div>
+                          </details>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  ) : (
+                    <div key={message.id} className="flex justify-center my-2">
+                      <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                        {message.content}
+                      </span>
+                    </div>
                   ),
                 )}
                 {isLoading && messages[messages.length - 1]?.status !== "sending" && (
