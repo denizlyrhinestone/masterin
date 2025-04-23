@@ -1,22 +1,22 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useRef, useEffect } from "react"
+import { useRef, useEffect } from "react"
 import { Sparkles, BookOpen, Lightbulb, Info, Send, PaperclipIcon } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Avatar } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Card } from "@/components/ui/card"
+import { useChat } from "@ai-sdk/react"
+import ReactMarkdown from "react-markdown"
 
-// Message type definition
+// Message type from AI SDK
 type Message = {
   id: string
-  role: "user" | "assistant"
+  role: "user" | "assistant" | "system"
   content: string
-  timestamp: Date
-  status: "sending" | "sent" | "error"
+  createdAt?: Date
 }
 
 // Sample subjects for quick prompts
@@ -38,17 +38,17 @@ const quickPrompts = [
 ]
 
 export default function AIChat() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "Hi there! I'm your AI tutor from Masterin. How can I help you with your learning today?",
-      timestamp: new Date(),
-      status: "sent",
-    },
-  ])
-  const [inputValue, setInputValue] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error, append } = useChat({
+    api: "/api/chat",
+    initialMessages: [
+      {
+        id: "welcome",
+        role: "assistant",
+        content: "Hi there! I'm your AI tutor from Masterin. How can I help you with your learning today?",
+      },
+    ],
+  })
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
@@ -62,56 +62,11 @@ export default function AIChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!inputValue.trim()) return
-
-    // Create user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
+  const handleQuickPrompt = (prompt: string) => {
+    append({
       role: "user",
-      content: inputValue,
-      timestamp: new Date(),
-      status: "sending",
-    }
-
-    // Add user message to chat
-    setMessages((prev) => [...prev, userMessage])
-    setInputValue("")
-    setIsLoading(true)
-
-    try {
-      // Simulate AI response delay
-      setTimeout(() => {
-        // Generate AI response based on user input
-        const aiResponse = generateAIResponse(inputValue)
-
-        // Create assistant message
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: aiResponse,
-          timestamp: new Date(),
-          status: "sent",
-        }
-
-        // Add assistant message to chat
-        setMessages((prev) => [
-          ...prev.map((msg) => (msg.id === userMessage.id ? { ...msg, status: "sent" } : msg)),
-          assistantMessage,
-        ])
-        setIsLoading(false)
-      }, 1500)
-    } catch (error) {
-      // Handle error
-      setMessages((prev) => prev.map((msg) => (msg.id === userMessage.id ? { ...msg, status: "error" } : msg)))
-      setIsLoading(false)
-      toast({
-        title: "Error",
-        description: "Failed to generate response. Please try again.",
-        variant: "destructive",
-      })
-    }
+      content: prompt,
+    })
   }
 
   const handleFileUpload = () => {
@@ -144,113 +99,11 @@ export default function AIChat() {
 
       // In a real implementation, you would upload the file to a server
       // For now, we'll just add a message about the file
-      const userMessage: Message = {
-        id: Date.now().toString(),
+      append({
         role: "user",
         content: `I've uploaded a file: ${file.name}`,
-        timestamp: new Date(),
-        status: "sent",
-      }
-      setMessages((prev) => [...prev, userMessage])
-
-      // Simulate AI response
-      setTimeout(() => {
-        const assistantMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: `I've received your file "${file.name}". What specific questions do you have about the content? I can help analyze the information, explain concepts, or provide additional context related to the material.`,
-          timestamp: new Date(),
-          status: "sent",
-        }
-        setMessages((prev) => [...prev, assistantMessage])
-      }, 1000)
+      })
     }
-  }
-
-  // Function to generate AI responses based on user input
-  const generateAIResponse = (input: string): string => {
-    const lowerInput = input.toLowerCase()
-
-    // Default response if no specific topic is matched
-    let response = "I'd be happy to help with that. Could you provide more details about what you'd like to learn?"
-
-    // Biology - DNA
-    if (lowerInput.includes("dna") && !lowerInput.includes("rna")) {
-      response = `## DNA: The Blueprint of Life
-
-**Definition**: DNA (Deoxyribonucleic Acid) is the genetic material that carries the instructions for the development, functioning, growth, and reproduction of all known organisms.
-
-### Structure of DNA
-DNA has a double-helix structure, resembling a twisted ladder:
-- **Backbone**: Made of alternating sugar (deoxyribose) and phosphate groups
-- **Rungs**: Formed by pairs of nitrogenous bases
-- **Base pairs**: Adenine (A) always pairs with Thymine (T), and Guanine (G) always pairs with Cytosine (C)
-
-### Key Functions
-1. **Genetic Information Storage**: DNA stores genes, which contain instructions for building proteins
-2. **Replication**: DNA can make exact copies of itself during cell division
-3. **Transcription**: DNA serves as a template for RNA synthesis
-4. **Mutation**: Changes in DNA can lead to genetic variation and evolution`
-    }
-
-    // DNA vs RNA comparison
-    else if (
-      lowerInput.includes("dna") &&
-      lowerInput.includes("rna") &&
-      (lowerInput.includes("compare") || lowerInput.includes("difference"))
-    ) {
-      response = `## DNA vs RNA: Key Differences and Similarities
-
-DNA and RNA are nucleic acids that play crucial roles in genetic information and protein synthesis, but they differ in several important ways:
-
-### Structural Differences
-
-| Feature | DNA | RNA |
-|---------|-----|-----|
-| Full Name | Deoxyribonucleic Acid | Ribonucleic Acid |
-| Structure | Double-stranded helix | Usually single-stranded |
-| Sugar | Deoxyribose | Ribose (has OH group at 2' position) |
-| Bases | A, G, C, T | A, G, C, U (Uracil instead of Thymine) |
-| Stability | More stable | Less stable, more reactive |`
-    }
-
-    // RNA
-    else if (lowerInput.includes("rna") && !lowerInput.includes("dna")) {
-      response = `## RNA: The Versatile Nucleic Acid
-
-**Definition**: RNA (Ribonucleic Acid) is a nucleic acid molecule essential for various biological roles including protein synthesis, catalyzing biological reactions, and controlling gene expression.
-
-### Structure of RNA
-- **Backbone**: Made of alternating ribose sugar and phosphate groups
-- **Nitrogenous Bases**: Adenine (A), Uracil (U), Guanine (G), and Cytosine (C)
-- **Usually single-stranded**, but can fold into complex 3D structures
-- **More reactive** than DNA due to the hydroxyl group on the ribose sugar's 2' carbon`
-    }
-
-    // Calculus/Derivatives
-    else if (lowerInput.includes("derivative") || lowerInput.includes("calculus")) {
-      response = `## Derivatives in Calculus
-
-A derivative measures the instantaneous rate of change of a function with respect to one of its variables. Geometrically, it represents the slope of the tangent line to the function's graph at a specific point.
-
-### Fundamental Concept
-
-The derivative of a function f(x) at a point x = a is defined as the limit:
-
-f'(a) = lim_{h → 0} [f(a+h) - f(a)]/h
-
-This limit, if it exists, gives us the instantaneous rate of change of f at point a.
-
-### Key Derivative Rules
-
-1. **Power Rule**: For f(x) = x^n, f'(x) = n·x^(n-1)
-2. **Constant Rule**: For f(x) = c, f'(x) = 0
-3. **Sum/Difference Rule**: [f(x) ± g(x)]' = f'(x) ± g'(x)
-4. **Product Rule**: [f(x)·g(x)]' = f'(x)·g(x) + f(x)·g'(x)
-5. **Chain Rule**: [f(g(x))]' = f'(g(x))·g'(x)`
-    }
-
-    return response
   }
 
   // Render the chat interface
@@ -274,20 +127,52 @@ This limit, if it exists, gives us the instantaneous rate of change of f at poin
                 <div className="flex items-start gap-2">
                   {message.role === "assistant" && (
                     <Avatar className="h-8 w-8 bg-purple-600 text-white">
-                      <span className="text-xs">AI</span>
+                      <AvatarFallback>AI</AvatarFallback>
                     </Avatar>
                   )}
                   <div>
-                    <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: message.content }} />
+                    <div className="prose prose-sm max-w-none">
+                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                    </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      {message.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      {message.status === "error" && <span className="text-red-500 ml-2">Error sending message</span>}
+                      {message.createdAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) ||
+                        new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           ))}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="max-w-[80%] rounded-lg p-3 bg-white border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-8 w-8 bg-purple-600 text-white">
+                    <AvatarFallback>AI</AvatarFallback>
+                  </Avatar>
+                  <div className="flex space-x-2">
+                    <div
+                      className="h-2 w-2 bg-purple-600 rounded-full animate-bounce"
+                      style={{ animationDelay: "0ms" }}
+                    ></div>
+                    <div
+                      className="h-2 w-2 bg-purple-600 rounded-full animate-bounce"
+                      style={{ animationDelay: "300ms" }}
+                    ></div>
+                    <div
+                      className="h-2 w-2 bg-purple-600 rounded-full animate-bounce"
+                      style={{ animationDelay: "600ms" }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              An error occurred. Please try again.
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
@@ -296,7 +181,14 @@ This limit, if it exists, gives us the instantaneous rate of change of f at poin
           <p className="text-sm text-gray-500 mb-2">Suggested topics:</p>
           <div className="flex flex-wrap gap-2">
             {quickPrompts.slice(0, 3).map((prompt, index) => (
-              <Button key={index} variant="outline" size="sm" className="text-xs" onClick={() => setInputValue(prompt)}>
+              <Button
+                key={index}
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => handleQuickPrompt(prompt)}
+                disabled={isLoading}
+              >
                 {prompt}
               </Button>
             ))}
@@ -308,8 +200,8 @@ This limit, if it exists, gives us the instantaneous rate of change of f at poin
           <div className="flex items-end gap-2">
             <div className="flex-1 relative">
               <Textarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                value={input}
+                onChange={handleInputChange}
                 placeholder="Ask anything about your studies..."
                 className="min-h-[60px] resize-none pr-10"
                 onKeyDown={(e) => {
@@ -318,11 +210,13 @@ This limit, if it exists, gives us the instantaneous rate of change of f at poin
                     handleSubmit(e)
                   }
                 }}
+                disabled={isLoading}
               />
               <button
                 type="button"
                 onClick={handleFileUpload}
                 className="absolute right-3 bottom-3 text-gray-400 hover:text-gray-600"
+                disabled={isLoading}
               >
                 <PaperclipIcon className="h-5 w-5" />
               </button>
@@ -334,7 +228,7 @@ This limit, if it exists, gives us the instantaneous rate of change of f at poin
                 accept="image/jpeg,image/png,image/gif,application/pdf,text/plain"
               />
             </div>
-            <Button type="submit" disabled={isLoading || !inputValue.trim()}>
+            <Button type="submit" disabled={isLoading || !input.trim()}>
               <Send className="h-4 w-4" />
               <span className="sr-only">Send</span>
             </Button>

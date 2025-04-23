@@ -59,7 +59,11 @@
     "vaul": "^0.9.6",
     "zod": "^3.24.1",
     "dotenv": "latest",
-    "@supabase/supabase-js": "latest"
+    "@supabase/supabase-js": "latest",
+    "@ai-sdk/groq": "latest",
+    "ai": "latest",
+    "@ai-sdk/react": "latest",
+    "react-markdown": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
