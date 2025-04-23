@@ -19,6 +19,7 @@ interface AuthContextType {
   isAuthenticated: boolean
   isLoading: boolean
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
+  signInWithGoogle: () => Promise<{ error: AuthError | null }>
   signUp: (email: string, password: string, name: string) => Promise<{ error: AuthError | null; userId: string | null }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: true,
   signIn: async () => ({ error: null }),
+  signInWithGoogle: async () => ({ error: null }),
   signUp: async () => ({ error: null, userId: null }),
   signOut: async () => {},
   resetPassword: async () => ({ error: null }),
@@ -78,11 +80,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return // Profile already exists
       }
 
+      // Get user name from metadata or email
+      const userName = user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split("@")[0] || null
+      const userAvatar = user.user_metadata?.avatar_url || null
+
       const { error } = await supabase.from("profiles").insert({
         id: user.id,
         email: user.email,
-        name: user.user_metadata?.name || null,
-        avatar_url: null,
+        name: userName,
+        avatar_url: userAvatar,
         updated_at: new Date().toISOString(),
       })
 
@@ -113,8 +119,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setUser({
               id: currentSession.user.id,
               email: currentSession.user.email || "",
-              name: currentSession.user.user_metadata?.name || null,
-              avatar_url: null,
+              name: currentSession.user.user_metadata?.name || currentSession.user.user_metadata?.full_name || null,
+              avatar_url: currentSession.user.user_metadata?.avatar_url || null,
             })
 
             // Create profile in the database if it doesn't exist
@@ -239,6 +245,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (error) {
       console.error("Unexpected error during sign in:", error)
       return { error: new Error("An unexpected error occurred") as unknown as AuthError }
+    }
+  }
+
+  const signInWithGoogle = async () => {
+    try {
+      // Get the current URL for the redirect
+      const origin = typeof window !== "undefined" ? window.location.origin : ""
+      const redirectTo = `${origin}/auth/callback`
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      })
+
+      if (error) {
+        console.error("Google sign in error:", error.message)
+        return { error }
+      }
+
+      return { error: null }
+    } catch (error) {
+      console.error("Unexpected error during Google sign in:", error)
+      return { error: new Error("An unexpected error occurred during Google sign in") as unknown as AuthError }
     }
   }
 
@@ -417,6 +452,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     isAuthenticated,
     isLoading,
     signIn,
+    signInWithGoogle,
     signUp,
     signOut,
     resetPassword,

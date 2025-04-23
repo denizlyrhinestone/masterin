@@ -1,30 +1,38 @@
-import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { CheckCircle, ArrowRight, Zap, BookOpen, Brain, GraduationCap, Users, Clock } from "lucide-react"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { CheckCircle, Zap, Brain } from "lucide-react"
+import AIToolsSection from "@/components/ai-tools-section"
+import FreeTrialBanner from "@/components/free-trial-banner"
 
 export default function Home() {
+  // Instead of checking cookies server-side, we'll pass a prop to FreeTrialBanner
+  // and let it handle the check client-side
   return (
     <div className="flex flex-col w-full">
       {/* Hero Section */}
-      <section className="pt-24 pb-12 md:pt-32 md:pb-20">
+      <section className="relative pt-24 pb-12 md:pt-32 md:pb-20 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-gray-900 dark:to-purple-900/20 -z-10"></div>
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-center">
             <div className="lg:w-1/2 lg:pr-12 mb-10 lg:mb-0">
+              <Badge className="mb-4 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30">
+                New AI Tools Available
+              </Badge>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6">
                 Learn Smarter with{" "}
-                <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
                   AI-Powered Education
                 </span>
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-                Personalized learning experiences that adapt to your needs. Our AI tutor helps you master concepts
-                faster and retain knowledge longer.
+                Experience the future of learning with our suite of AI tools designed to help you master concepts
+                faster, get instant answers, and personalize your educational journey.
               </p>
               <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                 <Button size="lg" className="px-8">
-                  Start Learning
+                  Try AI Tools Now
                 </Button>
                 <Button size="lg" variant="outline" className="px-8">
                   Explore Courses
@@ -38,7 +46,7 @@ export default function Home() {
                       className="w-10 h-10 rounded-full border-2 border-white dark:border-gray-900 overflow-hidden bg-gray-200"
                     >
                       <Image
-                        src={`/thoughtful-artist.png?height=40&width=40&query=student ${i}`}
+                        src={`/diverse-students-studying.png?height=40&width=40&query=student ${i}`}
                         alt={`Student ${i}`}
                         width={40}
                         height={40}
@@ -63,7 +71,7 @@ export default function Home() {
             <div className="lg:w-1/2 relative">
               <div className="relative rounded-lg overflow-hidden shadow-xl">
                 <Image
-                  src="/ai-dashboard-purple-blue.png"
+                  src="/ai-education-purple-dashboard.png"
                   alt="AI Learning Dashboard"
                   width={800}
                   height={600}
@@ -71,7 +79,7 @@ export default function Home() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-tr from-purple-600/20 to-transparent"></div>
               </div>
-              <div className="absolute -bottom-6 -left-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-xs">
+              <div className="absolute -bottom-6 -left-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-xs animate-float">
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
                     <Brain className="w-6 h-6 text-purple-600" />
@@ -82,14 +90,17 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <div className="absolute -top-6 -right-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-xs">
+              <div
+                className="absolute -top-6 -right-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-xs animate-float"
+                style={{ animationDelay: "1s" }}
+              >
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900/30 rounded-full flex items-center justify-center">
-                    <Zap className="w-6 h-6 text-pink-600" />
+                  <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-full flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-indigo-600" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-sm">Learn Faster</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Master concepts in less time</p>
+                    <h3 className="font-medium text-sm">Instant Answers</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Get help when you need it</p>
                   </div>
                 </div>
               </div>
@@ -98,87 +109,14 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured Courses Section */}
-      <section className="py-16 bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Featured Courses</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
-              Explore our most popular courses with AI-enhanced learning experiences
-            </p>
-          </div>
+      {/* Free Trial Banner for non-logged in users - now checking cookies client-side */}
+      <FreeTrialBanner checkClientSide={true} />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Introduction to Machine Learning",
-                description: "Learn the fundamentals of machine learning algorithms and applications.",
-                image: "/interconnected-learning.png",
-                level: "Beginner",
-                duration: "8 weeks",
-                students: "2,345",
-                link: "/courses/machine-learning-intro",
-              },
-              {
-                title: "Advanced Python Programming",
-                description: "Master Python with advanced concepts and real-world projects.",
-                image: "/python-code-snippet.png",
-                level: "Intermediate",
-                duration: "10 weeks",
-                students: "1,876",
-                link: "/courses/advanced-python",
-              },
-              {
-                title: "Data Science Fundamentals",
-                description: "Discover how to analyze and visualize data to extract meaningful insights.",
-                image: "/interactive-data-dashboard.png",
-                level: "Beginner",
-                duration: "12 weeks",
-                students: "3,210",
-                link: "/courses/data-science-fundamentals",
-              },
-            ].map((course, index) => (
-              <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="relative h-48">
-                  <Image src={course.image || "/placeholder.svg"} alt={course.title} fill className="object-cover" />
-                </div>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-2">{course.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">{course.description}</p>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 text-xs px-2 py-1 rounded-full flex items-center">
-                      <BookOpen className="w-3 h-3 mr-1" />
-                      {course.level}
-                    </span>
-                    <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2 py-1 rounded-full flex items-center">
-                      <Clock className="w-3 h-3 mr-1" />
-                      {course.duration}
-                    </span>
-                    <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs px-2 py-1 rounded-full flex items-center">
-                      <Users className="w-3 h-3 mr-1" />
-                      {course.students} students
-                    </span>
-                  </div>
-                  <Link href={course.link}>
-                    <Button className="w-full">Enroll Now</Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          <div className="text-center mt-12">
-            <Link href="/courses">
-              <Button variant="outline" size="lg">
-                View All Courses <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* AI Tools Section */}
+      <AIToolsSection />
 
       {/* How It Works Section */}
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24 bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">How Our AI Learning Works</h2>
@@ -187,91 +125,190 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: <Brain className="w-12 h-12 text-purple-600" />,
-                title: "Personalized Learning Path",
-                description:
-                  "Our AI analyzes your strengths, weaknesses, and learning style to create a customized curriculum just for you.",
-              },
-              {
-                icon: <Zap className="w-12 h-12 text-purple-600" />,
-                title: "Interactive AI Tutor",
-                description:
-                  "Get instant help from our AI tutor that adapts to your questions and provides explanations tailored to your understanding.",
-              },
-              {
-                icon: <GraduationCap className="w-12 h-12 text-purple-600" />,
-                title: "Adaptive Assessments",
-                description:
-                  "Our intelligent assessment system adjusts difficulty based on your progress, ensuring optimal challenge and growth.",
-              },
-            ].map((feature, index) => (
-              <div key={index} className="text-center p-6">
-                <div className="mx-auto w-20 h-20 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center mb-6">
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-                <p className="text-gray-600 dark:text-gray-300">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* AI Tutor Highlight Section */}
-      <section className="py-16 md:py-24 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900/20">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center">
-            <div className="lg:w-1/2 lg:pr-12 mb-10 lg:mb-0">
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">Meet Your AI Learning Assistant</h2>
-              <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-                Our AI tutor is available 24/7 to answer questions, provide explanations, and guide you through
-                difficult concepts at your own pace.
-              </p>
-
-              <ul className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="space-y-12">
                 {[
-                  "Instant answers to your questions in natural language",
-                  "Step-by-step explanations of complex concepts",
-                  "Practice problems tailored to your skill level",
-                  "Progress tracking and personalized recommendations",
-                ].map((item, index) => (
-                  <li key={index} className="flex items-start">
-                    <CheckCircle className="w-6 h-6 text-green-500 mr-2 flex-shrink-0" />
-                    <span>{item}</span>
-                  </li>
+                  {
+                    number: "01",
+                    title: "Ask Any Question",
+                    description:
+                      "Type your question in natural language, upload an image of a problem, or even speak to your AI tutor.",
+                  },
+                  {
+                    number: "02",
+                    title: "Receive Personalized Explanations",
+                    description: "Get clear, step-by-step explanations tailored to your learning level and style.",
+                  },
+                  {
+                    number: "03",
+                    title: "Practice with Interactive Problems",
+                    description: "Reinforce your understanding with practice problems that adapt to your skill level.",
+                  },
+                  {
+                    number: "04",
+                    title: "Track Your Progress",
+                    description:
+                      "Monitor your improvement over time with detailed analytics and personalized recommendations.",
+                  },
+                ].map((step, index) => (
+                  <div key={index} className="flex">
+                    <div className="flex-shrink-0 mr-6">
+                      <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 font-bold">
+                        {step.number}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
+                      <p className="text-gray-600 dark:text-gray-300">{step.description}</p>
+                    </div>
+                  </div>
                 ))}
-              </ul>
-
-              <div className="mt-8">
-                <Link href="/ai">
-                  <Button className="group">
-                    Try AI Tutor Now
-                    <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Button>
-                </Link>
               </div>
             </div>
-
-            <div className="lg:w-1/2 relative">
+            <div className="relative">
               <div className="relative rounded-lg overflow-hidden shadow-xl">
                 <Image
-                  src="/abstract-data-flow.png"
-                  alt="AI Tutor Visualization"
+                  src="/ai-tutor-interaction.png"
+                  alt="AI Tutor Interface"
                   width={800}
                   height={600}
                   className="w-full h-auto"
                 />
               </div>
+              <div className="absolute -bottom-6 -right-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 max-w-xs">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-sm">Instant Feedback</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Learn from your mistakes</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Testimonials Section */}
+      {/* Pricing Section */}
       <section className="py-16 md:py-24">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Choose Your Learning Plan</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300">
+              Get started for free or unlock unlimited access with our premium plans
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            {/* Free Plan */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle>Free Trial</CardTitle>
+                <CardDescription>Perfect for getting started</CardDescription>
+                <div className="mt-4">
+                  <span className="text-3xl font-bold">$0</span>
+                  <span className="text-gray-500 dark:text-gray-400">/month</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {[
+                    "5 AI tutor questions per day",
+                    "Basic concept explanations",
+                    "Limited subject coverage",
+                    "24-hour chat history",
+                  ].map((feature, index) => (
+                    <li key={index} className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button variant="outline" className="w-full">
+                  Start Free
+                </Button>
+              </CardFooter>
+            </Card>
+
+            {/* Premium Plan */}
+            <Card className="border-0 shadow-xl relative bg-gradient-to-b from-white to-purple-50 dark:from-gray-800 dark:to-purple-900/20 transform scale-105">
+              <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                <Badge className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">Most Popular</Badge>
+              </div>
+              <CardHeader>
+                <CardTitle>Premium</CardTitle>
+                <CardDescription>For serious learners</CardDescription>
+                <div className="mt-4">
+                  <span className="text-3xl font-bold">$9.99</span>
+                  <span className="text-gray-500 dark:text-gray-400">/month</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {[
+                    "Unlimited AI tutor questions",
+                    "Detailed explanations with examples",
+                    "All subjects covered",
+                    "File upload for problem solving",
+                    "Personalized study plans",
+                    "Unlimited chat history",
+                  ].map((feature, index) => (
+                    <li key={index} className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button className="w-full">Get Premium</Button>
+              </CardFooter>
+            </Card>
+
+            {/* Team Plan */}
+            <Card className="border-0 shadow-lg">
+              <CardHeader>
+                <CardTitle>Team</CardTitle>
+                <CardDescription>For schools and organizations</CardDescription>
+                <div className="mt-4">
+                  <span className="text-3xl font-bold">$29.99</span>
+                  <span className="text-gray-500 dark:text-gray-400">/month</span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {[
+                    "Everything in Premium",
+                    "Up to 10 user accounts",
+                    "Team analytics dashboard",
+                    "Custom curriculum integration",
+                    "Priority support",
+                    "Admin controls",
+                  ].map((feature, index) => (
+                    <li key={index} className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button variant="outline" className="w-full">
+                  Contact Sales
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="py-16 md:py-24 bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">What Our Students Say</h2>
@@ -280,28 +317,28 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
                 quote:
                   "The AI tutor helped me understand calculus concepts I'd been struggling with for months. It's like having a personal teacher available whenever I need help.",
                 author: "Sarah Johnson",
                 role: "Computer Science Student",
-                image: "/confident-leader.png",
+                image: "/focused-scholar.png",
               },
               {
                 quote:
                   "As a working professional, I needed flexible learning options. This platform lets me study at my own pace with AI guidance that adapts to my schedule and learning style.",
                 author: "Michael Chen",
                 role: "Software Engineer",
-                image: "/confident-asian-professional.png",
+                image: "/confident-professional.png",
               },
               {
                 quote:
                   "The personalized learning path identified gaps in my knowledge I didn't know existed. Now I'm making faster progress and actually enjoying the learning process!",
                 author: "Jessica Williams",
                 role: "Data Science Student",
-                image: "/confident-professional.png",
+                image: "/focused-analyst.png",
               },
             ].map((testimonial, index) => (
               <Card key={index} className="border-0 shadow-lg">
@@ -335,76 +372,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* For Educators Section */}
-      <section className="py-16 bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">For Educators</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
-              Empower your teaching with AI tools designed to reduce workload and enhance student outcomes
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-8">
-                <h3 className="text-2xl font-semibold mb-4">AI-Powered Teaching Assistant</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Let our AI handle routine questions, grade assignments, and provide initial feedback, freeing you to
-                  focus on what matters most: meaningful interactions with your students.
-                </p>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-start">
-                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                    <span>Automated grading with detailed feedback</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                    <span>Personalized content generation for different learning levels</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                    <span>Student progress analytics and intervention recommendations</span>
-                  </li>
-                </ul>
-                <Link href="/for-educators">
-                  <Button>Learn More</Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card className="border-0 shadow-lg">
-              <CardContent className="p-8">
-                <h3 className="text-2xl font-semibold mb-4">Course Creation Tools</h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-6">
-                  Create engaging, interactive course content with our AI-powered authoring tools. Generate quizzes,
-                  simulations, and multimedia materials in minutes, not hours.
-                </p>
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-start">
-                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                    <span>AI-generated quiz questions and practice problems</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                    <span>Interactive simulations and visualizations</span>
-                  </li>
-                  <li className="flex items-start">
-                    <CheckCircle className="w-5 h-5 text-green-500 mr-2 flex-shrink-0" />
-                    <span>Curriculum mapping and learning objective alignment</span>
-                  </li>
-                </ul>
-                <Link href="/course-creation">
-                  <Button>Explore Tools</Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
       {/* CTA Section */}
-      <section className="py-16 md:py-24 bg-purple-600 text-white">
+      <section className="py-16 md:py-24 bg-gradient-to-br from-purple-600 to-indigo-700 text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Transform Your Learning Experience?</h2>
