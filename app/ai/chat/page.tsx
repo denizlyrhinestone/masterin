@@ -17,6 +17,7 @@ import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/contexts/auth-context"
 import ProtectedRoute from "@/components/protected-route"
 import ErrorBoundary from "@/components/error-boundary"
+import platformInfo from "@/lib/platform-info"
 
 // Types
 type Conversation = {
@@ -32,13 +33,29 @@ type Message = {
   createdAt?: Date
 }
 
-const quickPrompts = [
-  "Explain the theory of relativity.",
-  "Summarize the plot of Hamlet.",
-  "What are the main causes of World War II?",
-  "How does photosynthesis work?",
-  "Explain the concept of blockchain technology.",
-]
+// Generate context-aware quick prompts based on the platform information
+const generateQuickPrompts = () => {
+  const allPrompts = [
+    // Feature-related prompts
+    ...platformInfo.features.map((feature) => `How does the ${feature.name} work?`),
+
+    // Subject-related prompts
+    ...platformInfo.subjects.map((subject) => `Can you help with ${subject.name}?`),
+
+    // Pricing-related prompts
+    "Tell me about your pricing plans",
+    "What's included in the Premium plan?",
+
+    // General prompts
+    "How do I get started?",
+    "What makes Masterin different?",
+    "Can I try before subscribing?",
+  ]
+
+  // Randomly select 5 prompts
+  const shuffled = [...allPrompts].sort(() => 0.5 - Math.random())
+  return shuffled.slice(0, 5)
+}
 
 export default function AIChat() {
   const router = useRouter()
@@ -52,6 +69,7 @@ export default function AIChat() {
   const [initialMessages, setInitialMessages] = useState<Message[]>([])
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
+  const [quickPrompts, setQuickPrompts] = useState<string[]>(generateQuickPrompts())
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, append, reload, setMessages } = useChat({
     api: "/api/chat",
@@ -211,14 +229,16 @@ export default function AIChat() {
   useEffect(() => {
     if (conversationId) {
       fetchMessages(conversationId)
+      // Generate new quick prompts when conversation changes
+      setQuickPrompts(generateQuickPrompts())
     } else {
-      setInitialMessages([
-        {
-          id: "welcome",
-          role: "assistant",
-          content: "Hi there! I'm your AI tutor from Masterin. How can I help you with your learning today?",
-        },
-      ])
+      const welcomeMessage = {
+        id: "welcome",
+        role: "assistant",
+        content: `Hi there! I'm your AI tutor from ${platformInfo.name}. How can I help you with your learning today? Feel free to ask about any subject or how our platform can assist your educational journey.`,
+      }
+      setInitialMessages([welcomeMessage])
+      setQuickPrompts(generateQuickPrompts())
     }
   }, [conversationId, fetchMessages])
 
@@ -233,13 +253,14 @@ export default function AIChat() {
 
   const handleNewConversation = () => {
     router.push("/ai/chat")
-    setMessages([
-      {
-        id: "welcome",
-        role: "assistant",
-        content: "Hi there! I'm your AI tutor from Masterin. How can I help you with your learning today?",
-      },
-    ])
+    const welcomeMessage = {
+      id: "welcome",
+      role: "assistant",
+      content: `Hi there! I'm your AI tutor from ${platformInfo.name}. How can I help you with your learning today? Feel free to ask about any subject or how our platform can assist your educational journey.`,
+    }
+    setMessages([welcomeMessage])
+    // Generate new quick prompts for the new conversation
+    setQuickPrompts(generateQuickPrompts())
   }
 
   const handleSelectConversation = (id: string) => {
@@ -370,7 +391,7 @@ export default function AIChat() {
           {/* Chat Area */}
           <div className="flex-1 flex flex-col h-screen">
             <Card className="flex-1 flex flex-col overflow-hidden shadow-none border-0 rounded-none">
-              <div className="p-4 bg-purple-600 text-white flex items-center">
+              <div className="p-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -380,7 +401,7 @@ export default function AIChat() {
                   <History className="h-4 w-4" />
                 </Button>
                 <div>
-                  <h1 className="text-xl font-bold">Masterin AI Tutor</h1>
+                  <h1 className="text-xl font-bold">{platformInfo.name} AI Tutor</h1>
                   <p className="text-sm opacity-90">Your personal AI learning assistant</p>
                 </div>
               </div>
@@ -467,7 +488,7 @@ export default function AIChat() {
               <div className="px-4 py-2 border-t border-gray-200">
                 <p className="text-sm text-gray-500 mb-2">Suggested topics:</p>
                 <div className="flex flex-wrap gap-2">
-                  {quickPrompts.slice(0, 3).map((prompt, index) => (
+                  {quickPrompts.map((prompt, index) => (
                     <Button
                       key={index}
                       variant="outline"
@@ -489,7 +510,7 @@ export default function AIChat() {
                     <Textarea
                       value={input}
                       onChange={handleInputChange}
-                      placeholder="Ask anything about your studies..."
+                      placeholder="Ask anything about your studies or our platform..."
                       className="min-h-[60px] resize-none pr-10"
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {

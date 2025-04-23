@@ -3,6 +3,9 @@ import { streamText } from "ai"
 import { NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase"
 import { rateLimit } from "@/lib/rate-limit"
+import platformInfo from "@/lib/platform-info"
+import { analyzeQuery } from "@/lib/query-analyzer"
+import { extractMemoryFromMessages, generateMemoryPrompt } from "@/lib/conversation-memory"
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30
@@ -69,11 +72,12 @@ export async function POST(req: Request) {
     }
 
     // Parse request body
-    let messages, conversationId
+    let messages, conversationId, memory
     try {
       const body = await req.json()
       messages = body.messages
       conversationId = body.conversationId
+      memory = body.memory || null
     } catch (error) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
     }
@@ -135,11 +139,67 @@ export async function POST(req: Request) {
       }
     }
 
-    // Use the Groq API to generate a response
+    // Analyze the latest user query
+    const latestUserMessage = messages.filter((m) => m.role === "user").pop()
+    let queryAnalysis = null
+    let memoryPrompt = ""
+
+    if (latestUserMessage) {
+      queryAnalysis = analyzeQuery(latestUserMessage.content)
+
+      // Extract memory from conversation
+      if (!memory) {
+        const extractedMemory = extractMemoryFromMessages(messages)
+        if (extractedMemory.length > 0) {
+          memoryPrompt = generateMemoryPrompt({
+            userId: session.user.id,
+            sessionId: conversation.id,
+            items: extractedMemory,
+            lastUpdated: Date.now(),
+          })
+        }
+      } else {
+        memoryPrompt = generateMemoryPrompt(memory)
+      }
+    }
+
+    // Enhanced system prompt with platform-specific context and user context
+    const enhancedSystemPrompt = `
+You are an AI assistant from ${platformInfo.name}, an educational platform that offers AI-powered learning tools. Your goal is to provide helpful, accurate, and engaging responses about the platform and educational topics.
+
+ABOUT ${platformInfo.name.toUpperCase()}:
+${platformInfo.name} is an AI-powered educational platform that offers several tools:
+${platformInfo.features.map((feature, index) => `${index + 1}. ${feature.name}: ${feature.description}`).join("\n")}
+
+PRICING:
+- ${platformInfo.pricing.free.name}: ${platformInfo.pricing.free.price} (${platformInfo.pricing.free.features.slice(0, 3).join(", ")})
+- ${platformInfo.pricing.premium.name}: ${platformInfo.pricing.premium.price} (${platformInfo.pricing.premium.features.slice(0, 3).join(", ")})
+- ${platformInfo.pricing.team.name}: ${platformInfo.pricing.team.price} (${platformInfo.pricing.team.features.slice(0, 3).join(", ")})
+
+SUBJECTS COVERED:
+${platformInfo.subjects.map((subject) => subject.name).join(", ")}
+
+${memoryPrompt ? `USER CONTEXT:\n${memoryPrompt}\n` : ""}
+
+${queryAnalysis ? `QUERY ANALYSIS:\nThe user's query appears to be a ${queryAnalysis.type.replace("_", " ")}${queryAnalysis.subject ? ` about ${queryAnalysis.subject}` : ""}${queryAnalysis.feature ? ` regarding the ${queryAnalysis.feature} feature` : ""} with ${queryAnalysis.confidence * 100}% confidence.\n` : ""}
+
+GUIDELINES:
+1. Be educational, supportive, and engaging
+2. Provide clear, accurate, and helpful explanations
+3. Format responses with markdown for better readability
+4. Include examples, analogies, and step-by-step explanations when appropriate
+5. Be specific about ${platformInfo.name}'s features and capabilities
+6. Tailor responses to the user's questions and needs
+7. If asked about a topic outside your knowledge, acknowledge limitations and suggest resources
+8. When appropriate, recommend relevant platform features that could help the user
+
+Remember to maintain a helpful, educational tone throughout the conversation.
+`
+
+    // Use the Groq API to generate a response with enhanced system prompt
     const result = streamText({
       model: groq("llama3-70b-8192"),
-      system:
-        "You are an AI tutor from Masterin, an educational platform. Your goal is to help students learn by providing clear, accurate, and helpful explanations. Focus on being educational, supportive, and engaging. When appropriate, format your responses with markdown for better readability. Include examples, analogies, and step-by-step explanations to help students understand complex topics.",
+      system: enhancedSystemPrompt,
       messages,
       maxTokens: 2000, // Limit response length
     })

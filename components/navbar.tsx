@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
-// Update the navigation links to reflect educational content
+// Update the navigation links to include About page
 const navLinks = [
   { name: "Home", href: "/" },
+  { name: "About", href: "/about" },
   { name: "Courses", href: "/courses" },
   { name: "AI Tutor", href: "/ai" },
   { name: "Resources", href: "/resources" },

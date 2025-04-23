@@ -10,7 +10,9 @@ export default function AboutPage() {
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
               About{" "}
-              <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">EduAI</span>
+              <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                Masterin
+              </span>
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
               We're on a mission to transform education through the power of artificial intelligence and make quality
@@ -27,7 +29,7 @@ export default function AboutPage() {
             <div className="md:w-1/2">
               <div className="relative rounded-lg overflow-hidden shadow-xl">
                 <Image
-                  src="/placeholder.svg?height=600&width=800&query=diverse team in modern office"
+                  src="/collaborative-innovation.png"
                   alt="Our Team"
                   width={800}
                   height={600}
@@ -38,9 +40,9 @@ export default function AboutPage() {
             <div className="md:w-1/2">
               <h2 className="text-3xl font-bold mb-6">Our Story</h2>
               <p className="text-gray-600 dark:text-gray-300 mb-4">
-                Founded in 2020, EduAI began with a simple vision: to make high-quality education accessible to everyone
-                through AI technology. What started as a small team of educators and AI enthusiasts has grown into a
-                platform serving students and teachers worldwide.
+                Founded in 2020, Masterin began with a simple vision: to make high-quality education accessible to
+                everyone through AI technology. What started as a small team of educators and AI enthusiasts has grown
+                into a platform serving students and teachers worldwide.
               </p>
               <p className="text-gray-600 dark:text-gray-300 mb-4">
                 Our team combines expertise in education, cognitive science, and artificial intelligence to create
@@ -118,17 +120,17 @@ export default function AboutPage() {
               {
                 name: "Dr. Alex Johnson",
                 role: "CEO & Co-Founder",
-                image: "/placeholder.svg?height=300&width=300&query=professional educator man",
+                image: "/engaged-instructor.png",
               },
               {
                 name: "Dr. Sarah Chen",
                 role: "Chief Learning Officer",
-                image: "/placeholder.svg?height=300&width=300&query=professional woman educator",
+                image: "/confident-classroom-leader.png",
               },
               {
                 name: "Michael Rodriguez",
                 role: "Chief AI Officer",
-                image: "/placeholder.svg?height=300&width=300&query=professional man scientist",
+                image: "/focused-researcher.png",
               },
               {
                 name: "Jessica Williams",
