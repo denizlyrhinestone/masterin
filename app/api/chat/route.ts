@@ -2,27 +2,28 @@ import { groq } from "@ai-sdk/groq"
 import { streamText } from "ai"
 import { NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase"
+import { rateLimit } from "@/lib/rate-limit"
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30
 
-// Simple in-memory rate limiter
-const rateLimits = new Map<string, { count: number; timestamp: number }>()
+// Simple in-memory rate limiter (fallback if Redis is unavailable)
+const localRateLimits = new Map<string, { count: number; timestamp: number }>()
 const RATE_LIMIT = 20 // requests per minute
 const RATE_WINDOW = 60 * 1000 // 1 minute in milliseconds
 
-async function checkRateLimit(userId: string): Promise<boolean> {
+async function checkLocalRateLimit(userId: string): Promise<boolean> {
   const now = Date.now()
-  const userRateLimit = rateLimits.get(userId)
+  const userRateLimit = localRateLimits.get(userId)
 
   if (!userRateLimit) {
-    rateLimits.set(userId, { count: 1, timestamp: now })
+    localRateLimits.set(userId, { count: 1, timestamp: now })
     return true
   }
 
   // Reset counter if window has passed
   if (now - userRateLimit.timestamp > RATE_WINDOW) {
-    rateLimits.set(userId, { count: 1, timestamp: now })
+    localRateLimits.set(userId, { count: 1, timestamp: now })
     return true
   }
 
@@ -32,7 +33,7 @@ async function checkRateLimit(userId: string): Promise<boolean> {
   }
 
   // Increment counter
-  rateLimits.set(userId, {
+  localRateLimits.set(userId, {
     count: userRateLimit.count + 1,
     timestamp: userRateLimit.timestamp,
   })
@@ -53,17 +54,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check rate limit
-    const withinLimit = await checkRateLimit(session.user.id)
+    // Check rate limit using Redis (with fallback to local)
+    let withinLimit = true
+    try {
+      const limiterResult = await rateLimit.check(req, RATE_LIMIT, "1m")
+      withinLimit = limiterResult.success
+    } catch (error) {
+      console.error("Redis rate limiter error, falling back to local:", error)
+      withinLimit = await checkLocalRateLimit(session.user.id)
+    }
+
     if (!withinLimit) {
       return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 })
     }
 
     // Parse request body
-    const { messages, conversationId } = await req.json()
+    let messages, conversationId
+    try {
+      const body = await req.json()
+      messages = body.messages
+      conversationId = body.conversationId
+    } catch (error) {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+    }
 
     if (!messages || !Array.isArray(messages)) {
-      return NextResponse.json({ error: "Invalid request format" }, { status: 400 })
+      return NextResponse.json({ error: "Invalid request format: messages must be an array" }, { status: 400 })
     }
 
     // Handle conversation persistence
@@ -78,7 +94,7 @@ export async function POST(req: Request) {
         .single()
 
       if (error || !data) {
-        return NextResponse.json({ error: "Conversation not found" }, { status: 404 })
+        return NextResponse.json({ error: "Conversation not found or access denied" }, { status: 404 })
       }
 
       conversation = data
@@ -106,11 +122,16 @@ export async function POST(req: Request) {
     if (messages.length > 0) {
       const latestMessage = messages[messages.length - 1]
       if (latestMessage.role === "user") {
-        await supabase.from("chat_messages").insert({
+        const { error: messageError } = await supabase.from("chat_messages").insert({
           conversation_id: conversation.id,
           role: latestMessage.role,
           content: latestMessage.content,
         })
+
+        if (messageError) {
+          console.error("Error storing user message:", messageError)
+          // Continue execution even if message storage fails
+        }
       }
     }
 
@@ -120,15 +141,34 @@ export async function POST(req: Request) {
       system:
         "You are an AI tutor from Masterin, an educational platform. Your goal is to help students learn by providing clear, accurate, and helpful explanations. Focus on being educational, supportive, and engaging. When appropriate, format your responses with markdown for better readability. Include examples, analogies, and step-by-step explanations to help students understand complex topics.",
       messages,
+      maxTokens: 2000, // Limit response length
     })
 
     // Store assistant's response in database when completed
     result.on("done", async (completion) => {
-      await supabase.from("chat_messages").insert({
-        conversation_id: conversation.id,
-        role: "assistant",
-        content: completion.content,
-      })
+      try {
+        await supabase.from("chat_messages").insert({
+          conversation_id: conversation.id,
+          role: "assistant",
+          content: completion.content,
+        })
+
+        // Update conversation title if this is the first exchange
+        const { count } = await supabase
+          .from("chat_messages")
+          .select("id", { count: "exact", head: true })
+          .eq("conversation_id", conversation.id)
+
+        if (count === 2) {
+          // First user message + first AI response
+          const userMessage = messages.find((m) => m.role === "user")?.content || ""
+          const betterTitle = userMessage.slice(0, 50) + (userMessage.length > 50 ? "..." : "")
+
+          await supabase.from("chat_conversations").update({ title: betterTitle }).eq("id", conversation.id)
+        }
+      } catch (error) {
+        console.error("Error storing assistant message:", error)
+      }
     })
 
     // Include the conversation ID in the response metadata

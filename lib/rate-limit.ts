@@ -1,87 +1,48 @@
 import { Redis } from "@upstash/redis"
 
 // Initialize Redis client
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || "",
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
-})
-
-type RateLimitResult = {
-  success: boolean
-  limit: number
-  remaining: number
-  reset: number
-}
+const redis = Redis.fromEnv()
 
 export const rateLimit = {
-  async check(req: Request, limit: number, duration: string): Promise<RateLimitResult> {
+  async check(req: Request, limit: number, window: string): Promise<{ success: boolean; remaining: number }> {
     try {
-      // Get IP address from request
+      // Extract IP address from request
       const ip = req.headers.get("x-forwarded-for") || "anonymous"
 
-      // Parse duration string (e.g., "1m", "10s", "1h")
-      const durationInSeconds = parseDuration(duration)
+      // Extract user ID from authorization header if available
+      const authHeader = req.headers.get("authorization")
+      let userId = "anonymous"
 
-      // Create a unique key for this IP and endpoint
-      const url = new URL(req.url)
-      const key = `ratelimit:${ip}:${url.pathname}`
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        // In a real implementation, you would validate the token
+        // and extract the user ID
+        userId = authHeader.substring(7)
+      }
 
-      // Get current count from Redis
-      const count = (await redis.get<number>(key)) || 0
+      // Create a unique key for this rate limit
+      const key = `ratelimit:${window}:${userId || ip}`
+
+      // Get current count
+      const current = (await redis.get<number>(key)) || 0
 
       // Check if limit is exceeded
-      if (count >= limit) {
-        return {
-          success: false,
-          limit,
-          remaining: 0,
-          reset: durationInSeconds,
-        }
+      if (current >= limit) {
+        return { success: false, remaining: 0 }
       }
 
-      // Increment count and set TTL
+      // Increment count
       await redis.incr(key)
-      if (count === 0) {
-        await redis.expire(key, durationInSeconds)
+
+      // Set expiration if this is the first request
+      if (current === 0) {
+        await redis.expire(key, Number.parseInt(window.replace(/[^0-9]/g, "")) * 60)
       }
 
-      // Get TTL of the key
-      const ttl = await redis.ttl(key)
-
-      return {
-        success: true,
-        limit,
-        remaining: Math.max(0, limit - (count + 1)),
-        reset: ttl,
-      }
+      return { success: true, remaining: limit - current - 1 }
     } catch (error) {
       console.error("Rate limit error:", error)
-      // If rate limiting fails, allow the request through
-      return {
-        success: true,
-        limit,
-        remaining: 1,
-        reset: 0,
-      }
+      // Fail open - allow the request if there's an error with rate limiting
+      return { success: true, remaining: 0 }
     }
   },
-}
-
-// Helper function to parse duration strings
-function parseDuration(duration: string): number {
-  const unit = duration.charAt(duration.length - 1)
-  const value = Number.parseInt(duration.slice(0, -1))
-
-  switch (unit) {
-    case "s":
-      return value
-    case "m":
-      return value * 60
-    case "h":
-      return value * 60 * 60
-    case "d":
-      return value * 60 * 60 * 24
-    default:
-      return 60 // Default to 1 minute
-  }
 }

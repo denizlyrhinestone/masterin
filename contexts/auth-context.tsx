@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
 import type { Session, AuthError, User } from "@supabase/supabase-js"
 import { useToast } from "@/hooks/use-toast"
@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const router = useRouter()
 
   // Function to fetch user profile from Supabase
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = useCallback(async (userId: string) => {
     try {
       const { data: profile, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
@@ -66,11 +66,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       console.error("Error in fetchUserProfile:", error)
       return null
     }
-  }
+  }, [])
 
   // Function to create user profile if it doesn't exist
-  const createUserProfile = async (user: User) => {
+  const createUserProfile = useCallback(async (user: User) => {
     try {
+      // Check if profile already exists to prevent duplicate inserts
+      const { data: existingProfile } = await supabase.from("profiles").select("id").eq("id", user.id).single()
+
+      if (existingProfile) {
+        return // Profile already exists
+      }
+
       const { error } = await supabase.from("profiles").insert({
         id: user.id,
         email: user.email,
@@ -85,65 +92,76 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (error) {
       console.error("Error in createUserProfile:", error)
     }
-  }
+  }, [])
 
   // Function to update user state based on session
-  const updateUserState = async (currentSession: Session | null) => {
-    try {
-      if (currentSession?.user) {
-        const profile = await fetchUserProfile(currentSession.user.id)
+  const updateUserState = useCallback(
+    async (currentSession: Session | null) => {
+      try {
+        if (currentSession?.user) {
+          const profile = await fetchUserProfile(currentSession.user.id)
 
-        if (profile) {
-          setUser({
-            id: currentSession.user.id,
-            email: currentSession.user.email || "",
-            name: profile.name,
-            avatar_url: profile.avatar_url,
-          })
-        } else {
-          // If no profile exists yet, create a basic one from auth data
-          setUser({
-            id: currentSession.user.id,
-            email: currentSession.user.email || "",
-            name: currentSession.user.user_metadata?.name || null,
-            avatar_url: null,
-          })
+          if (profile) {
+            setUser({
+              id: currentSession.user.id,
+              email: currentSession.user.email || "",
+              name: profile.name,
+              avatar_url: profile.avatar_url,
+            })
+          } else {
+            // If no profile exists yet, create a basic one from auth data
+            setUser({
+              id: currentSession.user.id,
+              email: currentSession.user.email || "",
+              name: currentSession.user.user_metadata?.name || null,
+              avatar_url: null,
+            })
 
-          // Create profile in the database if it doesn't exist
-          if (currentSession.user.email) {
-            await createUserProfile(currentSession.user)
+            // Create profile in the database if it doesn't exist
+            if (currentSession.user.email) {
+              await createUserProfile(currentSession.user)
+            }
           }
+          setIsAuthenticated(true)
+        } else {
+          setUser(null)
+          setIsAuthenticated(false)
         }
-        setIsAuthenticated(true)
-      } else {
+      } catch (error) {
+        console.error("Error in updateUserState:", error)
         setUser(null)
         setIsAuthenticated(false)
       }
-    } catch (error) {
-      console.error("Error in updateUserState:", error)
-      setUser(null)
-      setIsAuthenticated(false)
-    }
-  }
+    },
+    [fetchUserProfile, createUserProfile],
+  )
 
   useEffect(() => {
+    let mounted = true
+    let refreshTimer: NodeJS.Timeout | null = null
+    let subscription: { unsubscribe: () => void } | null = null
+
     // Set up auth state listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      console.log("Auth state changed:", event)
-      setSession(currentSession)
+    const setupAuthListener = async () => {
+      const { data } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+        if (!mounted) return
 
-      if (event === "SIGNED_OUT") {
-        setUser(null)
-        setIsAuthenticated(false)
-        router.push("/auth/sign-in")
-      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-        await updateUserState(currentSession)
-      }
+        console.log("Auth state changed:", event)
+        setSession(currentSession)
 
-      setIsLoading(false)
-    })
+        if (event === "SIGNED_OUT") {
+          setUser(null)
+          setIsAuthenticated(false)
+          router.push("/auth/sign-in")
+        } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+          await updateUserState(currentSession)
+        }
+
+        setIsLoading(false)
+      })
+
+      subscription = data.subscription
+    }
 
     // Initial session check
     const initializeAuth = async () => {
@@ -152,39 +170,55 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           data: { session: initialSession },
         } = await supabase.auth.getSession()
 
+        if (!mounted) return
+
         setSession(initialSession)
         await updateUserState(initialSession)
+
+        // Set up refresh timer to prevent session expiration
+        refreshTimer = setInterval(
+          async () => {
+            if (!mounted) return
+            try {
+              const { data } = await supabase.auth.refreshSession()
+              if (mounted) {
+                setSession(data.session)
+              }
+            } catch (error) {
+              console.error("Error refreshing session:", error)
+            }
+          },
+          4 * 60 * 60 * 1000, // Refresh every 4 hours
+        )
       } catch (error) {
         console.error("Error initializing auth:", error)
       } finally {
-        setIsLoading(false)
+        if (mounted) {
+          setIsLoading(false)
+        }
       }
     }
 
+    setupAuthListener()
     initializeAuth()
 
-    // Set up refresh timer to prevent session expiration
-    const refreshTimer = setInterval(
-      async () => {
-        try {
-          const { data } = await supabase.auth.refreshSession()
-          setSession(data.session)
-        } catch (error) {
-          console.error("Error refreshing session:", error)
-        }
-      },
-      4 * 60 * 60 * 1000, // Refresh every 4 hours
-    )
-
-    // Clean up timer on unmount
+    // Clean up on unmount
     return () => {
-      subscription.unsubscribe()
-      clearInterval(refreshTimer)
+      mounted = false
+      if (refreshTimer) clearInterval(refreshTimer)
+      if (subscription) subscription.unsubscribe()
     }
-  }, [router])
+  }, [router, updateUserState])
 
   const signIn = async (email: string, password: string) => {
     try {
+      // Validate inputs
+      if (!email || !password) {
+        return {
+          error: new Error("Email and password are required") as unknown as AuthError,
+        }
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -210,6 +244,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signUp = async (email: string, password: string, name: string) => {
     try {
+      // Validate inputs
+      if (!email || !password || !name) {
+        return {
+          error: new Error("Email, password, and name are required") as unknown as AuthError,
+          userId: null,
+        }
+      }
+
+      // Password strength validation
+      if (password.length < 8) {
+        return {
+          error: new Error("Password must be at least 8 characters long") as unknown as AuthError,
+          userId: null,
+        }
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -224,7 +274,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         console.error("Sign up error:", error.message)
         // Categorize common signup errors
         if (error.message.includes("already registered")) {
-          return { error: { ...error, code: "email_in_use" }, userId: null }
+          return { error: { ...error, code: "email_in_use" } as AuthError, userId: null }
         }
         return { error, userId: null }
       }
@@ -272,6 +322,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const resetPassword = async (email: string) => {
     try {
+      if (!email) {
+        return { error: new Error("Email is required") as unknown as AuthError }
+      }
+
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       })
@@ -290,6 +344,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const updatePassword = async (password: string) => {
     try {
+      if (!password) {
+        return { error: new Error("Password is required") as unknown as AuthError }
+      }
+
+      // Password strength validation
+      if (password.length < 8) {
+        return {
+          error: new Error("Password must be at least 8 characters long") as unknown as AuthError,
+        }
+      }
+
       const { error } = await supabase.auth.updateUser({
         password,
       })
