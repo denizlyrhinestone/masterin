@@ -7,8 +7,9 @@ import AIToolsSection from "@/components/ai-tools-section"
 import FreeTrialBanner from "@/components/free-trial-banner"
 
 export default function Home() {
-  // Instead of checking cookies server-side, we'll pass a prop to FreeTrialBanner
-  // and let it handle the check client-side
+  // Remove any server-side cookie checking
+  // Let the FreeTrialBanner component handle this client-side
+
   return (
     <div className="flex flex-col w-full">
       {/* Hero Section */}
@@ -109,9 +110,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Free Trial Banner for non-logged in users - now checking cookies client-side */}
+      {/* Free Trial Banner - now checking cookies client-side */}
       <FreeTrialBanner checkClientSide={true} />
 
+      {/* Rest of the page content... */}
+      {/* ... */}
       {/* AI Tools Section */}
       <AIToolsSection />
 

@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
+import { supabaseAdmin } from "./supabase"
 
 // Type for admin check result
 export interface AdminCheckResult {
@@ -58,43 +58,26 @@ export function isAdminEmail(userEmail: string | null | undefined): AdminCheckRe
 }
 
 /**
- * Creates a Supabase client for server-side operations
- * This avoids using next/headers which is not compatible with Pages Router
- */
-export function createAdminSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-  return createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
-}
-
-/**
  * Server-side function to check if the current user is an admin
- * This version uses the service role key and doesn't rely on next/headers
- * @param userId The user ID to check
+ * This version uses the admin client directly and doesn't rely on next/headers
+ * @param sessionData Optional session data to use instead of fetching
  * @returns Promise resolving to AdminCheckResult
  */
-export async function checkUserIsAdmin(userId: string): Promise<AdminCheckResult> {
+export async function checkCurrentUserIsAdmin(sessionData?: any): Promise<AdminCheckResult> {
   try {
-    if (!userId) {
-      return { isAdmin: false, reason: "No user ID provided" }
+    let session = sessionData
+
+    if (!session) {
+      // If no session provided, try to get it from the client
+      const { data } = await supabaseAdmin.auth.getSession()
+      session = data.session
     }
 
-    const supabase = createAdminSupabaseClient()
-
-    // Get the user's email
-    const { data, error } = await supabase.from("profiles").select("email").eq("id", userId).single()
-
-    if (error || !data) {
-      return { isAdmin: false, reason: "User not found" }
+    if (!session) {
+      return { isAdmin: false, reason: "User not authenticated" }
     }
 
-    return isAdminEmail(data.email)
+    return isAdminEmail(session.user.email)
   } catch (error) {
     console.error("Error checking admin status:", error)
     return { isAdmin: false, reason: "Error checking admin status" }
@@ -109,10 +92,8 @@ export async function checkUserIsAdmin(userId: string): Promise<AdminCheckResult
  */
 export async function logAdminAction(action: string, details: Record<string, any>, userId: string): Promise<void> {
   try {
-    const supabase = createAdminSupabaseClient()
-
-    // Log to admin_logs table
-    const { error } = await supabase.from("admin_logs").insert({
+    // Use supabaseAdmin directly instead of createServerSupabaseClient
+    const { error } = await supabaseAdmin.from("admin_logs").insert({
       admin_id: userId,
       action,
       details,

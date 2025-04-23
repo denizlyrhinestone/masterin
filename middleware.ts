@@ -28,13 +28,8 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    // Get the auth cookie
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-    // We can't use createServerSupabaseClient here as it uses next/headers
-    // Instead, we'll check for the session cookie and redirect if not present
-    const authCookie = request.cookies.get("sb-auth-token")
+    // Check for authentication cookie
+    const authCookie = request.cookies.get("sb-auth-token") || request.cookies.get("sb:token")
 
     // If no auth cookie, redirect to login
     if (!authCookie) {
@@ -43,8 +38,8 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    // For now, we'll just check if the cookie exists and allow the request
-    // The actual admin check will happen in the API routes or page components
+    // We can't do a full admin check in middleware without next/headers
+    // So we'll just check for authentication and let the page/API handle admin check
     return NextResponse.next()
   } catch (error) {
     console.error("Error in admin middleware:", error)

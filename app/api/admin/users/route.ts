@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { supabase, supabaseAdmin } from "@/lib/supabase"
 import { isAdminEmail, checkAdminEmailConfig, logAdminAction } from "@/lib/admin"
 
 export async function GET() {
@@ -11,17 +11,14 @@ export async function GET() {
       return NextResponse.json({ error: "Admin functionality is not available", details: message }, { status: 503 })
     }
 
-    // Initialize Supabase
-    const supabase = createServerSupabaseClient()
+    // Get session using client-side method
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
-    // Get session
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
+    if (sessionError || !sessionData.session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const session = sessionData.session
 
     // Check if the user is an admin
     const { isAdmin, reason } = isAdminEmail(session.user.email)
@@ -30,8 +27,11 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden", reason }, { status: 403 })
     }
 
-    // Get users from the profiles table
-    const { data: users, error } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
+    // Get users from the profiles table using admin client
+    const { data: users, error } = await supabaseAdmin
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false })
 
     if (error) {
       console.error("Error fetching users:", error)

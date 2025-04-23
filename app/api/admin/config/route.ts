@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 import { isAdminEmail, checkAdminEmailConfig } from "@/lib/admin"
 
 export async function GET() {
@@ -11,17 +11,14 @@ export async function GET() {
       return NextResponse.json({ error: "Admin functionality is not available", details: message }, { status: 503 })
     }
 
-    // Initialize Supabase
-    const supabase = createServerSupabaseClient()
+    // Get session using client-side method
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
-    // Get session
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
+    if (sessionError || !sessionData.session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const session = sessionData.session
 
     // Check if the user is an admin
     const { isAdmin, reason } = isAdminEmail(session.user.email)

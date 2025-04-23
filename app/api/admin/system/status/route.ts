@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { supabase, supabaseAdmin } from "@/lib/supabase"
 import { isAdminEmail, checkAdminEmailConfig } from "@/lib/admin"
 
 export async function GET() {
@@ -7,17 +7,14 @@ export async function GET() {
     // Check admin configuration
     const adminConfig = checkAdminEmailConfig()
 
-    // Initialize Supabase
-    const supabase = createServerSupabaseClient()
+    // Get session using client-side method
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
-    // Get session
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
+    if (sessionError || !sessionData.session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const session = sessionData.session
 
     // Check if the user is an admin
     const { isAdmin, reason } = isAdminEmail(session.user.email)
@@ -32,7 +29,7 @@ export async function GET() {
 
     const startTime = Date.now()
     try {
-      const { data, error } = await supabase.from("profiles").select("count").limit(1)
+      const { data, error } = await supabaseAdmin.from("profiles").select("count").limit(1)
 
       if (error) {
         databaseStatus = "degraded"
@@ -52,7 +49,7 @@ export async function GET() {
 
     try {
       // This is a simplified check - in a real app, you'd have a more robust way to check auth service
-      const { data, error } = await supabase.auth.getSession()
+      const { data, error } = await supabaseAdmin.auth.getSession()
 
       if (error) {
         authStatus = "degraded"
@@ -61,7 +58,7 @@ export async function GET() {
 
         // Get active users count (users with sessions in the last 24 hours)
         // This is a simplified example - in a real app, you'd track this differently
-        const { count } = await supabase.rpc("get_active_users_count")
+        const { count } = await supabaseAdmin.rpc("get_active_users_count")
         activeUsers = count || 0
       }
     } catch (error) {
@@ -76,7 +73,7 @@ export async function GET() {
 
     try {
       // This is a simplified check - in a real app, you'd have a more robust way to check storage
-      const { data, error } = await supabase.storage.getBucket("avatars")
+      const { data, error } = await supabaseAdmin.storage.getBucket("avatars")
 
       if (error) {
         storageStatus = "degraded"
