@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { supabase, supabaseAdmin } from "@/lib/supabase"
 import { isAdminEmail, checkAdminEmailConfig, logAdminAction } from "@/lib/admin"
 
 export async function POST(req: Request) {
@@ -11,17 +11,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Admin functionality is not available", details: message }, { status: 503 })
     }
 
-    // Initialize Supabase
-    const supabase = createServerSupabaseClient()
+    // Get session using client-side method
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
-    // Get session
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
+    if (sessionError || !sessionData.session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const session = sessionData.session
 
     // Check if the user is an admin
     const { isAdmin, reason } = isAdminEmail(session.user.email)
@@ -40,7 +37,7 @@ export async function POST(req: Request) {
     }
 
     // Get target users based on recipients filter
-    let userQuery = supabase.from("profiles").select("id, email, name")
+    let userQuery = supabaseAdmin.from("profiles").select("id, email, name")
 
     if (recipients === "active") {
       // In a real app, you'd have a way to filter active users
@@ -64,7 +61,7 @@ export async function POST(req: Request) {
     // This is a simplified example that just logs the action
 
     // Create a notification record in the database
-    const { data: notification, error: notificationError } = await supabase
+    const { data: notification, error: notificationError } = await supabaseAdmin
       .from("notifications")
       .insert({
         subject,

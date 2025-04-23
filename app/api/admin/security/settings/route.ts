@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerSupabaseClient } from "@/lib/supabase"
+import { supabase, supabaseAdmin } from "@/lib/supabase"
 import { isAdminEmail, checkAdminEmailConfig, logAdminAction } from "@/lib/admin"
 
 export async function POST(req: Request) {
@@ -11,17 +11,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Admin functionality is not available", details: message }, { status: 503 })
     }
 
-    // Initialize Supabase
-    const supabase = createServerSupabaseClient()
+    // Get session using client-side method
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
-    // Get session
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
+    if (sessionError || !sessionData.session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+
+    const session = sessionData.session
 
     // Check if the user is an admin
     const { isAdmin, reason } = isAdminEmail(session.user.email)
@@ -46,11 +43,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Session timeout must be at least 1 hour" }, { status: 400 })
     }
 
-    // In a real app, you would save these settings to a database
-    // This is a simplified example that just logs the action
-
-    // Create or update security settings in the database
-    const { data, error } = await supabase.from("security_settings").upsert({
+    // Create or update security settings in the database using supabaseAdmin
+    const { data, error } = await supabaseAdmin.from("security_settings").upsert({
       id: 1, // Single record for app-wide settings
       two_factor_required: settings.twoFactorRequired,
       password_min_length: settings.passwordMinLength,
