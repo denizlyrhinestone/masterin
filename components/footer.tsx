@@ -1,138 +1,124 @@
 import Link from "next/link"
-import { Facebook, Twitter, Instagram, Linkedin, Youtube, Sparkles } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Facebook, Twitter, Instagram, Linkedin, Github } from "lucide-react"
 
-export function Footer() {
+export default function Footer() {
   return (
-    <footer className="bg-gray-900 py-12 text-gray-300">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <h3 className="mb-4 text-lg font-semibold text-white">Masterin</h3>
-            <p className="mb-4">Transforming education through technology and expert guidance.</p>
+    <footer className="bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+              Masterin
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Empowering businesses with advanced AI solutions and professional services.
+            </p>
             <div className="flex space-x-4">
-              <Link href="#" className="text-gray-400 transition-colors duration-200 hover:text-emerald-500">
-                <Facebook className="h-5 w-5" />
+              <a href="#" className="text-gray-500 hover:text-purple-600">
                 <span className="sr-only">Facebook</span>
-              </Link>
-              <Link href="#" className="text-gray-400 transition-colors duration-200 hover:text-emerald-500">
-                <Twitter className="h-5 w-5" />
+                <Facebook size={20} />
+              </a>
+              <a href="#" className="text-gray-500 hover:text-purple-600">
                 <span className="sr-only">Twitter</span>
-              </Link>
-              <Link href="#" className="text-gray-400 transition-colors duration-200 hover:text-emerald-500">
-                <Instagram className="h-5 w-5" />
+                <Twitter size={20} />
+              </a>
+              <a href="#" className="text-gray-500 hover:text-purple-600">
                 <span className="sr-only">Instagram</span>
-              </Link>
-              <Link href="#" className="text-gray-400 transition-colors duration-200 hover:text-emerald-500">
-                <Linkedin className="h-5 w-5" />
+                <Instagram size={20} />
+              </a>
+              <a href="#" className="text-gray-500 hover:text-purple-600">
                 <span className="sr-only">LinkedIn</span>
-              </Link>
-              <Link href="#" className="text-gray-400 transition-colors duration-200 hover:text-emerald-500">
-                <Youtube className="h-5 w-5" />
-                <span className="sr-only">YouTube</span>
-              </Link>
+                <Linkedin size={20} />
+              </a>
+              <a href="#" className="text-gray-500 hover:text-purple-600">
+                <span className="sr-only">GitHub</span>
+                <Github size={20} />
+              </a>
             </div>
           </div>
 
           <div>
-            <h3 className="mb-4 text-lg font-semibold text-white">Quick Links</h3>
-            <ul className="space-y-2">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Company</h3>
+            <ul className="space-y-3">
               <li>
-                <Link href="/courses" className="transition-colors duration-200 hover:text-emerald-500">
-                  Courses
-                </Link>
-              </li>
-              <li>
-                <Link href="/educators" className="transition-colors duration-200 hover:text-emerald-500">
-                  Educators
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/ai-tutor"
-                  className="flex items-center text-emerald-400 transition-colors duration-200 hover:text-emerald-300"
-                >
-                  <Sparkles className="mr-1 h-3 w-3" />
-                  AI Tutor
-                  <span className="ml-1 rounded-full bg-emerald-800 px-1.5 py-0.5 text-xs font-medium text-emerald-200">
-                    New
-                  </span>
-                </Link>
-              </li>
-              <li>
-                <Link href="/community" className="transition-colors duration-200 hover:text-emerald-500">
-                  Community
-                </Link>
-              </li>
-              <li>
-                <Link href="/about" className="transition-colors duration-200 hover:text-emerald-500">
+                <Link href="/about" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
                   About Us
                 </Link>
               </li>
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="mb-4 text-lg font-semibold text-white">Resources</h3>
-            <ul className="space-y-2">
               <li>
-                <Link href="/blog" className="transition-colors duration-200 hover:text-emerald-500">
+                <Link href="/careers" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                  Careers
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
                   Blog
                 </Link>
               </li>
               <li>
-                <Link href="/help" className="transition-colors duration-200 hover:text-emerald-500">
-                  Help Center
-                </Link>
-              </li>
-              <li>
-                <Link href="/faq" className="transition-colors duration-200 hover:text-emerald-500">
-                  FAQs
-                </Link>
-              </li>
-              <li>
-                <Link href="/testimonials" className="transition-colors duration-200 hover:text-emerald-500">
-                  Testimonials
-                </Link>
-              </li>
-              <li>
-                <Link href="/careers" className="transition-colors duration-200 hover:text-emerald-500">
-                  Careers
+                <Link href="/contact" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                  Contact
                 </Link>
               </li>
             </ul>
           </div>
 
           <div>
-            <h3 className="mb-4 text-lg font-semibold text-white">Contact</h3>
-            <ul className="space-y-2">
-              <li>Email: info@masterin.edu</li>
-              <li>Phone: +1 (555) 123-4567</li>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Services</h3>
+            <ul className="space-y-3">
               <li>
-                <Link href="/contact" className="transition-colors duration-200 hover:text-emerald-500">
-                  Contact Form
+                <Link href="/services" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                  All Services
                 </Link>
               </li>
               <li>
-                <Link href="/support" className="transition-colors duration-200 hover:text-emerald-500">
-                  Support
+                <Link href="/ai" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                  AI Solutions
+                </Link>
+              </li>
+              <li>
+                <Link href="/consulting" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                  Consulting
+                </Link>
+              </li>
+              <li>
+                <Link href="/development" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                  Development
                 </Link>
               </li>
             </ul>
           </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Subscribe</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Stay updated with our latest news and offers.
+            </p>
+            <div className="flex space-x-2">
+              <Input type="email" placeholder="Your email" className="max-w-[200px]" />
+              <Button size="sm">Subscribe</Button>
+            </div>
+          </div>
         </div>
 
-        <div className="mt-12 border-t border-gray-800 pt-8 text-center">
-          <p>&copy; {new Date().getFullYear()} Masterin. All rights reserved.</p>
-          <div className="mt-2 flex justify-center space-x-4 text-sm">
-            <Link href="/terms" className="transition-colors duration-200 hover:text-emerald-500">
-              Terms of Service
-            </Link>
-            <Link href="/privacy" className="transition-colors duration-200 hover:text-emerald-500">
-              Privacy Policy
-            </Link>
-            <Link href="/cookies" className="transition-colors duration-200 hover:text-emerald-500">
-              Cookie Policy
-            </Link>
+        <div className="border-t border-gray-200 dark:border-gray-800 mt-12 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              &copy; {new Date().getFullYear()} Masterin. All rights reserved.
+            </p>
+            <div className="flex space-x-6 mt-4 md:mt-0">
+              <Link href="/privacy" className="text-xs text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="text-xs text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                Terms of Service
+              </Link>
+              <Link href="/cookies" className="text-xs text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                Cookie Policy
+              </Link>
+            </div>
           </div>
         </div>
       </div>
