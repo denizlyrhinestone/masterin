@@ -10,6 +10,11 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata = {
   title: "Masterin - AI-Powered Education",
   description: "Advanced AI solutions for modern education",
+  icons: {
+    icon: [{ url: "/favicon.png" }],
+    apple: [{ url: "/icon-192.png" }, { url: "/icon-512.png", sizes: "512x512" }],
+  },
+  manifest: "/manifest.json",
     generator: 'v0.dev'
 }
 
