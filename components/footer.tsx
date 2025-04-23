@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Facebook, Twitter, Instagram, Linkedin, Github } from "lucide-react"
+import Image from "next/image"
 
 export default function Footer() {
   return (
@@ -9,9 +10,9 @@ export default function Footer() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              EduAI
-            </h3>
+            <div className="flex items-center">
+              <Image src="/masterinLogo.jpg" alt="Masterin Logo" width={40} height={40} className="h-10 w-auto" />
+            </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Empowering students and educators with AI-enhanced learning experiences.
             </p>

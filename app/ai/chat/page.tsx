@@ -131,36 +131,60 @@ export default function AIChat() {
     }
   }
 
-  // Simple function to generate responses based on input
-  // In a real implementation, this would call an AI API
+  // Let's enhance the generateAIResponse function to provide more detailed, educational responses
+
+  // Replace the current generateAIResponse function with this improved version:
+
   const generateAIResponse = (input: string): string => {
     const lowerInput = input.toLowerCase()
 
+    // DNA and RNA related questions
+    if (lowerInput.includes("dna") && !lowerInput.includes("rna")) {
+      return "DNA (Deoxyribonucleic Acid) is the genetic material that carries the instructions for the development, functioning, growth, and reproduction of all known organisms.\n\nKey facts about DNA:\n\n1. Structure: DNA is a double-helix structure made of two strands of nucleotides. Each nucleotide contains a sugar (deoxyribose), a phosphate group, and one of four nitrogen-containing bases: Adenine (A), Thymine (T), Guanine (G), or Cytosine (C).\n\n2. Base Pairing: In the double helix, A always pairs with T, and G always pairs with C through hydrogen bonds.\n\n3. Function: DNA stores genetic information in the form of genes, which are segments of DNA that code for specific proteins or RNA molecules.\n\n4. Replication: DNA can make copies of itself through a process called replication, which is essential for cell division.\n\nWould you like to learn more about DNA replication, transcription, or how DNA compares to RNA?"
+    }
+
+    if (
+      lowerInput.includes("dna") &&
+      lowerInput.includes("rna") &&
+      (lowerInput.includes("compare") || lowerInput.includes("contrast") || lowerInput.includes("difference"))
+    ) {
+      return "Comparison between DNA and RNA:\n\n| Feature | DNA | RNA |\n|---------|-----|-----|\n| Full Name | Deoxyribonucleic Acid | Ribonucleic Acid |\n| Structure | Double-stranded helix | Usually single-stranded |\n| Sugar | Deoxyribose | Ribose |\n| Bases | Adenine (A), Guanine (G), Cytosine (C), Thymine (T) | Adenine (A), Guanine (G), Cytosine (C), Uracil (U) |\n| Base Pairing | A-T, G-C | A-U, G-C |\n| Location | Primarily in the nucleus | Nucleus and cytoplasm |\n| Stability | More stable | Less stable, degrades more easily |\n| Function | Long-term storage of genetic information | Protein synthesis, gene regulation |\n| Types | One main type | Multiple types (mRNA, tRNA, rRNA, etc.) |\n\nKey Differences:\n1. RNA uses ribose sugar instead of deoxyribose\n2. RNA uses uracil (U) instead of thymine (T)\n3. RNA is usually single-stranded while DNA is double-stranded\n4. RNA has more diverse functions in the cell\n\nWould you like me to elaborate on any specific aspect of this comparison?"
+    }
+
+    if (lowerInput.includes("rna") && !lowerInput.includes("dna")) {
+      return "RNA (Ribonucleic Acid) is a nucleic acid that plays several important roles in biological processes, especially in protein synthesis.\n\nKey facts about RNA:\n\n1. Structure: RNA is typically single-stranded (unlike DNA's double-helix) and composed of nucleotides. Each nucleotide contains a ribose sugar, a phosphate group, and one of four nitrogen-containing bases: Adenine (A), Uracil (U), Guanine (G), or Cytosine (C).\n\n2. Types of RNA:\n   - Messenger RNA (mRNA): Carries genetic information from DNA to ribosomes for protein synthesis\n   - Transfer RNA (tRNA): Brings amino acids to ribosomes during protein synthesis\n   - Ribosomal RNA (rRNA): Forms part of ribosomes, the protein-making factories\n   - Non-coding RNAs: Involved in gene regulation and other cellular processes\n\n3. Function: RNA is primarily involved in protein synthesis, but also plays roles in gene regulation, catalyzing biological reactions, and more.\n\nWould you like to learn more about a specific type of RNA or its role in protein synthesis?"
+    }
+
+    // Mathematics related questions
     if (lowerInput.includes("derivative") || lowerInput.includes("calculus")) {
-      return "In calculus, a derivative measures the sensitivity to change of a function's output with respect to its input. It's written as f'(x) or df/dx. The derivative of a function at a chosen input value describes the rate of change of the function at that point. For example, the derivative of f(x) = x² is f'(x) = 2x. Would you like me to explain this further or provide some examples?"
+      return "In calculus, a derivative measures the sensitivity to change of a function's output with respect to its input. It's written as f'(x) or df/dx.\n\nThe derivative of a function at a chosen input value describes the rate of change of the function at that point. Geometrically, it represents the slope of the tangent line to the function's graph at that point.\n\nKey rules for derivatives:\n\n1. Power Rule: If f(x) = xⁿ, then f'(x) = n·xⁿ⁻¹\n2. Constant Rule: If f(x) = c (a constant), then f'(x) = 0\n3. Sum Rule: (f + g)' = f' + g'\n4. Product Rule: (f·g)' = f'·g + f·g'\n5. Quotient Rule: (f/g)' = (f'·g - f·g')/g²\n6. Chain Rule: (f(g(x)))' = f'(g(x))·g'(x)\n\nExample: The derivative of f(x) = x² is f'(x) = 2x\n\nWould you like me to explain any of these rules in more detail or work through a specific example?"
     }
 
+    if (lowerInput.includes("quadratic") || (lowerInput.includes("equation") && lowerInput.includes("solve"))) {
+      return "To solve a quadratic equation in the form ax² + bx + c = 0:\n\n1. Use the quadratic formula: x = (-b ± √(b² - 4ac)) / 2a\n\n2. Calculate the discriminant (b² - 4ac):\n   - If discriminant > 0: Two distinct real solutions\n   - If discriminant = 0: One real solution (repeated root)\n   - If discriminant < 0: Two complex solutions\n\nExample: Solve x² - 5x + 6 = 0\n\nStep 1: Identify a = 1, b = -5, c = 6\n\nStep 2: Use the quadratic formula:\nx = (-(-5) ± √((-5)² - 4(1)(6))) / 2(1)\nx = (5 ± √(25 - 24)) / 2\nx = (5 ± √1) / 2\nx = (5 ± 1) / 2\n\nSo x = 3 or x = 2\n\nVerification: \nFor x = 3: 3² - 5(3) + 6 = 9 - 15 + 6 = 0 ✓\nFor x = 2: 2² - 5(2) + 6 = 4 - 10 + 6 = 0 ✓\n\nWould you like to try solving another quadratic equation?"
+    }
+
+    // Physics related questions
     if (lowerInput.includes("quantum") || lowerInput.includes("mechanics")) {
-      return "Quantum mechanics is a fundamental theory in physics that describes nature at the smallest scales of energy levels of atoms and subatomic particles. Unlike classical physics, quantum mechanics allows particles to exist in multiple states simultaneously (superposition) until measured. This leads to fascinating phenomena like quantum entanglement and the uncertainty principle. Would you like me to explain a specific concept in quantum mechanics?"
+      return "Quantum mechanics is a fundamental theory in physics that describes nature at the smallest scales of energy levels of atoms and subatomic particles.\n\nKey concepts in quantum mechanics:\n\n1. Wave-Particle Duality: Particles like electrons can behave as both particles and waves, depending on how we observe them.\n\n2. Uncertainty Principle: Formulated by Heisenberg, it states that we cannot simultaneously know both the position and momentum of a particle with perfect precision. The more precisely we know one, the less precisely we can know the other.\n\n3. Superposition: Quantum systems can exist in multiple states simultaneously until measured or observed.\n\n4. Quantum Entanglement: When two particles become entangled, the quantum state of each particle cannot be described independently of the other, even when separated by large distances.\n\n5. Wave Function: Represented by the symbol ψ (psi), it contains all the information about a quantum system.\n\nThese principles lead to counterintuitive phenomena that challenge our classical understanding of physics, but have been consistently verified by experiments.\n\nWould you like me to elaborate on any of these concepts or discuss quantum applications like quantum computing?"
     }
 
+    // Computer Science related questions
     if (lowerInput.includes("object") && lowerInput.includes("programming")) {
-      return "Object-oriented programming (OOP) is a programming paradigm based on the concept of 'objects', which can contain data and code. The data is in the form of fields (attributes or properties), and the code is in the form of procedures (methods). Key concepts in OOP include:\n\n1. Classes and Objects\n2. Encapsulation\n3. Inheritance\n4. Polymorphism\n\nWould you like me to explain any of these concepts in more detail?"
+      return 'Object-oriented programming (OOP) is a programming paradigm based on the concept of \'objects\', which can contain data and code. The data is in the form of fields (attributes or properties), and the code is in the form of procedures (methods).\n\nKey concepts in OOP:\n\n1. Classes and Objects: A class is a blueprint for creating objects. An object is an instance of a class.\n\n2. Encapsulation: The bundling of data and methods that operate on that data within a single unit (class). It restricts direct access to some of an object\'s components, which is a means of preventing unintended interference and misuse.\n\n3. Inheritance: A mechanism where a new class (child/derived class) can inherit properties and methods from an existing class (parent/base class). This promotes code reusability.\n\n4. Polymorphism: The ability to present the same interface for different underlying forms (data types). It allows methods to do different things based on the object it is acting upon.\n\nExample in Python:\n```python\nclass Animal:\n    def __init__(self, name):\n        self.name = name\n    \n    def speak(self):\n        pass  # To be overridden by subclasses\n\nclass Dog(Animal):  # Inheritance\n    def speak(self):  # Polymorphism\n        return f"{self.name} says Woof!"\n\nclass Cat(Animal):  # Inheritance\n    def speak(self):  # Polymorphism\n        return f"{self.name} says Meow!"\n\n# Creating objects\ndog = Dog("Buddy")\ncat = Cat("Whiskers")\n\nprint(dog.speak())  # Output: Buddy says Woof!\nprint(cat.speak())  # Output: Whiskers says Meow!\n```\n\nWould you like me to explain any of these concepts in more detail or provide examples in another programming language?'
     }
 
-    if (lowerInput.includes("quadratic") || lowerInput.includes("equation")) {
-      return "To solve a quadratic equation in the form ax² + bx + c = 0:\n\n1. Use the quadratic formula: x = (-b ± √(b² - 4ac)) / 2a\n2. Calculate the discriminant (b² - 4ac)\n3. If the discriminant is positive, there are two real solutions\n4. If it's zero, there's one real solution\n5. If it's negative, there are two complex solutions\n\nWould you like to try solving an example together?"
-    }
-
+    // General greetings
     if (lowerInput.includes("hello") || lowerInput.includes("hi")) {
-      return "Hello! I'm your AI tutor. What subject would you like to learn about today?"
+      return "Hello! I'm your AI tutor. What subject would you like to learn about today? I can help with mathematics, physics, biology, chemistry, computer science, and many other subjects."
     }
 
     if (lowerInput.includes("thank")) {
-      return "You're welcome! Is there anything else you'd like to learn about?"
+      return "You're welcome! I'm glad I could help. Is there anything else you'd like to learn about?"
     }
 
-    return "That's an interesting question! I'd be happy to help you learn about this topic. Could you provide a bit more detail about what specific aspects you'd like to understand better?"
+    // Default response for other questions
+    return "That's an interesting question! I'd be happy to help you learn about this topic. I can provide information on a wide range of subjects including mathematics, science, computer programming, history, and more. Could you provide a bit more detail about what specific aspects you'd like to understand better?"
   }
 
   return (

@@ -61,18 +61,41 @@ export default function AIChatWidget() {
     }, 1000)
   }
 
+  // Let's enhance the generateQuickResponse function to provide more detailed responses
+
+  // Replace the current generateQuickResponse function with this improved version:
+
   const generateQuickResponse = (input: string): string => {
     const lowerInput = input.toLowerCase()
 
+    // DNA and RNA related questions
+    if (lowerInput.includes("dna") && !lowerInput.includes("rna")) {
+      return "DNA (Deoxyribonucleic Acid) is the genetic material that carries instructions for development, functioning, growth, and reproduction of all known organisms. It has a double-helix structure made of nucleotides containing the bases Adenine, Thymine, Guanine, and Cytosine. For a more detailed explanation, please click the 'Open Full Chat' button below."
+    }
+
+    if (
+      lowerInput.includes("dna") &&
+      lowerInput.includes("rna") &&
+      (lowerInput.includes("compare") || lowerInput.includes("contrast") || lowerInput.includes("difference"))
+    ) {
+      return "DNA and RNA differ in several ways: DNA is double-stranded with deoxyribose sugar and uses thymine, while RNA is usually single-stranded with ribose sugar and uses uracil instead of thymine. DNA stores genetic information, while RNA helps in protein synthesis. For a complete comparison, please click the 'Open Full Chat' button below."
+    }
+
+    if (lowerInput.includes("rna") && !lowerInput.includes("dna")) {
+      return "RNA (Ribonucleic Acid) is a nucleic acid involved in protein synthesis. Unlike DNA, it's usually single-stranded and uses uracil instead of thymine. There are several types including mRNA, tRNA, and rRNA, each with specific functions. For more details, please click the 'Open Full Chat' button below."
+    }
+
+    // General greetings
     if (lowerInput.includes("hello") || lowerInput.includes("hi")) {
-      return "Hello! I'm your AI tutor. What would you like to learn about today?"
+      return "Hello! I'm your AI tutor. What would you like to learn about today? I can help with mathematics, science, computer programming, and many other subjects."
     }
 
     if (lowerInput.includes("help")) {
-      return "I'd be happy to help you learn! For a better experience, click the 'Open Full Chat' button below to access all my features."
+      return "I'd be happy to help you learn! I can explain concepts, solve problems, and answer questions on many academic subjects. For a better experience with more detailed answers, please click the 'Open Full Chat' button below."
     }
 
-    return "That's an interesting question! To provide a more detailed answer and continue our conversation, please click the 'Open Full Chat' button below."
+    // Default response for other questions
+    return "That's an interesting question! To provide a more detailed and helpful answer, please click the 'Open Full Chat' button below where I can give you a comprehensive explanation with examples."
   }
 
   const toggleExpand = () => {

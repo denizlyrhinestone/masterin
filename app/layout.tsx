@@ -8,8 +8,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Masterin - Professional AI Solutions",
-  description: "Advanced AI solutions for modern businesses",
+  title: "Masterin - AI-Powered Education",
+  description: "Advanced AI solutions for modern education",
     generator: 'v0.dev'
 }
 

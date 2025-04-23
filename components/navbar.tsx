@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
 import { useMobile } from "@/hooks/use-mobile"
+import Image from "next/image"
 
 // Update the navigation links to reflect educational content
 const navLinks = [
@@ -50,10 +51,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
-              {/* Update the logo text */}
-              <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                EduAI
-              </span>
+              <Image src="/masterinLogo.jpg" alt="Masterin Logo" width={40} height={40} className="h-10 w-auto" />
             </Link>
           </div>
 
