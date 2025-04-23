@@ -2,9 +2,10 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowRight, Brain, Code, LineChart, Users, Shield, Zap } from "lucide-react"
+import { BookOpen, Clock, Users, Star, Filter, Search } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
-export default function ServicesPage() {
+export default function CoursesPage() {
   return (
     <div className="flex flex-col w-full">
       {/* Hero Section */}
@@ -12,75 +13,106 @@ export default function ServicesPage() {
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
-              Our{" "}
+              Explore Our{" "}
               <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Services
+                Courses
               </span>
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-              Comprehensive solutions designed to help your business leverage the power of AI and technology.
+              Discover a wide range of courses enhanced with AI-powered learning tools to help you master new skills
             </p>
+
+            {/* Search and Filter */}
+            <div className="flex flex-col md:flex-row gap-4 mt-8">
+              <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <Input type="text" placeholder="Search courses..." className="pl-10" />
+              </div>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Filter className="h-4 w-4" />
+                Filter
+              </Button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Services Grid */}
+      {/* Featured Courses */}
       <section className="py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl font-bold mb-8">Featured Courses</h2>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[
               {
-                icon: <Brain className="w-10 h-10 text-purple-600" />,
-                title: "AI Solutions",
-                description:
-                  "Harness the power of artificial intelligence to transform your business operations and customer experiences.",
-                link: "/ai",
+                title: "Introduction to Machine Learning",
+                description: "Learn the fundamentals of machine learning algorithms and applications.",
+                image: "/interconnected-learning.png",
+                level: "Beginner",
+                duration: "8 weeks",
+                students: "2,345",
+                rating: 4.8,
+                instructor: "Dr. Sarah Chen",
+                price: "$49.99",
+                link: "/courses/machine-learning-intro",
               },
               {
-                icon: <Code className="w-10 h-10 text-purple-600" />,
-                title: "Custom Development",
-                description:
-                  "Tailored software solutions designed to address your unique business challenges and requirements.",
-                link: "/services/development",
+                title: "Advanced Python Programming",
+                description: "Master Python with advanced concepts and real-world projects.",
+                image: "/python-code-snippet.png",
+                level: "Intermediate",
+                duration: "10 weeks",
+                students: "1,876",
+                rating: 4.7,
+                instructor: "Michael Rodriguez",
+                price: "$59.99",
+                link: "/courses/advanced-python",
               },
               {
-                icon: <LineChart className="w-10 h-10 text-purple-600" />,
-                title: "Data Analytics",
-                description:
-                  "Turn your data into actionable insights with our advanced analytics and visualization tools.",
-                link: "/services/analytics",
+                title: "Data Science Fundamentals",
+                description: "Discover how to analyze and visualize data to extract meaningful insights.",
+                image: "/interactive-data-dashboard.png",
+                level: "Beginner",
+                duration: "12 weeks",
+                students: "3,210",
+                rating: 4.9,
+                instructor: "Dr. Alex Johnson",
+                price: "$49.99",
+                link: "/courses/data-science-fundamentals",
               },
-              {
-                icon: <Users className="w-10 h-10 text-purple-600" />,
-                title: "Consulting",
-                description:
-                  "Strategic guidance from our experts to help you navigate the complex world of technology and AI.",
-                link: "/services/consulting",
-              },
-              {
-                icon: <Shield className="w-10 h-10 text-purple-600" />,
-                title: "Cybersecurity",
-                description: "Protect your business and customer data with our comprehensive security solutions.",
-                link: "/services/security",
-              },
-              {
-                icon: <Zap className="w-10 h-10 text-purple-600" />,
-                title: "Cloud Services",
-                description:
-                  "Scalable, reliable cloud infrastructure and services to power your business applications.",
-                link: "/services/cloud",
-              },
-            ].map((service, index) => (
-              <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+            ].map((course, index) => (
+              <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+                <div className="relative h-48">
+                  <Image src={course.image || "/placeholder.svg"} alt={course.title} fill className="object-cover" />
+                  <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
+                    <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
+                    {course.rating}
+                  </div>
+                </div>
                 <CardContent className="p-6">
-                  <div className="mb-4">{service.icon}</div>
-                  <h3 className="text-xl font-semibold mb-2">{service.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">{service.description}</p>
-                  <Link href={service.link}>
-                    <Button variant="ghost" className="p-0 h-auto group">
-                      Learn More <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </Button>
-                  </Link>
+                  <h3 className="text-xl font-semibold mb-2">{course.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">{course.description}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Instructor: {course.instructor}</p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 text-xs px-2 py-1 rounded-full flex items-center">
+                      <BookOpen className="w-3 h-3 mr-1" />
+                      {course.level}
+                    </span>
+                    <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2 py-1 rounded-full flex items-center">
+                      <Clock className="w-3 h-3 mr-1" />
+                      {course.duration}
+                    </span>
+                    <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs px-2 py-1 rounded-full flex items-center">
+                      <Users className="w-3 h-3 mr-1" />
+                      {course.students} students
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-bold">{course.price}</span>
+                    <Link href={course.link}>
+                      <Button>Enroll Now</Button>
+                    </Link>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -88,61 +120,170 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      {/* Process Section */}
+      {/* Course Categories */}
       <section className="py-16 bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="text-3xl font-bold mb-6">Our Approach</h2>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
-              We follow a proven methodology to ensure successful outcomes for every project.
-            </p>
-          </div>
+          <h2 className="text-2xl font-bold mb-8">Browse by Category</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {[
               {
-                number: "01",
-                title: "Discovery",
-                description:
-                  "We start by understanding your business, challenges, and objectives to define the scope of work.",
+                name: "Computer Science",
+                count: 42,
+                icon: "/placeholder.svg?height=40&width=40&query=computer code icon",
+                link: "/courses/category/computer-science",
               },
               {
-                number: "02",
-                title: "Strategy",
-                description:
-                  "We develop a comprehensive strategy and roadmap tailored to your specific needs and goals.",
+                name: "Data Science",
+                count: 38,
+                icon: "/placeholder.svg?height=40&width=40&query=data chart icon",
+                link: "/courses/category/data-science",
               },
               {
-                number: "03",
-                title: "Implementation",
-                description:
-                  "Our expert team executes the plan with precision, keeping you informed every step of the way.",
+                name: "Mathematics",
+                count: 29,
+                icon: "/placeholder.svg?height=40&width=40&query=math formula icon",
+                link: "/courses/category/mathematics",
               },
               {
-                number: "04",
-                title: "Optimization",
-                description: "We continuously monitor, measure, and refine to ensure optimal performance and results.",
+                name: "Business",
+                count: 35,
+                icon: "/placeholder.svg?height=40&width=40&query=business chart icon",
+                link: "/courses/category/business",
               },
-            ].map((step, index) => (
-              <div key={index} className="text-center">
-                <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 font-bold text-xl mx-auto mb-4">
-                  {step.number}
+              {
+                name: "Language Learning",
+                count: 27,
+                icon: "/placeholder.svg?height=40&width=40&query=language speech icon",
+                link: "/courses/category/languages",
+              },
+              {
+                name: "Science",
+                count: 31,
+                icon: "/placeholder.svg?height=40&width=40&query=science lab icon",
+                link: "/courses/category/science",
+              },
+              {
+                name: "Arts & Design",
+                count: 24,
+                icon: "/placeholder.svg?height=40&width=40&query=art palette icon",
+                link: "/courses/category/arts",
+              },
+              {
+                name: "Personal Development",
+                count: 19,
+                icon: "/placeholder.svg?height=40&width=40&query=personal growth icon",
+                link: "/courses/category/personal-development",
+              },
+            ].map((category, index) => (
+              <Link href={category.link} key={index}>
+                <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer h-full">
+                  <CardContent className="p-6 flex items-center">
+                    <div className="w-10 h-10 mr-4 rounded-full overflow-hidden flex-shrink-0">
+                      <Image src={category.icon || "/placeholder.svg"} alt={category.name} width={40} height={40} />
+                    </div>
+                    <div>
+                      <h3 className="font-medium">{category.name}</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{category.count} courses</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Popular Courses */}
+      <section className="py-16">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl font-bold mb-8">Most Popular Courses</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                title: "Web Development Bootcamp",
+                description: "A comprehensive course covering HTML, CSS, JavaScript, and modern frameworks.",
+                image: "/placeholder.svg?height=200&width=400&query=web development code",
+                level: "Beginner to Intermediate",
+                duration: "16 weeks",
+                students: "5,432",
+                rating: 4.9,
+                instructor: "Jessica Williams",
+                price: "$79.99",
+                link: "/courses/web-development-bootcamp",
+              },
+              {
+                title: "Artificial Intelligence Fundamentals",
+                description: "Learn the core concepts of AI, machine learning, and neural networks.",
+                image: "/placeholder.svg?height=200&width=400&query=artificial intelligence network",
+                level: "Intermediate",
+                duration: "12 weeks",
+                students: "4,123",
+                rating: 4.8,
+                instructor: "Dr. Michael Rodriguez",
+                price: "$69.99",
+                link: "/courses/ai-fundamentals",
+              },
+              {
+                title: "Digital Marketing Mastery",
+                description: "Master digital marketing strategies, SEO, social media, and analytics.",
+                image: "/placeholder.svg?height=200&width=400&query=digital marketing analytics",
+                level: "All Levels",
+                duration: "10 weeks",
+                students: "3,987",
+                rating: 4.7,
+                instructor: "Emma Thompson",
+                price: "$59.99",
+                link: "/courses/digital-marketing",
+              },
+            ].map((course, index) => (
+              <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+                <div className="relative h-48">
+                  <Image src={course.image || "/placeholder.svg"} alt={course.title} fill className="object-cover" />
+                  <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
+                    <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
+                    {course.rating}
+                  </div>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
-                <p className="text-gray-600 dark:text-gray-300">{step.description}</p>
-              </div>
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-semibold mb-2">{course.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">{course.description}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Instructor: {course.instructor}</p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 text-xs px-2 py-1 rounded-full flex items-center">
+                      <BookOpen className="w-3 h-3 mr-1" />
+                      {course.level}
+                    </span>
+                    <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2 py-1 rounded-full flex items-center">
+                      <Clock className="w-3 h-3 mr-1" />
+                      {course.duration}
+                    </span>
+                    <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs px-2 py-1 rounded-full flex items-center">
+                      <Users className="w-3 h-3 mr-1" />
+                      {course.students} students
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-bold">{course.price}</span>
+                    <Link href={course.link}>
+                      <Button>Enroll Now</Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
       </section>
 
       {/* Testimonials */}
-      <section className="py-16">
+      <section className="py-16 bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="text-3xl font-bold mb-6">What Our Clients Say</h2>
+            <h2 className="text-3xl font-bold mb-6">What Our Students Say</h2>
             <p className="text-lg text-gray-600 dark:text-gray-300">
-              Don't just take our word for it. Here's what our clients have to say about our services.
+              Hear from students who have transformed their learning with our courses
             </p>
           </div>
 
@@ -150,23 +291,23 @@ export default function ServicesPage() {
             {[
               {
                 quote:
-                  "Working with Masterin has been a game-changer for our business. Their AI solutions have helped us streamline operations and better serve our customers.",
+                  "The AI-enhanced learning experience was incredible. I could ask questions anytime and get immediate, personalized help that really improved my understanding.",
                 author: "John Smith",
-                role: "CEO, TechCorp",
-                image: "/placeholder.svg?height=80&width=80&query=professional man CEO",
+                role: "Web Development Student",
+                image: "/placeholder.svg?height=80&width=80&query=professional man student",
               },
               {
                 quote:
-                  "The team at Masterin truly understands our business needs. Their custom development work has been exceptional, delivering exactly what we needed.",
+                  "As someone with a busy schedule, the flexibility of these courses combined with the AI tutor made it possible for me to learn at my own pace without sacrificing quality.",
                 author: "Emily Chen",
-                role: "CTO, InnovateCo",
+                role: "Data Science Student",
                 image: "/placeholder.svg?height=80&width=80&query=professional woman tech",
               },
               {
                 quote:
-                  "Their data analytics services have given us insights we never thought possible. We're now making more informed decisions based on real data.",
+                  "The interactive exercises and real-time feedback helped me master concepts much faster than traditional courses. The AI tutor felt like having a personal instructor.",
                 author: "Michael Johnson",
-                role: "Director of Operations, GlobalRetail",
+                role: "AI Fundamentals Student",
                 image: "/placeholder.svg?height=80&width=80&query=professional man business",
               },
             ].map((testimonial, index) => (
@@ -205,20 +346,20 @@ export default function ServicesPage() {
       <section className="py-16 bg-purple-600 text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Get Started?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Start Learning?</h2>
             <p className="text-xl mb-8 text-purple-100">
-              Contact us today to discuss how our services can help your business grow and thrive.
+              Join thousands of students already experiencing our AI-enhanced courses.
             </p>
             <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
               <Button size="lg" variant="secondary" className="px-8">
-                Contact Us
+                Browse All Courses
               </Button>
               <Button
                 size="lg"
                 variant="outline"
                 className="px-8 border-white text-white hover:bg-white hover:text-purple-600"
               >
-                View Services
+                Try Free Lessons
               </Button>
             </div>
           </div>

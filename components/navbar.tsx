@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Menu, X } from "lucide-react"
 import { useMobile } from "@/hooks/use-mobile"
 
+// Update the navigation links to reflect educational content
 const navLinks = [
   { name: "Home", href: "/" },
-  { name: "About", href: "/about" },
-  { name: "Services", href: "/services" },
-  { name: "AI Solutions", href: "/ai" },
-  { name: "Contact", href: "/contact" },
+  { name: "Courses", href: "/courses" },
+  { name: "AI Tutor", href: "/ai" },
+  { name: "Resources", href: "/resources" },
+  { name: "Community", href: "/contact" },
 ]
 
 export default function Navbar() {
@@ -49,8 +50,9 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
+              {/* Update the logo text */}
               <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Masterin
+                EduAI
               </span>
             </Link>
           </div>
@@ -71,10 +73,11 @@ export default function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center space-x-4">
+            {/* Update the button text */}
             <Button variant="outline" size="sm">
-              Log In
+              Sign In
             </Button>
-            <Button size="sm">Get Started</Button>
+            <Button size="sm">Join Free</Button>
           </div>
 
           {/* Mobile Navigation Toggle */}
@@ -114,11 +117,12 @@ export default function Navbar() {
             ))}
             <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center px-3 space-x-2">
+                {/* Update mobile button text */}
                 <Button variant="outline" size="sm" className="w-full">
-                  Log In
+                  Sign In
                 </Button>
                 <Button size="sm" className="w-full">
-                  Get Started
+                  Join Free
                 </Button>
               </div>
             </div>

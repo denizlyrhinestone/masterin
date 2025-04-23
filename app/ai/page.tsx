@@ -2,7 +2,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowRight, Brain, Zap, MessageSquare, Database, LineChart, Code } from "lucide-react"
+import { ArrowRight, Brain, Zap, MessageSquare, BookOpen, LineChart, GraduationCap } from "lucide-react"
 
 export default function AIPage() {
   return (
@@ -13,30 +13,30 @@ export default function AIPage() {
           <div className="flex flex-col lg:flex-row items-center">
             <div className="lg:w-1/2 lg:pr-12 mb-10 lg:mb-0">
               <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
-                Advanced{" "}
+                Your Personal{" "}
                 <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  AI Solutions
+                  AI Tutor
                 </span>{" "}
-                for Modern Businesses
+                Available 24/7
               </h1>
               <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-                Harness the power of artificial intelligence to transform your business operations, enhance customer
-                experiences, and drive innovation.
+                Get instant help with any subject, personalized explanations, and practice problems tailored to your
+                learning style and pace.
               </p>
               <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
                 <Button size="lg" className="px-8">
-                  Explore Solutions
+                  Try AI Tutor Now
                 </Button>
                 <Button size="lg" variant="outline" className="px-8">
-                  Schedule Demo
+                  How It Works
                 </Button>
               </div>
             </div>
             <div className="lg:w-1/2 relative">
               <div className="relative rounded-lg overflow-hidden shadow-xl">
                 <Image
-                  src="/placeholder.svg?height=600&width=800&query=AI visualization with neural networks purple"
-                  alt="AI Visualization"
+                  src="/placeholder.svg?height=600&width=800&query=AI tutor helping student with purple interface"
+                  alt="AI Tutor Visualization"
                   width={800}
                   height={600}
                   className="w-full h-auto"
@@ -48,14 +48,13 @@ export default function AIPage() {
         </div>
       </section>
 
-      {/* AI Solutions Section */}
+      {/* AI Tutor Features Section */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Our AI Solutions</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">How Our AI Tutor Helps You Learn</h2>
             <p className="text-lg text-gray-600 dark:text-gray-300">
-              We offer a comprehensive suite of AI-powered solutions designed to address your specific business
-              challenges.
+              Our advanced AI tutor adapts to your learning style and needs to provide personalized educational support
             </p>
           </div>
 
@@ -63,49 +62,51 @@ export default function AIPage() {
             {[
               {
                 icon: <MessageSquare className="w-10 h-10 text-purple-600" />,
-                title: "Conversational AI",
+                title: "Instant Answers & Explanations",
                 description:
-                  "Intelligent chatbots and virtual assistants that provide personalized customer support and engagement.",
-                link: "/ai/conversational",
+                  "Get immediate responses to your questions with step-by-step explanations tailored to your level of understanding.",
+                link: "/ai/chat",
               },
               {
-                icon: <Database className="w-10 h-10 text-purple-600" />,
-                title: "Predictive Analytics",
-                description: "Advanced data analysis and forecasting to help you make informed business decisions.",
-                link: "/ai/predictive-analytics",
+                icon: <BookOpen className="w-10 h-10 text-purple-600" />,
+                title: "Personalized Study Plans",
+                description:
+                  "Receive customized learning paths based on your goals, strengths, and areas for improvement.",
+                link: "/ai/study-plans",
               },
               {
                 icon: <Brain className="w-10 h-10 text-purple-600" />,
-                title: "Machine Learning",
-                description: "Custom machine learning models tailored to your specific business needs and objectives.",
-                link: "/ai/machine-learning",
+                title: "Concept Mastery",
+                description:
+                  "Our AI identifies knowledge gaps and provides targeted practice to ensure complete understanding of key concepts.",
+                link: "/ai/concept-mastery",
               },
               {
                 icon: <LineChart className="w-10 h-10 text-purple-600" />,
-                title: "Business Intelligence",
+                title: "Progress Tracking",
                 description:
-                  "Transform your data into actionable insights with our AI-powered business intelligence tools.",
-                link: "/ai/business-intelligence",
+                  "Monitor your learning journey with detailed analytics and insights on your improvement over time.",
+                link: "/ai/progress",
               },
               {
-                icon: <Code className="w-10 h-10 text-purple-600" />,
-                title: "AI Development",
-                description: "Custom AI development services to build innovative solutions for your unique challenges.",
-                link: "/ai/development",
+                icon: <GraduationCap className="w-10 h-10 text-purple-600" />,
+                title: "Exam Preparation",
+                description: "Get specialized help preparing for tests with practice questions and simulated exams.",
+                link: "/ai/exam-prep",
               },
               {
                 icon: <Zap className="w-10 h-10 text-purple-600" />,
-                title: "Process Automation",
-                description: "Streamline operations and reduce costs with intelligent process automation.",
-                link: "/ai/automation",
+                title: "Learning Acceleration",
+                description: "Master concepts faster with AI-optimized learning techniques and spaced repetition.",
+                link: "/ai/acceleration",
               },
-            ].map((solution, index) => (
+            ].map((feature, index) => (
               <Card key={index} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
                 <CardContent className="p-6">
-                  <div className="mb-4">{solution.icon}</div>
-                  <h3 className="text-xl font-semibold mb-2">{solution.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">{solution.description}</p>
-                  <Link href={solution.link}>
+                  <div className="mb-4">{feature.icon}</div>
+                  <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">{feature.description}</p>
+                  <Link href={feature.link}>
                     <Button variant="ghost" className="p-0 h-auto group">
                       Learn More <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </Button>
@@ -121,9 +122,9 @@ export default function AIPage() {
       <section className="py-16 md:py-24 bg-gray-50 dark:bg-gray-900">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">How Our AI Solutions Work</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">How Our AI Tutor Works</h2>
             <p className="text-lg text-gray-600 dark:text-gray-300">
-              Our approach combines cutting-edge technology with deep industry expertise to deliver results.
+              Experience a revolutionary approach to learning with our advanced AI technology
             </p>
           </div>
 
@@ -133,27 +134,25 @@ export default function AIPage() {
                 {[
                   {
                     number: "01",
-                    title: "Data Collection & Analysis",
+                    title: "Ask Any Question",
                     description:
-                      "We gather and analyze your data to understand your unique business challenges and opportunities.",
+                      "Type your question in natural language, upload an image of a problem, or even speak to your AI tutor.",
                   },
                   {
                     number: "02",
-                    title: "Custom Solution Design",
-                    description:
-                      "Our experts design a tailored AI solution that addresses your specific needs and objectives.",
+                    title: "Receive Personalized Explanations",
+                    description: "Get clear, step-by-step explanations tailored to your learning level and style.",
                   },
                   {
                     number: "03",
-                    title: "Implementation & Integration",
-                    description:
-                      "We seamlessly implement and integrate the solution into your existing systems and workflows.",
+                    title: "Practice with Interactive Problems",
+                    description: "Reinforce your understanding with practice problems that adapt to your skill level.",
                   },
                   {
                     number: "04",
-                    title: "Continuous Improvement",
+                    title: "Track Your Progress",
                     description:
-                      "Our AI solutions continuously learn and improve over time, delivering increasing value.",
+                      "Monitor your improvement over time with detailed analytics and personalized recommendations.",
                   },
                 ].map((step, index) => (
                   <div key={index} className="flex">
@@ -173,8 +172,8 @@ export default function AIPage() {
             <div className="relative">
               <div className="relative rounded-lg overflow-hidden shadow-xl">
                 <Image
-                  src="/placeholder.svg?height=600&width=800&query=AI workflow diagram with purple nodes"
-                  alt="AI Workflow"
+                  src="/placeholder.svg?height=600&width=800&query=AI tutor interface with student conversation"
+                  alt="AI Tutor Interface"
                   width={800}
                   height={600}
                   className="w-full h-auto"
@@ -186,8 +185,8 @@ export default function AIPage() {
                     <Zap className="w-6 h-6 text-purple-600" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-sm">Rapid Deployment</h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Get up and running quickly</p>
+                    <h3 className="font-medium text-sm">Instant Feedback</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">Learn from your mistakes</p>
                   </div>
                 </div>
               </div>
@@ -196,53 +195,89 @@ export default function AIPage() {
         </div>
       </section>
 
-      {/* Case Studies Section */}
+      {/* Subject Areas Section */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Success Stories</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Subjects We Cover</h2>
             <p className="text-lg text-gray-600 dark:text-gray-300">
-              See how our AI solutions have helped businesses like yours achieve remarkable results.
+              Our AI tutor can help you with a wide range of subjects and topics
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[
+              "Mathematics",
+              "Physics",
+              "Chemistry",
+              "Biology",
+              "Computer Science",
+              "Statistics",
+              "Economics",
+              "History",
+              "Literature",
+              "Psychology",
+              "Engineering",
+              "Data Science",
+              "Foreign Languages",
+              "Business",
+              "Art & Design",
+              "Music Theory",
+            ].map((subject, index) => (
+              <Card key={index} className="border-0 shadow-md hover:shadow-lg transition-shadow">
+                <CardContent className="p-4 text-center">
+                  <h3 className="font-medium">{subject}</h3>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Student Success Stories */}
+      <section className="py-16 md:py-24 bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Student Success Stories</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-300">
+              See how our AI tutor has helped students achieve their academic goals
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                image: "/placeholder.svg?height=300&width=500&query=retail store with technology",
-                title: "Global Retailer",
-                description: "Increased sales by 35% with our AI-powered recommendation engine and customer analytics.",
-                link: "/case-studies/retail",
-              },
-              {
-                image: "/placeholder.svg?height=300&width=500&query=healthcare technology",
-                title: "Healthcare Provider",
+                image: "/placeholder.svg?height=300&width=500&query=student studying with laptop",
+                title: "From Struggling to Excelling",
                 description:
-                  "Reduced operational costs by 28% while improving patient outcomes using our predictive analytics.",
-                link: "/case-studies/healthcare",
+                  "Alex improved his math grade from a C to an A- in just one semester with daily AI tutoring sessions.",
+                link: "/success-stories/alex",
               },
               {
-                image: "/placeholder.svg?height=300&width=500&query=financial technology dashboard",
-                title: "Financial Services",
-                description: "Detected fraud patterns in real-time, preventing over $2M in potential losses.",
-                link: "/case-studies/finance",
+                image: "/placeholder.svg?height=300&width=500&query=student graduation ceremony",
+                title: "College Admission Success",
+                description:
+                  "Maya used our AI tutor to prepare for her SATs and achieved a score that helped her get into her dream university.",
+                link: "/success-stories/maya",
               },
-            ].map((caseStudy, index) => (
+              {
+                image: "/placeholder.svg?height=300&width=500&query=professional working on computer",
+                title: "Career Transition",
+                description:
+                  "James used our platform to learn programming and successfully switched careers to become a software developer.",
+                link: "/success-stories/james",
+              },
+            ].map((story, index) => (
               <Card key={index} className="border-0 shadow-lg overflow-hidden">
                 <div className="relative h-48">
-                  <Image
-                    src={caseStudy.image || "/placeholder.svg"}
-                    alt={caseStudy.title}
-                    fill
-                    className="object-cover"
-                  />
+                  <Image src={story.image || "/placeholder.svg"} alt={story.title} fill className="object-cover" />
                 </div>
                 <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-2">{caseStudy.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">{caseStudy.description}</p>
-                  <Link href={caseStudy.link}>
+                  <h3 className="text-xl font-semibold mb-2">{story.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">{story.description}</p>
+                  <Link href={story.link}>
                     <Button variant="ghost" className="p-0 h-auto group">
-                      Read Case Study{" "}
+                      Read Full Story{" "}
                       <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </Button>
                   </Link>
@@ -254,12 +289,12 @@ export default function AIPage() {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-16 md:py-24 bg-gray-50 dark:bg-gray-900">
+      <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">Frequently Asked Questions</h2>
             <p className="text-lg text-gray-600 dark:text-gray-300">
-              Get answers to common questions about our AI solutions.
+              Get answers to common questions about our AI tutor
             </p>
           </div>
 
@@ -267,29 +302,29 @@ export default function AIPage() {
             <div className="space-y-6">
               {[
                 {
-                  question: "How can AI benefit my business?",
+                  question: "How does the AI tutor work?",
                   answer:
-                    "AI can benefit your business in numerous ways, including automating repetitive tasks, providing deeper insights from your data, enhancing customer experiences, optimizing operations, and enabling more informed decision-making.",
+                    "Our AI tutor uses advanced natural language processing and machine learning to understand your questions, provide personalized explanations, and adapt to your learning style. It analyzes your responses to identify knowledge gaps and adjusts its teaching approach accordingly.",
                 },
                 {
-                  question: "Do I need technical expertise to use your AI solutions?",
+                  question: "What subjects does the AI tutor cover?",
                   answer:
-                    "No, our AI solutions are designed to be user-friendly and accessible to non-technical users. We provide comprehensive training and support to ensure you can effectively leverage our technology.",
+                    "Our AI tutor covers a wide range of subjects including mathematics, science, computer programming, humanities, languages, and more. It's constantly learning and expanding its knowledge base to provide comprehensive support across disciplines.",
                 },
                 {
-                  question: "How long does it take to implement an AI solution?",
+                  question: "Is the AI tutor suitable for all learning levels?",
                   answer:
-                    "Implementation timelines vary depending on the complexity of the solution and your specific requirements. Simple solutions can be deployed in a few weeks, while more complex enterprise implementations may take 2-3 months.",
+                    "Yes, our AI tutor adapts to various learning levels from elementary school to university and professional development. It tailors explanations and practice problems based on your current understanding and gradually increases complexity as you progress.",
                 },
                 {
-                  question: "Is my data secure with your AI solutions?",
+                  question: "How accurate is the AI tutor's information?",
                   answer:
-                    "Yes, data security is our top priority. We employ enterprise-grade security measures, including encryption, access controls, and regular security audits. We are also compliant with major data protection regulations.",
+                    "Our AI tutor is trained on high-quality educational resources and regularly updated with the latest information. While it strives for accuracy, we recommend verifying critical information with official textbooks or instructors, especially for specialized or advanced topics.",
                 },
                 {
-                  question: "Can your AI solutions integrate with our existing systems?",
+                  question: "Can the AI tutor help with homework and assignments?",
                   answer:
-                    "Yes, our AI solutions are designed to integrate seamlessly with your existing systems and workflows. We offer APIs and pre-built connectors for popular business applications and platforms.",
+                    "The AI tutor can help you understand concepts, provide explanations, and guide you through problem-solving approaches. However, it's designed to support learning rather than complete assignments for you. It encourages critical thinking and independent problem-solving skills.",
                 },
               ].map((faq, index) => (
                 <div key={index} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
@@ -306,20 +341,20 @@ export default function AIPage() {
       <section className="py-16 md:py-24 bg-purple-600 text-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Transform Your Business with AI?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Transform Your Learning Experience?</h2>
             <p className="text-xl mb-8 text-purple-100">
-              Schedule a consultation with our AI experts to discuss your specific needs and how we can help.
+              Start learning with your personal AI tutor today and experience the future of education.
             </p>
             <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
               <Button size="lg" variant="secondary" className="px-8">
-                Schedule Consultation
+                Get Started Free
               </Button>
               <Button
                 size="lg"
                 variant="outline"
                 className="px-8 border-white text-white hover:bg-white hover:text-purple-600"
               >
-                Learn More
+                Explore Courses
               </Button>
             </div>
           </div>

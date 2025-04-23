@@ -10,13 +10,11 @@ export default function AboutPage() {
           <div className="max-w-3xl mx-auto text-center">
             <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
               About{" "}
-              <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Masterin
-              </span>
+              <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">EduAI</span>
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-              We're on a mission to transform businesses through the power of artificial intelligence and innovative
-              technology solutions.
+              We're on a mission to transform education through the power of artificial intelligence and make quality
+              learning accessible to everyone.
             </p>
           </div>
         </div>
@@ -40,17 +38,18 @@ export default function AboutPage() {
             <div className="md:w-1/2">
               <h2 className="text-3xl font-bold mb-6">Our Story</h2>
               <p className="text-gray-600 dark:text-gray-300 mb-4">
-                Founded in 2018, Masterin began with a simple vision: to make advanced AI technology accessible to
-                businesses of all sizes. What started as a small team of passionate AI enthusiasts has grown into a
-                global company serving clients across industries.
+                Founded in 2020, EduAI began with a simple vision: to make high-quality education accessible to everyone
+                through AI technology. What started as a small team of educators and AI enthusiasts has grown into a
+                platform serving students and teachers worldwide.
               </p>
               <p className="text-gray-600 dark:text-gray-300 mb-4">
-                Our team combines deep technical expertise with business acumen to deliver solutions that not only
-                leverage cutting-edge technology but also address real business challenges and drive measurable results.
+                Our team combines expertise in education, cognitive science, and artificial intelligence to create
+                learning experiences that are not only effective but also engaging and personalized to each student's
+                needs.
               </p>
               <p className="text-gray-600 dark:text-gray-300">
-                Today, we're proud to be at the forefront of the AI revolution, helping businesses transform their
-                operations, enhance customer experiences, and unlock new opportunities for growth and innovation.
+                Today, we're proud to be at the forefront of educational innovation, helping students of all ages and
+                backgrounds achieve their learning goals and helping educators enhance their teaching impact.
               </p>
             </div>
           </div>
@@ -70,28 +69,29 @@ export default function AboutPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
+                title: "Accessibility",
+                description:
+                  "We believe quality education should be accessible to everyone, regardless of location or background.",
+              },
+              {
+                title: "Personalization",
+                description: "We create learning experiences tailored to individual needs, styles, and goals.",
+              },
+              {
                 title: "Innovation",
-                description: "We constantly push the boundaries of what's possible with AI and technology.",
+                description: "We constantly push the boundaries of what's possible with AI in education.",
               },
               {
-                title: "Excellence",
-                description: "We are committed to delivering the highest quality solutions and experiences.",
-              },
-              {
-                title: "Integrity",
-                description: "We operate with transparency, honesty, and ethical responsibility.",
-              },
-              {
-                title: "Collaboration",
-                description: "We believe in the power of teamwork and partnership with our clients.",
+                title: "Empowerment",
+                description: "We empower both students and educators to achieve their full potential.",
               },
               {
                 title: "Impact",
-                description: "We measure our success by the positive impact we create for our clients.",
+                description: "We measure our success by the positive impact we create on learning outcomes.",
               },
               {
-                title: "Inclusivity",
-                description: "We embrace diversity and create solutions that work for everyone.",
+                title: "Integrity",
+                description: "We operate with transparency, honesty, and ethical responsibility in all we do.",
               },
             ].map((value, index) => (
               <div key={index} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
@@ -109,21 +109,21 @@ export default function AboutPage() {
           <div className="max-w-3xl mx-auto text-center mb-16">
             <h2 className="text-3xl font-bold mb-6">Our Leadership Team</h2>
             <p className="text-lg text-gray-600 dark:text-gray-300">
-              Meet the experts leading our mission to transform businesses through AI.
+              Meet the experts leading our mission to transform education through AI.
             </p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
-                name: "Alex Johnson",
-                role: "CEO & Founder",
-                image: "/placeholder.svg?height=300&width=300&query=professional man CEO",
+                name: "Dr. Alex Johnson",
+                role: "CEO & Co-Founder",
+                image: "/placeholder.svg?height=300&width=300&query=professional educator man",
               },
               {
-                name: "Sarah Chen",
-                role: "CTO",
-                image: "/placeholder.svg?height=300&width=300&query=professional woman tech leader",
+                name: "Dr. Sarah Chen",
+                role: "Chief Learning Officer",
+                image: "/placeholder.svg?height=300&width=300&query=professional woman educator",
               },
               {
                 name: "Michael Rodriguez",
@@ -132,7 +132,7 @@ export default function AboutPage() {
               },
               {
                 name: "Jessica Williams",
-                role: "COO",
+                role: "Chief Product Officer",
                 image: "/placeholder.svg?height=300&width=300&query=professional woman executive",
               },
             ].map((member, index) => (
@@ -154,7 +154,7 @@ export default function AboutPage() {
           <div className="max-w-4xl mx-auto text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">Join Our Team</h2>
             <p className="text-xl mb-8 text-purple-100">
-              We're always looking for talented individuals who are passionate about AI and technology.
+              We're looking for passionate educators, AI specialists, and technologists who want to transform education.
             </p>
             <Button size="lg" variant="secondary" className="px-8">
               View Open Positions

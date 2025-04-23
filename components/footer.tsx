@@ -10,10 +10,10 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <h3 className="text-lg font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Masterin
+              EduAI
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              Empowering businesses with advanced AI solutions and professional services.
+              Empowering students and educators with AI-enhanced learning experiences.
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-gray-500 hover:text-purple-600">
@@ -40,16 +40,16 @@ export default function Footer() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Company</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">About</h3>
             <ul className="space-y-3">
               <li>
                 <Link href="/about" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
-                  About Us
+                  Our Mission
                 </Link>
               </li>
               <li>
-                <Link href="/careers" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
-                  Careers
+                <Link href="/team" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                  Our Team
                 </Link>
               </li>
               <li>
@@ -66,26 +66,26 @@ export default function Footer() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Services</h3>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Learning</h3>
             <ul className="space-y-3">
               <li>
-                <Link href="/services" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
-                  All Services
+                <Link href="/courses" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                  All Courses
                 </Link>
               </li>
               <li>
                 <Link href="/ai" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
-                  AI Solutions
+                  AI Tutor
                 </Link>
               </li>
               <li>
-                <Link href="/consulting" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
-                  Consulting
+                <Link href="/resources" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                  Learning Resources
                 </Link>
               </li>
               <li>
-                <Link href="/development" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
-                  Development
+                <Link href="/certificates" className="text-sm text-gray-600 dark:text-gray-400 hover:text-purple-600">
+                  Certificates
                 </Link>
               </li>
             </ul>
@@ -106,7 +106,7 @@ export default function Footer() {
         <div className="border-t border-gray-200 dark:border-gray-800 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              &copy; {new Date().getFullYear()} Masterin. All rights reserved.
+              &copy; {new Date().getFullYear()} EduAI. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy" className="text-xs text-gray-600 dark:text-gray-400 hover:text-purple-600">

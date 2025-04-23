@@ -53,7 +53,7 @@ export default function ContactPage() {
               <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Touch</span>
             </h1>
             <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-              Have questions about our AI solutions? We're here to help. Reach out to our team.
+              Have questions about our AI learning platform? We're here to help. Reach out to our team.
             </p>
           </div>
         </div>
@@ -73,9 +73,9 @@ export default function ContactPage() {
                     <div>
                       <h3 className="font-semibold mb-2">Our Office</h3>
                       <p className="text-gray-600 dark:text-gray-300">
-                        123 AI Boulevard
+                        123 Education Avenue
                         <br />
-                        Tech District
+                        Learning District
                         <br />
                         San Francisco, CA 94105
                         <br />
@@ -101,9 +101,9 @@ export default function ContactPage() {
                     <div>
                       <h3 className="font-semibold mb-2">Email</h3>
                       <p className="text-gray-600 dark:text-gray-300">
-                        info@masterin.com
+                        info@eduai.com
                         <br />
-                        support@masterin.com
+                        support@eduai.com
                       </p>
                     </div>
                   </CardContent>
