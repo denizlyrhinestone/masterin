@@ -4,9 +4,18 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Menu, X } from "lucide-react"
+import { Menu, X, User, LogOut, Settings } from "lucide-react"
 import { useMobile } from "@/hooks/use-mobile"
 import Image from "next/image"
+import { useAuth } from "@/contexts/auth-context"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
 // Update the navigation links to reflect educational content
 const navLinks = [
@@ -22,6 +31,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
   const isMobile = useMobile()
+  const { user, isAuthenticated, signOut, isLoading } = useAuth()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -40,6 +50,12 @@ export default function Navbar() {
     // Close mobile menu when route changes
     setIsOpen(false)
   }, [pathname])
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user || !user.email) return "U"
+    return user.email.charAt(0).toUpperCase()
+  }
 
   return (
     <header
@@ -71,11 +87,58 @@ export default function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center space-x-4">
-            {/* Update the button text */}
-            <Button variant="outline" size="sm">
-              Sign In
-            </Button>
-            <Button size="sm">Join Free</Button>
+            {isLoading ? (
+              <div className="h-9 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-md"></div>
+            ) : isAuthenticated ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                    <Avatar className="h-9 w-9">
+                      <AvatarFallback className="bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-200">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-0.5 leading-none">
+                      <p className="font-medium text-sm">{user?.name || "User"}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings" className="cursor-pointer">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={signOut} className="cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link href="/auth/sign-in">
+                  <Button variant="outline" size="sm">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/auth/sign-up">
+                  <Button size="sm">Join Free</Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Navigation Toggle */}
@@ -114,15 +177,63 @@ export default function Navbar() {
               </Link>
             ))}
             <div className="pt-4 pb-3 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center px-3 space-x-2">
-                {/* Update mobile button text */}
-                <Button variant="outline" size="sm" className="w-full">
-                  Sign In
-                </Button>
-                <Button size="sm" className="w-full">
-                  Join Free
-                </Button>
-              </div>
+              {isAuthenticated ? (
+                <div className="space-y-2">
+                  <div className="px-3 flex items-center">
+                    <div className="flex-shrink-0">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-purple-100 text-purple-600 dark:bg-purple-900 dark:text-purple-200">
+                          {getUserInitials()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    <div className="ml-3">
+                      <div className="text-base font-medium">{user?.name || "User"}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</div>
+                    </div>
+                  </div>
+                  <Link
+                    href="/profile"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <div className="flex items-center">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </div>
+                  </Link>
+                  <Link
+                    href="/settings"
+                    className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <div className="flex items-center">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </div>
+                  </Link>
+                  <button
+                    onClick={signOut}
+                    className="w-full text-left block px-3 py-2 rounded-md text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  >
+                    <div className="flex items-center">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </div>
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center px-3 space-x-2">
+                  <Link href="/auth/sign-in" className="w-full">
+                    <Button variant="outline" size="sm" className="w-full">
+                      Sign In
+                    </Button>
+                  </Link>
+                  <Link href="/auth/sign-up" className="w-full">
+                    <Button size="sm" className="w-full">
+                      Join Free
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         </div>

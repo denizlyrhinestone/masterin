@@ -20,7 +20,7 @@ export default function AIChatWidget() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi there! I'm your AI tutor. How can I help you with your learning today?",
+      content: "Hi there! I'm your AI tutor from Masterin. How can I help you with your learning today?",
     },
   ])
   const [inputValue, setInputValue] = useState("")
@@ -61,10 +61,7 @@ export default function AIChatWidget() {
     }, 1000)
   }
 
-  // Let's enhance the generateQuickResponse function to provide more detailed responses
-
-  // Replace the current generateQuickResponse function with this improved version:
-
+  // Enhanced generateQuickResponse function with improved clarity and depth
   const generateQuickResponse = (input: string): string => {
     const lowerInput = input.toLowerCase()
 
@@ -78,24 +75,60 @@ export default function AIChatWidget() {
       lowerInput.includes("rna") &&
       (lowerInput.includes("compare") || lowerInput.includes("contrast") || lowerInput.includes("difference"))
     ) {
-      return "DNA and RNA differ in several ways: DNA is double-stranded with deoxyribose sugar and uses thymine, while RNA is usually single-stranded with ribose sugar and uses uracil instead of thymine. DNA stores genetic information, while RNA helps in protein synthesis. For a complete comparison, please click the 'Open Full Chat' button below."
+      return "DNA and RNA differ in several key ways: DNA is double-stranded with deoxyribose sugar and uses thymine, while RNA is usually single-stranded with ribose sugar and uses uracil instead of thymine. DNA primarily stores genetic information, while RNA helps in protein synthesis and gene regulation. For a complete comparison with a detailed table, please click the 'Open Full Chat' button below."
     }
 
     if (lowerInput.includes("rna") && !lowerInput.includes("dna")) {
-      return "RNA (Ribonucleic Acid) is a nucleic acid involved in protein synthesis. Unlike DNA, it's usually single-stranded and uses uracil instead of thymine. There are several types including mRNA, tRNA, and rRNA, each with specific functions. For more details, please click the 'Open Full Chat' button below."
+      return "RNA (Ribonucleic Acid) is a nucleic acid involved in protein synthesis and gene regulation. Unlike DNA, it's usually single-stranded and uses uracil instead of thymine. There are several types including mRNA (carries genetic information), tRNA (brings amino acids), and rRNA (forms ribosomes). For a comprehensive explanation of RNA structure and functions, please click the 'Open Full Chat' button below."
+    }
+
+    // Chemistry
+    if (
+      lowerInput.includes("periodic table") ||
+      (lowerInput.includes("element") && lowerInput.includes("classification"))
+    ) {
+      return "The periodic table organizes chemical elements by atomic number and recurring properties. Elements are arranged in 7 periods (rows) and 18 groups (columns), with metals on the left, non-metals on the right, and metalloids in between. The table reveals important trends in properties like atomic radius and electronegativity. For a detailed explanation with visual aids, please click the 'Open Full Chat' button below."
+    }
+
+    // Mathematics
+    if (lowerInput.includes("derivative") || lowerInput.includes("calculus")) {
+      return "In calculus, a derivative measures how a function changes at a specific point, representing the slope of the tangent line at that point. Key rules include the power rule (d/dx[x^n] = nx^(n-1)), product rule, quotient rule, and chain rule. Derivatives have applications in physics, optimization, and curve analysis. For a comprehensive explanation with examples and formulas, please click the 'Open Full Chat' button below."
+    }
+
+    if (lowerInput.includes("quadratic") || (lowerInput.includes("equation") && lowerInput.includes("solve"))) {
+      return "Quadratic equations (ax² + bx + c = 0) can be solved using three main methods: the quadratic formula x = (-b ± √(b² - 4ac))/2a, factoring when possible, or completing the square. The discriminant (b² - 4ac) tells us whether there are two real solutions, one repeated solution, or two complex solutions. For step-by-step examples and applications, please click the 'Open Full Chat' button below."
+    }
+
+    // Physics
+    if (lowerInput.includes("quantum") || lowerInput.includes("mechanics")) {
+      return "Quantum mechanics describes nature at the atomic and subatomic scales. Key principles include wave-particle duality (particles can behave as waves), Heisenberg's uncertainty principle (cannot precisely know both position and momentum), quantum superposition (particles exist in multiple states until measured), and quantum entanglement. For a detailed explanation of these concepts and their mathematical framework, please click the 'Open Full Chat' button below."
+    }
+
+    // Computer Science
+    if (lowerInput.includes("object") && lowerInput.includes("programming")) {
+      return "Object-Oriented Programming (OOP) is based on the concept of 'objects' containing data and code. The four main principles are: encapsulation (bundling data with methods), inheritance (creating new classes from existing ones), polymorphism (different implementations of the same interface), and abstraction (hiding complex implementation details). For code examples in multiple languages and detailed explanations, please click the 'Open Full Chat' button below."
+    }
+
+    // History
+    if (
+      (lowerInput.includes("world war") && lowerInput.includes("2")) ||
+      lowerInput.includes("world war ii") ||
+      lowerInput.includes("wwii")
+    ) {
+      return "World War II (1939-1945) was a global conflict between the Allies (US, UK, USSR, etc.) and Axis powers (Germany, Japan, Italy). Key events include Germany's invasion of Poland (1939), Pearl Harbor (1941), D-Day (1944), and the atomic bombings of Japan (1945). The war resulted in 70-85 million deaths and led to the formation of the UN, the Cold War, and significant geopolitical changes. For a detailed timeline and analysis, please click the 'Open Full Chat' button below."
     }
 
     // General greetings
     if (lowerInput.includes("hello") || lowerInput.includes("hi")) {
-      return "Hello! I'm your AI tutor. What would you like to learn about today? I can help with mathematics, science, computer programming, and many other subjects."
+      return "Hello! I'm your AI tutor from Masterin. What would you like to learn about today? I can help with mathematics, science, computer programming, history, and many other subjects."
     }
 
     if (lowerInput.includes("help")) {
-      return "I'd be happy to help you learn! I can explain concepts, solve problems, and answer questions on many academic subjects. For a better experience with more detailed answers, please click the 'Open Full Chat' button below."
+      return "I'd be happy to help you learn! I can explain concepts, solve problems, and answer questions on many academic subjects including mathematics, science, history, literature, and computer science. For a better experience with more detailed answers, please click the 'Open Full Chat' button below."
     }
 
     // Default response for other questions
-    return "That's an interesting question! To provide a more detailed and helpful answer, please click the 'Open Full Chat' button below where I can give you a comprehensive explanation with examples."
+    return "That's an interesting question! To provide a more detailed and helpful answer with proper formatting, examples, and visual aids, please click the 'Open Full Chat' button below where I can give you a comprehensive explanation."
   }
 
   const toggleExpand = () => {
