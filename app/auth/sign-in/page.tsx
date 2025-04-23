@@ -56,10 +56,16 @@ export default function SignIn() {
       const { error } = await signIn(email, password)
 
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
+        if (error.code === "invalid_credentials") {
           toast({
             title: "Invalid credentials",
             description: "The email or password you entered is incorrect.",
+            variant: "destructive",
+          })
+        } else if (error.code === "email_not_confirmed") {
+          toast({
+            title: "Email not verified",
+            description: "Please check your email and verify your account before signing in.",
             variant: "destructive",
           })
         } else {
@@ -69,6 +75,7 @@ export default function SignIn() {
             variant: "destructive",
           })
         }
+        setIsLoading(false)
         return
       }
 
@@ -85,7 +92,6 @@ export default function SignIn() {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       })
-    } finally {
       setIsLoading(false)
     }
   }

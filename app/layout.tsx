@@ -5,10 +5,11 @@ import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
+import type { Metadata } from "next"
 
 const inter = Inter({ subsets: ["latin"] })
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Masterin - AI-Powered Education",
   description: "Advanced AI solutions for modern education",
   icons: {
@@ -16,6 +17,15 @@ export const metadata = {
     apple: [{ url: "/icon-192.png" }, { url: "/icon-512.png", sizes: "512x512" }],
   },
   manifest: "/manifest.json",
+  // Add security-related metadata
+  other: {
+    "Content-Security-Policy":
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;",
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  },
     generator: 'v0.dev'
 }
 

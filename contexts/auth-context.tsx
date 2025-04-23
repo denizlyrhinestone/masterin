@@ -2,8 +2,9 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
-import type { Session } from "@supabase/supabase-js"
+import type { Session, AuthError, User } from "@supabase/supabase-js"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
 interface UserProfile {
   id: string
@@ -17,11 +18,11 @@ interface AuthContextType {
   session: Session | null
   isAuthenticated: boolean
   isLoading: boolean
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>
-  signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null; userId: string | null }>
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
+  signUp: (email: string, password: string, name: string) => Promise<{ error: AuthError | null; userId: string | null }>
   signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ error: Error | null }>
-  updatePassword: (password: string) => Promise<{ error: Error | null }>
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>
+  updatePassword: (password: string) => Promise<{ error: AuthError | null }>
   updateProfile: (data: Partial<UserProfile>) => Promise<{ error: Error | null }>
 }
 
@@ -48,21 +49,49 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+  const router = useRouter()
 
-  useEffect(() => {
-    // Set up auth state listener
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
-      setSession(currentSession)
-      setIsAuthenticated(!!currentSession)
+  // Function to fetch user profile from Supabase
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data: profile, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
 
+      if (error) {
+        console.error("Error fetching profile:", error)
+        return null
+      }
+
+      return profile
+    } catch (error) {
+      console.error("Error in fetchUserProfile:", error)
+      return null
+    }
+  }
+
+  // Function to create user profile if it doesn't exist
+  const createUserProfile = async (user: User) => {
+    try {
+      const { error } = await supabase.from("profiles").insert({
+        id: user.id,
+        email: user.email,
+        name: user.user_metadata?.name || null,
+        avatar_url: null,
+        updated_at: new Date().toISOString(),
+      })
+
+      if (error) {
+        console.error("Error creating profile:", error)
+      }
+    } catch (error) {
+      console.error("Error in createUserProfile:", error)
+    }
+  }
+
+  // Function to update user state based on session
+  const updateUserState = async (currentSession: Session | null) => {
+    try {
       if (currentSession?.user) {
-        const { data: profile, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", currentSession.user.id)
-          .single()
+        const profile = await fetchUserProfile(currentSession.user.id)
 
         if (profile) {
           setUser({
@@ -81,18 +110,36 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           })
 
           // Create profile in the database if it doesn't exist
-          if (error && currentSession.user.email) {
-            await supabase.from("profiles").insert({
-              id: currentSession.user.id,
-              email: currentSession.user.email,
-              name: currentSession.user.user_metadata?.name || null,
-              avatar_url: null,
-              updated_at: new Date().toISOString(),
-            })
+          if (currentSession.user.email) {
+            await createUserProfile(currentSession.user)
           }
         }
+        setIsAuthenticated(true)
       } else {
         setUser(null)
+        setIsAuthenticated(false)
+      }
+    } catch (error) {
+      console.error("Error in updateUserState:", error)
+      setUser(null)
+      setIsAuthenticated(false)
+    }
+  }
+
+  useEffect(() => {
+    // Set up auth state listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      console.log("Auth state changed:", event)
+      setSession(currentSession)
+
+      if (event === "SIGNED_OUT") {
+        setUser(null)
+        setIsAuthenticated(false)
+        router.push("/auth/sign-in")
+      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        await updateUserState(currentSession)
       }
 
       setIsLoading(false)
@@ -100,56 +147,64 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Initial session check
     const initializeAuth = async () => {
-      const {
-        data: { session: initialSession },
-      } = await supabase.auth.getSession()
+      try {
+        const {
+          data: { session: initialSession },
+        } = await supabase.auth.getSession()
 
-      if (initialSession) {
         setSession(initialSession)
-        setIsAuthenticated(true)
-
-        const { data: profile } = await supabase.from("profiles").select("*").eq("id", initialSession.user.id).single()
-
-        if (profile) {
-          setUser({
-            id: initialSession.user.id,
-            email: initialSession.user.email || "",
-            name: profile.name,
-            avatar_url: profile.avatar_url,
-          })
-        } else {
-          setUser({
-            id: initialSession.user.id,
-            email: initialSession.user.email || "",
-            name: initialSession.user.user_metadata?.name || null,
-            avatar_url: null,
-          })
-        }
+        await updateUserState(initialSession)
+      } catch (error) {
+        console.error("Error initializing auth:", error)
+      } finally {
+        setIsLoading(false)
       }
-
-      setIsLoading(false)
     }
 
     initializeAuth()
 
+    // Set up refresh timer to prevent session expiration
+    const refreshTimer = setInterval(
+      async () => {
+        try {
+          const { data } = await supabase.auth.refreshSession()
+          setSession(data.session)
+        } catch (error) {
+          console.error("Error refreshing session:", error)
+        }
+      },
+      4 * 60 * 60 * 1000, // Refresh every 4 hours
+    )
+
+    // Clean up timer on unmount
     return () => {
       subscription.unsubscribe()
+      clearInterval(refreshTimer)
     }
-  }, [])
+  }, [router])
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Sign in error:", error.message)
+        // Categorize common auth errors for better user feedback
+        if (error.message.includes("Invalid login credentials")) {
+          return { error: { ...error, code: "invalid_credentials" } as AuthError }
+        } else if (error.message.includes("Email not confirmed")) {
+          return { error: { ...error, code: "email_not_confirmed" } as AuthError }
+        }
+        return { error }
+      }
 
       return { error: null }
     } catch (error) {
-      console.error("Error signing in:", error)
-      return { error: error as Error }
+      console.error("Unexpected error during sign in:", error)
+      return { error: new Error("An unexpected error occurred") as unknown as AuthError }
     }
   }
 
@@ -165,7 +220,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         },
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Sign up error:", error.message)
+        // Categorize common signup errors
+        if (error.message.includes("already registered")) {
+          return { error: { ...error, code: "email_in_use" }, userId: null }
+        }
+        return { error, userId: null }
+      }
 
       // Create a profile record
       if (data.user) {
@@ -189,16 +251,22 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       return { error: null, userId: data.user?.id || null }
     } catch (error) {
-      console.error("Error signing up:", error)
-      return { error: error as Error, userId: null }
+      console.error("Unexpected error during sign up:", error)
+      return { error: new Error("An unexpected error occurred") as unknown as AuthError, userId: null }
     }
   }
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
+      // Router navigation is handled by auth state change listener
     } catch (error) {
       console.error("Error signing out:", error)
+      toast({
+        title: "Sign out failed",
+        description: "An error occurred while signing out. Please try again.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -208,12 +276,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Reset password error:", error.message)
+        return { error }
+      }
 
       return { error: null }
     } catch (error) {
-      console.error("Error resetting password:", error)
-      return { error: error as Error }
+      console.error("Unexpected error during password reset:", error)
+      return { error: new Error("An unexpected error occurred") as unknown as AuthError }
     }
   }
 
@@ -223,12 +294,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         password,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("Update password error:", error.message)
+        return { error }
+      }
 
       return { error: null }
     } catch (error) {
-      console.error("Error updating password:", error)
-      return { error: error as Error }
+      console.error("Unexpected error during password update:", error)
+      return { error: new Error("An unexpected error occurred") as unknown as AuthError }
     }
   }
 
@@ -240,9 +314,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       // Update auth metadata if name is provided
       if (data.name) {
-        await supabase.auth.updateUser({
+        const { error: authError } = await supabase.auth.updateUser({
           data: { name: data.name },
         })
+
+        if (authError) {
+          throw authError
+        }
       }
 
       // Update profile in the database
@@ -254,7 +332,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         })
         .eq("id", user.id)
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
 
       // Update local state
       setUser((prev) => (prev ? { ...prev, ...data } : null))
