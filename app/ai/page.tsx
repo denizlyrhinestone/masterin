@@ -3,6 +3,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { ArrowRight, Brain, Zap, MessageSquare, BookOpen, LineChart, GraduationCap } from "lucide-react"
+import AIChatWidget from "@/components/ai-chat-widget"
 
 export default function AIPage() {
   return (
@@ -24,9 +25,11 @@ export default function AIPage() {
                 learning style and pace.
               </p>
               <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                <Button size="lg" className="px-8">
-                  Try AI Tutor Now
-                </Button>
+                <Link href="/ai/chat">
+                  <Button size="lg" className="px-8">
+                    Try AI Tutor Now
+                  </Button>
+                </Link>
                 <Button size="lg" variant="outline" className="px-8">
                   How It Works
                 </Button>
@@ -35,7 +38,7 @@ export default function AIPage() {
             <div className="lg:w-1/2 relative">
               <div className="relative rounded-lg overflow-hidden shadow-xl">
                 <Image
-                  src="/placeholder.svg?height=600&width=800&query=AI tutor helping student with purple interface"
+                  src="/ai-tutor-purple-ui.png"
                   alt="AI Tutor Visualization"
                   width={800}
                   height={600}
@@ -48,6 +51,65 @@ export default function AIPage() {
         </div>
       </section>
 
+      {/* Chat Widget Section */}
+      <section className="py-16 bg-white dark:bg-gray-900">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col lg:flex-row items-center gap-12">
+            <div className="lg:w-1/2">
+              <h2 className="text-3xl font-bold mb-6">Try Our AI Tutor Right Now</h2>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Get a taste of how our AI tutor can help you learn. Ask a question in the chat widget or open the full
+                chat experience for more features.
+              </p>
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-start">
+                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
+                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span>Ask questions in natural language</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
+                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span>Get instant, personalized explanations</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
+                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span>Upload images or documents for help (in full chat)</span>
+                </li>
+                <li className="flex items-start">
+                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
+                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span>Practice with interactive exercises</span>
+                </li>
+              </ul>
+              <Link href="/ai/chat">
+                <Button className="group">
+                  Open Full Chat Experience
+                  <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            </div>
+            <div className="lg:w-1/2">
+              <AIChatWidget />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Rest of the AI page content remains the same */}
       {/* AI Tutor Features Section */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -172,7 +234,7 @@ export default function AIPage() {
             <div className="relative">
               <div className="relative rounded-lg overflow-hidden shadow-xl">
                 <Image
-                  src="/placeholder.svg?height=600&width=800&query=AI tutor interface with student conversation"
+                  src="/ai-tutor-chat.png"
                   alt="AI Tutor Interface"
                   width={800}
                   height={600}
@@ -247,21 +309,21 @@ export default function AIPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                image: "/placeholder.svg?height=300&width=500&query=student studying with laptop",
+                image: "/focused-student.png",
                 title: "From Struggling to Excelling",
                 description:
                   "Alex improved his math grade from a C to an A- in just one semester with daily AI tutoring sessions.",
                 link: "/success-stories/alex",
               },
               {
-                image: "/placeholder.svg?height=300&width=500&query=student graduation ceremony",
+                image: "/placeholder.svg?key=9vgby",
                 title: "College Admission Success",
                 description:
                   "Maya used our AI tutor to prepare for her SATs and achieved a score that helped her get into her dream university.",
                 link: "/success-stories/maya",
               },
               {
-                image: "/placeholder.svg?height=300&width=500&query=professional working on computer",
+                image: "/focused-professional.png",
                 title: "Career Transition",
                 description:
                   "James used our platform to learn programming and successfully switched careers to become a software developer.",
@@ -346,9 +408,11 @@ export default function AIPage() {
               Start learning with your personal AI tutor today and experience the future of education.
             </p>
             <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-4">
-              <Button size="lg" variant="secondary" className="px-8">
-                Get Started Free
-              </Button>
+              <Link href="/ai/chat">
+                <Button size="lg" variant="secondary" className="px-8">
+                  Get Started Free
+                </Button>
+              </Link>
               <Button
                 size="lg"
                 variant="outline"
