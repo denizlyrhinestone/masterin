@@ -28,34 +28,56 @@ export const supabaseAdmin = createClient(
 // This function is safe to use in API routes and server components
 // but should NOT be imported in pages/ directory components
 export async function getServerSupabaseClient(requestOrResponse?: Request | Response) {
-  // Dynamic import to prevent webpack from bundling this with pages/ components
-  const { cookies } = await import("next/headers")
+  try {
+    // Dynamic import to prevent webpack from bundling this with pages/ components
+    const { cookies } = await import("next/headers")
 
-  const cookieStore = cookies()
+    const cookieStore = cookies()
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-    {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options })
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: "", ...options })
+    return createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            cookieStore.set({ name, value, ...options })
+          },
+          remove(name: string, options: CookieOptions) {
+            cookieStore.set({ name, value: "", ...options })
+          },
         },
       },
-    },
-  )
+    )
+  } catch (error) {
+    console.error("Error creating server Supabase client:", error)
+    // Return a fallback client that will work but with limited functionality
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  }
 }
 
 // Alternative server-side client that doesn't use next/headers
 // Safe to use in pages/ directory and API routes
 export function createServerSupabaseClient() {
-  // Use the admin client instead for server operations
-  // This doesn't rely on cookies() from next/headers
-  return supabaseAdmin
+  try {
+    // Use the admin client instead for server operations
+    // This doesn't rely on cookies() from next/headers
+    return supabaseAdmin
+  } catch (error) {
+    console.error("Error creating server Supabase client:", error)
+    // Return a fallback client that will work but with limited functionality
+    return createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    })
+  }
 }

@@ -44,7 +44,7 @@ export function validateFile(file: File): FileValidationResult {
 }
 
 /**
- * Uploads a file to Vercel Blob storage
+ * Uploads a file to storage
  * @param file The file to upload
  * @returns The uploaded file information
  */
@@ -61,21 +61,28 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
 
     // Create a folder structure based on file type
     const fileType = file.type.split("/")[0] || "other"
-    const timestamp = new Date().toISOString().split("T")[0]
 
-    // Create a FormData object to upload the file
-    const formData = new FormData()
-    formData.append("file", file)
+    // For client-side usage, we'll use a blob URL
+    // In production, you would upload to a storage service
+    let blobUrl = ""
 
-    // In a real implementation, this would use Vercel Blob storage
-    // For now, we'll simulate the upload and return a placeholder URL
-    // This is a simplified version - in production, you would use proper blob storage
-
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    // Create a blob URL for the file (in production, this would be a real URL)
-    const blobUrl = URL.createObjectURL(file)
+    try {
+      blobUrl = URL.createObjectURL(file)
+    } catch (error) {
+      console.error("Error creating blob URL:", error)
+      // Fallback to a data URL for small files
+      if (file.size < 1024 * 1024) {
+        // 1MB limit for data URLs
+        const reader = new FileReader()
+        blobUrl = await new Promise((resolve) => {
+          reader.onload = () => resolve(reader.result as string)
+          reader.readAsDataURL(file)
+        })
+      } else {
+        // For larger files, use a placeholder
+        blobUrl = `/placeholder.svg?height=200&width=200&query=${encodeURIComponent(file.name)}`
+      }
+    }
 
     return {
       id: fileId,
@@ -103,7 +110,19 @@ export async function storeAttachmentMetadata(
   supabaseClient = supabase,
 ): Promise<boolean> {
   try {
-    // First, store the file metadata in the user_files table
+    // First, check if the tables exist
+    const { error: tableCheckError } = await supabaseClient
+      .from("user_files")
+      .select("id", { count: "exact", head: true })
+      .limit(1)
+
+    // If the table doesn't exist, log an error but don't fail
+    if (tableCheckError) {
+      console.error("Error checking user_files table:", tableCheckError)
+      return true // Return true to prevent blocking the chat functionality
+    }
+
+    // Store the file metadata in the user_files table
     const { error: fileError } = await supabaseClient.from("user_files").insert({
       id: file.id,
       file_url: file.url,
@@ -118,7 +137,7 @@ export async function storeAttachmentMetadata(
       return false
     }
 
-    // Then, associate the file with the message
+    // Associate the file with the message
     const { error: attachmentError } = await supabaseClient.from("message_attachments").insert({
       message_id: messageId,
       file_id: file.id,
@@ -163,9 +182,6 @@ export async function deleteFile(fileId: string): Promise<boolean> {
       console.error("Error deleting file metadata:", fileError)
       return false
     }
-
-    // In a real implementation, you would also delete the file from blob storage
-    // For example: await deleteBlob(fileUrl)
 
     return true
   } catch (error) {

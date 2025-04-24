@@ -1,32 +1,41 @@
-// This is a simplified version of the platform-info.ts file
-// In a real implementation, this would contain more detailed information
+// This file contains information about the platform for use in AI responses
 
 const platformInfo = {
   name: "Masterin",
-  description: "AI-powered education platform",
+  tagline: "AI-Powered Education",
+  description: "Advanced AI solutions for modern education",
+  version: "2.0",
+  lastUpdated: "2023-11-15",
 
   features: [
     {
       id: "ai-tutor",
       name: "AI Tutor",
       description: "Get personalized explanations and answers to any academic question",
+      icon: "Brain",
       capabilities: [
-        "Answer questions in natural language",
-        "Provide step-by-step explanations",
-        "Adapt to your learning style",
-        "Cover a wide range of subjects",
+        "Instant answers to academic questions",
+        "Step-by-step explanations of complex concepts",
+        "Subject-specific knowledge across disciplines",
+        "Interactive practice problems and quizzes",
+        "Personalized learning paths based on your progress",
       ],
       benefits: [
         "Learn at your own pace",
-        "Get help anytime, anywhere",
-        "Understand complex concepts easily",
-        "Improve your grades",
+        "Get help whenever you need it",
+        "Understand difficult concepts more easily",
+        "Build confidence in your academic abilities",
       ],
       examples: [
         {
-          question: "Can you explain how photosynthesis works?",
+          question: "Can you explain the concept of photosynthesis?",
           response:
-            "Photosynthesis is the process by which plants convert light energy into chemical energy. It occurs in the chloroplasts of plant cells and involves several steps...",
+            "Photosynthesis is the process by which plants convert light energy into chemical energy. The basic equation is: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂. This happens in the chloroplasts, specifically in structures called thylakoids which contain chlorophyll.",
+        },
+        {
+          question: "How do I solve quadratic equations?",
+          response:
+            "Quadratic equations (ax² + bx + c = 0) can be solved using the quadratic formula: x = (-b ± √(b² - 4ac))/2a. You can also try factoring or completing the square depending on the specific equation.",
         },
       ],
     },
@@ -34,38 +43,52 @@ const platformInfo = {
       id: "essay-assistant",
       name: "Essay Assistant",
       description: "Get help with writing, editing, and improving your essays",
+      icon: "FileText",
       capabilities: [
-        "Provide writing suggestions",
-        "Help with structure and organization",
-        "Improve grammar and style",
-        "Generate ideas and outlines",
+        "Structure suggestions for different essay types",
+        "Grammar and style improvements",
+        "Citation and reference formatting",
+        "Thesis statement development",
+        "Argument strengthening and evidence analysis",
       ],
       benefits: [
-        "Write better essays",
-        "Save time on editing",
-        "Learn writing techniques",
-        "Get feedback on your work",
+        "Improve your writing skills",
+        "Save time on editing and proofreading",
+        "Learn proper academic writing techniques",
+        "Get better grades on written assignments",
       ],
-      examples: [],
+      examples: [
+        {
+          question: "How do I write a strong thesis statement?",
+          response:
+            "A strong thesis statement should be specific, arguable, and concise. For example, instead of 'Climate change is bad,' try 'Implementing carbon taxes at the corporate level would significantly reduce greenhouse gas emissions while promoting innovation in sustainable technologies.'",
+        },
+      ],
     },
   ],
 
   subjects: [
     {
       name: "Mathematics",
-      topics: ["Algebra", "Calculus", "Geometry", "Statistics"],
-      description: "Learn mathematics with personalized explanations and practice problems",
+      topics: ["Algebra", "Calculus", "Geometry", "Statistics", "Trigonometry", "Number Theory"],
+      description: "From basic arithmetic to advanced calculus, our AI tutor can help with all areas of mathematics.",
       commonQuestions: [
         "How do I solve quadratic equations?",
-        "Can you explain derivatives?",
-        "What is the Pythagorean theorem?",
+        "Can you explain integration by parts?",
+        "What's the difference between permutations and combinations?",
+        "How do I find the area under a curve?",
       ],
     },
     {
       name: "Science",
-      topics: ["Physics", "Chemistry", "Biology", "Astronomy"],
-      description: "Explore scientific concepts with detailed explanations and visual aids",
-      commonQuestions: ["How does gravity work?", "Can you explain the periodic table?", "What is photosynthesis?"],
+      topics: ["Physics", "Chemistry", "Biology", "Astronomy", "Earth Science", "Environmental Science"],
+      description: "Explore scientific concepts with detailed explanations and visual aids to enhance understanding.",
+      commonQuestions: [
+        "How does DNA replication work?",
+        "Can you explain Newton's laws of motion?",
+        "What is the periodic table organized by?",
+        "How do stars form and evolve?",
+      ],
     },
   ],
 
@@ -73,9 +96,19 @@ const platformInfo = {
     free: {
       name: "Free Trial",
       price: "$0/month",
-      features: ["5 AI tutor questions per day", "Basic concept explanations", "Limited subject coverage"],
-      bestFor: "Students who want to try out the platform",
-      limitations: ["Limited daily questions", "No file uploads", "Basic explanations only"],
+      features: [
+        "5 AI tutor questions per day",
+        "Basic concept explanations",
+        "Limited subject coverage",
+        "24-hour chat history",
+      ],
+      bestFor: "Students who want to try out the platform before committing",
+      limitations: [
+        "Limited daily questions",
+        "No file uploads",
+        "Basic explanations only",
+        "No personalized study plans",
+      ],
     },
     premium: {
       name: "Premium",
@@ -85,9 +118,11 @@ const platformInfo = {
         "Detailed explanations with examples",
         "All subjects covered",
         "File upload for problem solving",
+        "Personalized study plans",
+        "Unlimited chat history",
       ],
-      bestFor: "Individual students serious about improving",
-      savings: "Save 20% with annual billing",
+      bestFor: "Individual students serious about improving their academic performance",
+      savings: "Save 20% with annual billing ($95.88/year)",
     },
     team: {
       name: "Team",
@@ -97,30 +132,38 @@ const platformInfo = {
         "Up to 10 user accounts",
         "Team analytics dashboard",
         "Custom curriculum integration",
+        "Priority support",
+        "Admin controls",
       ],
-      bestFor: "Study groups and small classrooms",
-      savings: "Save 25% with annual billing",
+      bestFor: "Study groups, tutoring centers, and small classrooms",
+      savings: "Save 25% with annual billing ($269.88/year)",
     },
   },
 
   faq: [
     {
-      question: "How does the AI tutor work?",
+      question: "How does Masterin's AI tutor work?",
       answer:
-        "Our AI tutor uses advanced natural language processing to understand your questions and provide personalized explanations.",
+        "Our AI tutor uses advanced natural language processing to understand your questions and provide personalized explanations. It's trained on high-quality educational content across various subjects and can adapt to your learning style and pace. The AI analyzes your questions, identifies the concepts you're asking about, and generates detailed explanations with examples and visual aids when appropriate.",
     },
     {
-      question: "What subjects are covered?",
-      answer: "We cover a wide range of subjects including mathematics, science, humanities, languages, and more.",
+      question: "Is Masterin suitable for all learning levels?",
+      answer:
+        "Yes! Masterin is designed to help learners at all levels, from elementary school to university and professional development. The AI adapts its explanations based on your current understanding and gradually increases complexity as you progress. We support students from grade school through graduate-level studies, with content tailored to different educational standards and curricula.",
     },
   ],
 
   resources: {
     articles: [
       {
-        title: "Effective Study Techniques",
+        title: "Effective Study Techniques Based on Cognitive Science",
         url: "/resources/articles/effective-study-techniques",
-        topics: ["study skills", "learning", "memory"],
+        topics: ["study skills", "learning", "memory", "productivity"],
+      },
+      {
+        title: "How to Prepare for Standardized Tests",
+        url: "/resources/articles/standardized-test-prep",
+        topics: ["test preparation", "SAT", "ACT", "GRE", "GMAT"],
       },
     ],
     videos: [
@@ -128,21 +171,33 @@ const platformInfo = {
         title: "Introduction to Calculus",
         url: "/resources/videos/intro-to-calculus",
         duration: "45 minutes",
-        topics: ["mathematics", "calculus"],
+        topics: ["mathematics", "calculus", "derivatives", "integrals"],
+      },
+      {
+        title: "Python Programming for Beginners",
+        url: "/resources/videos/python-beginners",
+        duration: "60 minutes",
+        topics: ["programming", "python", "computer science"],
       },
     ],
     tools: [
       {
         title: "Interactive Periodic Table",
         url: "/tools/periodic-table",
-        description: "Explore elements and their properties",
+        description: "Explore elements and their properties with this interactive tool",
         subjects: ["Chemistry"],
+      },
+      {
+        title: "Graphing Calculator",
+        url: "/tools/graphing-calculator",
+        description: "Plot functions and visualize mathematical concepts",
+        subjects: ["Mathematics"],
       },
     ],
   },
 
   responseTemplates: {
-    greeting: "Hi there! I'm your AI assistant from Masterin. How can I help with your learning today?",
+    greeting: "Hi there! I'm your AI assistant from Masterin. How can I help with your learning journey today?",
 
     subjectInquiry:
       "I'd be happy to help with {subject}! Our AI tutor has extensive knowledge in this area. What specific topic or question do you have about {subject}?",

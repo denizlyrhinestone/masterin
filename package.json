@@ -63,10 +63,10 @@
     "uuid": "latest",
     "@ai-sdk/react": "latest",
     "react-markdown": "latest",
-    "@ai-sdk/groq": "latest",
-    "ai": "latest",
+    "@upstash/redis": "latest",
     "@supabase/ssr": "latest",
-    "@upstash/redis": "latest"
+    "@ai-sdk/groq": "latest",
+    "ai": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
