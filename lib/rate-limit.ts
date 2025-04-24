@@ -1,11 +1,22 @@
 import { Redis } from "@upstash/redis"
 
 // Initialize Redis client
-const redis = Redis.fromEnv()
+let redis: Redis | null = null
+
+try {
+  redis = Redis.fromEnv()
+} catch (error) {
+  console.warn("Failed to initialize Redis client:", error)
+  redis = null
+}
 
 export const rateLimit = {
   async check(req: Request, limit: number, window: string): Promise<{ success: boolean; remaining: number }> {
     try {
+      if (!redis) {
+        throw new Error("Redis client not initialized")
+      }
+
       // Extract IP address from request
       const ip = req.headers.get("x-forwarded-for") || "anonymous"
 

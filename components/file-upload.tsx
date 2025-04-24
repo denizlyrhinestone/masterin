@@ -6,7 +6,7 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { PaperclipIcon, Upload, X, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { validateFile, type UploadedFile } from "@/lib/file-upload"
+import { validateFile, type UploadedFile, uploadFile } from "@/lib/file-upload"
 
 interface FileUploadProps {
   onFileUploaded: (file: UploadedFile) => void
@@ -67,20 +67,12 @@ export default function FileUpload({ onFileUploaded, disabled = false }: FileUpl
     setIsUploading(true)
 
     try {
-      const formData = new FormData()
-      formData.append("file", selectedFile)
+      // Upload the file using our utility function
+      const uploadedFile = await uploadFile(selectedFile)
 
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || "Failed to upload file")
+      if (!uploadedFile) {
+        throw new Error("Failed to upload file")
       }
-
-      const uploadedFile = await response.json()
 
       // Clear selected file
       setSelectedFile(null)

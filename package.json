@@ -60,13 +60,13 @@
     "zod": "^3.24.1",
     "@supabase/supabase-js": "latest",
     "dotenv": "latest",
-    "@upstash/redis": "latest",
-    "@supabase/ssr": "latest",
     "uuid": "latest",
     "@ai-sdk/react": "latest",
     "react-markdown": "latest",
     "@ai-sdk/groq": "latest",
-    "ai": "latest"
+    "ai": "latest",
+    "@supabase/ssr": "latest",
+    "@upstash/redis": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
