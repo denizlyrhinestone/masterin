@@ -1,3 +1,5 @@
+// Import the centralized environment configuration
+import { ADMIN_EMAIL } from "./env-config"
 import { supabaseAdmin } from "./supabase"
 
 // Type for admin check result
@@ -11,7 +13,7 @@ export interface AdminCheckResult {
  * @returns Object with status and optional error message
  */
 export function checkAdminEmailConfig(): { isConfigured: boolean; message?: string } {
-  const adminEmail = process.env.ADMIN_EMAIL
+  const adminEmail = ADMIN_EMAIL
 
   if (!adminEmail) {
     return {
@@ -48,8 +50,8 @@ export function isAdminEmail(userEmail: string | null | undefined): AdminCheckRe
     return { isAdmin: false, reason: "Admin configuration error" }
   }
 
-  const adminEmail = process.env.ADMIN_EMAIL
-  const isAdmin = userEmail.toLowerCase() === adminEmail?.toLowerCase()
+  const adminEmail = ADMIN_EMAIL
+  const isAdmin = userEmail.toLowerCase() === adminEmail.toLowerCase()
 
   return {
     isAdmin,

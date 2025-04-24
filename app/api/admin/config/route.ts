@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 import { isAdminEmail, checkAdminEmailConfig } from "@/lib/admin"
+import { ADMIN_EMAIL } from "@/lib/env-config"
 
 export async function GET() {
   try {
@@ -29,7 +30,7 @@ export async function GET() {
 
     // Return admin configuration
     return NextResponse.json({
-      email: process.env.ADMIN_EMAIL,
+      email: ADMIN_EMAIL,
     })
   } catch (error) {
     console.error("Error fetching admin config:", error)

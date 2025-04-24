@@ -5,6 +5,14 @@ const FREE_USAGE_LIMIT = 3
 const STORAGE_KEY = "masterin_tool_usage"
 const USAGE_EXPIRY_DAYS = 7
 
+// Bypass usage limits for full chat
+const UNLIMITED_FEATURES = ["full-chat", "ai-chat"]
+
+// Check if a tool is exempt from usage limits
+const isUnlimitedFeature = (toolId: string): boolean => {
+  return UNLIMITED_FEATURES.includes(toolId)
+}
+
 interface ToolUsage {
   [toolId: string]: {
     count: number
@@ -52,6 +60,11 @@ const saveUsage = (usage: ToolUsage): void => {
 
 // Track tool usage
 export const trackToolUsage = (toolId: string): boolean => {
+  // Skip tracking for unlimited features
+  if (isUnlimitedFeature(toolId)) {
+    return true
+  }
+
   const usage = getStoredUsage()
 
   // Initialize tool usage if not exists
@@ -79,6 +92,11 @@ export const trackToolUsage = (toolId: string): boolean => {
 
 // Get remaining usage for a tool
 export const getRemainingUsage = (toolId: string): number => {
+  // Unlimited usage for certain features
+  if (isUnlimitedFeature(toolId)) {
+    return Number.POSITIVE_INFINITY
+  }
+
   const usage = getStoredUsage()
 
   if (!usage[toolId]) {
@@ -90,6 +108,11 @@ export const getRemainingUsage = (toolId: string): number => {
 
 // Check if a tool has reached its usage limit
 export const hasReachedLimit = (toolId: string): boolean => {
+  // Never reached limit for unlimited features
+  if (isUnlimitedFeature(toolId)) {
+    return false
+  }
+
   return getRemainingUsage(toolId) <= 0
 }
 
