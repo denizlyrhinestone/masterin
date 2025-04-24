@@ -115,6 +115,7 @@ export async function storeAttachmentMetadata(
       .from("user_files")
       .select("id", { count: "exact", head: true })
       .limit(1)
+      .catch(() => ({ error: new Error("Table check failed") }))
 
     // If the table doesn't exist, log an error but don't fail
     if (tableCheckError) {
@@ -123,14 +124,17 @@ export async function storeAttachmentMetadata(
     }
 
     // Store the file metadata in the user_files table
-    const { error: fileError } = await supabaseClient.from("user_files").insert({
-      id: file.id,
-      file_url: file.url,
-      filename: file.filename,
-      file_type: file.fileType,
-      content_type: file.contentType,
-      created_at: new Date().toISOString(),
-    })
+    const { error: fileError } = await supabaseClient
+      .from("user_files")
+      .insert({
+        id: file.id,
+        file_url: file.url,
+        filename: file.filename,
+        file_type: file.fileType,
+        content_type: file.contentType,
+        created_at: new Date().toISOString(),
+      })
+      .catch(() => ({ error: new Error("File metadata insertion failed") }))
 
     if (fileError) {
       console.error("Error storing file metadata:", fileError)
@@ -138,15 +142,18 @@ export async function storeAttachmentMetadata(
     }
 
     // Associate the file with the message
-    const { error: attachmentError } = await supabaseClient.from("message_attachments").insert({
-      message_id: messageId,
-      file_id: file.id,
-      file_url: file.url,
-      filename: file.filename,
-      file_type: file.fileType,
-      content_type: file.contentType,
-      created_at: new Date().toISOString(),
-    })
+    const { error: attachmentError } = await supabaseClient
+      .from("message_attachments")
+      .insert({
+        message_id: messageId,
+        file_id: file.id,
+        file_url: file.url,
+        filename: file.filename,
+        file_type: file.fileType,
+        content_type: file.contentType,
+        created_at: new Date().toISOString(),
+      })
+      .catch(() => ({ error: new Error("Attachment metadata insertion failed") }))
 
     if (attachmentError) {
       console.error("Error storing attachment metadata:", attachmentError)
@@ -168,7 +175,11 @@ export async function storeAttachmentMetadata(
 export async function deleteFile(fileId: string): Promise<boolean> {
   try {
     // Delete the file metadata from the database
-    const { error: attachmentError } = await supabase.from("message_attachments").delete().eq("file_id", fileId)
+    const { error: attachmentError } = await supabase
+      .from("message_attachments")
+      .delete()
+      .eq("file_id", fileId)
+      .catch(() => ({ error: new Error("Attachment deletion failed") }))
 
     if (attachmentError) {
       console.error("Error deleting attachment metadata:", attachmentError)
@@ -176,7 +187,11 @@ export async function deleteFile(fileId: string): Promise<boolean> {
     }
 
     // Delete the file metadata from the user_files table
-    const { error: fileError } = await supabase.from("user_files").delete().eq("id", fileId)
+    const { error: fileError } = await supabase
+      .from("user_files")
+      .delete()
+      .eq("id", fileId)
+      .catch(() => ({ error: new Error("File metadata deletion failed") }))
 
     if (fileError) {
       console.error("Error deleting file metadata:", fileError)

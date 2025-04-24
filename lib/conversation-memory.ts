@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase"
+import { supabase } from "./supabase"
 
 export type MemoryItem = {
   type: "subject" | "feature" | "concept" | "question" | "preference" | "demographic" | "goal"

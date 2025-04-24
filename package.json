@@ -63,8 +63,8 @@
     "uuid": "latest",
     "@ai-sdk/react": "latest",
     "react-markdown": "latest",
-    "@upstash/redis": "latest",
     "@supabase/ssr": "latest",
+    "@upstash/redis": "latest",
     "@ai-sdk/groq": "latest",
     "ai": "latest"
   },
