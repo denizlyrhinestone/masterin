@@ -2,47 +2,13 @@ import { groq } from "@ai-sdk/groq"
 import { streamText } from "ai"
 import { NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase"
-import { rateLimit } from "@/lib/rate-limit"
 import platformInfo from "@/lib/platform-info"
-import { analyzeQuery } from "@/lib/query-analyzer"
-import { extractMemoryFromMessages, generateMemoryPrompt } from "@/lib/conversation-memory"
+import { analyzeQuery, logQueryAnalysis } from "@/lib/query-analyzer"
+import { extractMemoryFromMessages, generateMemoryPrompt, isMemoryStale } from "@/lib/conversation-memory"
 import { storeAttachmentMetadata } from "@/lib/file-upload"
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30
-
-// Simple in-memory rate limiter (fallback if Redis is unavailable)
-const localRateLimits = new Map<string, { count: number; timestamp: number }>()
-const RATE_LIMIT = 20 // requests per minute
-const RATE_WINDOW = 60 * 1000 // 1 minute in milliseconds
-
-async function checkLocalRateLimit(userId: string): Promise<boolean> {
-  const now = Date.now()
-  const userRateLimit = localRateLimits.get(userId)
-
-  if (!userRateLimit) {
-    localRateLimits.set(userId, { count: 1, timestamp: now })
-    return true
-  }
-
-  // Reset counter if window has passed
-  if (now - userRateLimit.timestamp > RATE_WINDOW) {
-    localRateLimits.set(userId, { count: 1, timestamp: now })
-    return true
-  }
-
-  // Check if limit exceeded
-  if (userRateLimit.count >= RATE_LIMIT) {
-    return false
-  }
-
-  // Increment counter
-  localRateLimits.set(userId, {
-    count: userRateLimit.count + 1,
-    timestamp: userRateLimit.timestamp,
-  })
-  return true
-}
 
 export async function POST(req: Request) {
   try {
@@ -56,20 +22,6 @@ export async function POST(req: Request) {
 
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Check rate limit using Redis (with fallback to local)
-    let withinLimit = true
-    try {
-      const limiterResult = await rateLimit.check(req, RATE_LIMIT, "1m")
-      withinLimit = limiterResult.success
-    } catch (error) {
-      console.error("Redis rate limiter error, falling back to local:", error)
-      withinLimit = await checkLocalRateLimit(session.user.id)
-    }
-
-    if (!withinLimit) {
-      return NextResponse.json({ error: "Rate limit exceeded. Please try again later." }, { status: 429 })
     }
 
     // Parse request body
@@ -180,6 +132,7 @@ export async function POST(req: Request) {
     if (latestUserMessage) {
       try {
         queryAnalysis = analyzeQuery(latestUserMessage.content)
+        logQueryAnalysis(latestUserMessage.content, queryAnalysis)
 
         // Extract memory from conversation
         if (!memory) {
@@ -192,8 +145,20 @@ export async function POST(req: Request) {
               lastUpdated: Date.now(),
             })
           }
-        } else {
+        } else if (!isMemoryStale(memory, 60)) {
+          // Use memory if it's not stale (less than 60 minutes old)
           memoryPrompt = generateMemoryPrompt(memory)
+        } else {
+          // If memory is stale, extract fresh memory from the conversation
+          const extractedMemory = extractMemoryFromMessages(messages)
+          if (extractedMemory.length > 0) {
+            memoryPrompt = generateMemoryPrompt({
+              userId: session.user.id,
+              sessionId: conversation.id,
+              items: extractedMemory,
+              lastUpdated: Date.now(),
+            })
+          }
         }
       } catch (error) {
         console.error("Error analyzing query or generating memory prompt:", error)

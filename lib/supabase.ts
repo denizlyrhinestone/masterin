@@ -5,11 +5,28 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr"
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 
+// Validate environment variables
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn("Supabase environment variables are missing. Some functionality may not work correctly.", {
+    url: supabaseUrl ? "✓" : "✗",
+    key: supabaseAnonKey ? "✓" : "✗",
+  })
+}
+
+// Create client with error handling
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+  },
+  global: {
+    fetch: (...args) => {
+      return fetch(...args).catch((err) => {
+        console.error("Supabase fetch error:", err)
+        throw err
+      })
+    },
   },
 })
 
@@ -21,6 +38,14 @@ export const supabaseAdmin = createClient(
     auth: {
       autoRefreshToken: false,
       persistSession: false,
+    },
+    global: {
+      fetch: (...args) => {
+        return fetch(...args).catch((err) => {
+          console.error("Supabase admin fetch error:", err)
+          throw err
+        })
+      },
     },
   },
 )
@@ -79,5 +104,20 @@ export function createServerSupabaseClient() {
         autoRefreshToken: false,
       },
     })
+  }
+}
+
+// Test the Supabase connection
+export async function testSupabaseConnection(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.from("chat_conversations").select("count", { count: "exact", head: true })
+    if (error) {
+      console.error("Supabase connection test failed:", error)
+      return false
+    }
+    return true
+  } catch (error) {
+    console.error("Supabase connection test error:", error)
+    return false
   }
 }

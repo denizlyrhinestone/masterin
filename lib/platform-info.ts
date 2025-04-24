@@ -65,6 +65,32 @@ const platformInfo = {
         },
       ],
     },
+    {
+      id: "math-solver",
+      name: "Math Problem Solver",
+      description: "Step-by-step solutions for algebra, calculus, and more",
+      icon: "Calculator",
+      capabilities: [
+        "Solve equations and systems of equations",
+        "Calculate derivatives and integrals",
+        "Graph functions and analyze their properties",
+        "Solve word problems with detailed explanations",
+        "Provide step-by-step solutions with explanations",
+      ],
+      benefits: [
+        "Understand the solution process, not just the answer",
+        "Learn mathematical concepts through practice",
+        "Check your work and identify mistakes",
+        "Build confidence in your math abilities",
+      ],
+      examples: [
+        {
+          question: "Solve the equation 2x² + 5x - 3 = 0",
+          response:
+            "To solve 2x² + 5x - 3 = 0, we can use the quadratic formula: x = (-b ± √(b² - 4ac))/2a where a=2, b=5, c=-3. Substituting these values: x = (-5 ± √(25 + 24))/4 = (-5 ± √49)/4 = (-5 ± 7)/4. This gives us x = 1/2 or x = -3.",
+        },
+      ],
+    },
   ],
 
   subjects: [
@@ -88,6 +114,28 @@ const platformInfo = {
         "Can you explain Newton's laws of motion?",
         "What is the periodic table organized by?",
         "How do stars form and evolve?",
+      ],
+    },
+    {
+      name: "Computer Science",
+      topics: ["Programming", "Data Structures", "Algorithms", "Web Development", "Databases", "Machine Learning"],
+      description: "Learn programming languages, algorithms, and computer science concepts with our AI tutor.",
+      commonQuestions: [
+        "How do I write a recursive function?",
+        "What's the difference between arrays and linked lists?",
+        "How does the HTTP protocol work?",
+        "Can you explain Big O notation?",
+      ],
+    },
+    {
+      name: "Humanities",
+      topics: ["History", "Literature", "Philosophy", "Art History", "Religious Studies", "Cultural Studies"],
+      description: "Explore the human experience through history, literature, philosophy, and cultural studies.",
+      commonQuestions: [
+        "What were the main causes of World War II?",
+        "Can you analyze the themes in Shakespeare's Hamlet?",
+        "What are the main philosophical arguments for free will?",
+        "How did the Renaissance influence modern art?",
       ],
     },
   ],
@@ -151,6 +199,21 @@ const platformInfo = {
       answer:
         "Yes! Masterin is designed to help learners at all levels, from elementary school to university and professional development. The AI adapts its explanations based on your current understanding and gradually increases complexity as you progress. We support students from grade school through graduate-level studies, with content tailored to different educational standards and curricula.",
     },
+    {
+      question: "Can I upload my homework problems?",
+      answer:
+        "Yes, with our Premium and Team plans, you can upload images of homework problems, worksheets, or textbook pages. Our AI will analyze the content and provide step-by-step solutions and explanations. This feature is particularly helpful for math, science, and other technical subjects where visual problem representation is important.",
+    },
+    {
+      question: "How accurate is the AI tutor?",
+      answer:
+        "Our AI tutor is trained on high-quality educational content and is regularly updated with the latest information. While it strives for accuracy, we recommend verifying critical information with official textbooks or instructors, especially for specialized or advanced topics. If you ever notice an inaccuracy, please report it so we can improve our system.",
+    },
+    {
+      question: "Can I use Masterin for test preparation?",
+      answer:
+        "Masterin is an excellent tool for test preparation. You can practice with sample problems, get explanations for concepts you're struggling with, and create personalized study plans. Our AI can help you prepare for standardized tests, school exams, and college entrance exams by focusing on the areas where you need the most improvement.",
+    },
   ],
 
   resources: {
@@ -164,6 +227,16 @@ const platformInfo = {
         title: "How to Prepare for Standardized Tests",
         url: "/resources/articles/standardized-test-prep",
         topics: ["test preparation", "SAT", "ACT", "GRE", "GMAT"],
+      },
+      {
+        title: "The Science of Learning: How to Retain Information Better",
+        url: "/resources/articles/science-of-learning",
+        topics: ["memory", "learning", "neuroscience", "study techniques"],
+      },
+      {
+        title: "Writing Effective Essays: A Step-by-Step Guide",
+        url: "/resources/articles/essay-writing-guide",
+        topics: ["writing", "essays", "academic writing", "english"],
       },
     ],
     videos: [
@@ -179,6 +252,18 @@ const platformInfo = {
         duration: "60 minutes",
         topics: ["programming", "python", "computer science"],
       },
+      {
+        title: "Understanding Chemical Reactions",
+        url: "/resources/videos/chemical-reactions",
+        duration: "30 minutes",
+        topics: ["chemistry", "science", "reactions", "molecules"],
+      },
+      {
+        title: "Literary Analysis Techniques",
+        url: "/resources/videos/literary-analysis",
+        duration: "40 minutes",
+        topics: ["literature", "english", "analysis", "writing"],
+      },
     ],
     tools: [
       {
@@ -192,6 +277,18 @@ const platformInfo = {
         url: "/tools/graphing-calculator",
         description: "Plot functions and visualize mathematical concepts",
         subjects: ["Mathematics"],
+      },
+      {
+        title: "Code Playground",
+        url: "/tools/code-playground",
+        description: "Practice programming with an interactive code editor",
+        subjects: ["Computer Science", "Programming"],
+      },
+      {
+        title: "Historical Timeline Creator",
+        url: "/tools/timeline-creator",
+        description: "Create interactive timelines for historical events",
+        subjects: ["History"],
       },
     ],
   },

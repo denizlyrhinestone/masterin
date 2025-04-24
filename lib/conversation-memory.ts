@@ -168,6 +168,80 @@ export const extractMemoryFromMessages = (messages: Array<{ role: string; conten
         })
       }
     }
+
+    // Extract concepts (more sophisticated in a real implementation)
+    const conceptPatterns = [
+      /what is ([\w\s]+)/i,
+      /how does ([\w\s]+) work/i,
+      /explain ([\w\s]+)/i,
+      /understand ([\w\s]+)/i,
+    ]
+
+    for (const pattern of conceptPatterns) {
+      const match = content.match(pattern)
+      if (match && match[1]) {
+        memoryItems.push({
+          type: "concept",
+          value: match[1].trim(),
+          confidence: 0.6,
+          timestamp: Date.now(),
+        })
+      }
+    }
+
+    // Extract demographic information (age, education level)
+    if (
+      content.includes("grade") ||
+      content.includes("year") ||
+      content.includes("university") ||
+      content.includes("college")
+    ) {
+      const educationPatterns = [
+        /(\d+)(st|nd|rd|th) grade/i,
+        /(\d+)(st|nd|rd|th) year/i,
+        /(high school|college|university|undergraduate|graduate|phd|masters)/i,
+      ]
+
+      for (const pattern of educationPatterns) {
+        const match = content.match(pattern)
+        if (match) {
+          memoryItems.push({
+            type: "demographic",
+            value: match[0].trim(),
+            confidence: 0.7,
+            timestamp: Date.now(),
+          })
+          break
+        }
+      }
+    }
+
+    // Extract preferences (learning style, pace, etc.)
+    if (
+      content.includes("prefer") ||
+      content.includes("like") ||
+      content.includes("enjoy") ||
+      content.includes("better")
+    ) {
+      const preferencePatterns = [
+        /prefer ([\w\s]+)/i,
+        /like ([\w\s]+) better/i,
+        /enjoy ([\w\s]+)/i,
+        /better with ([\w\s]+)/i,
+      ]
+
+      for (const pattern of preferencePatterns) {
+        const match = content.match(pattern)
+        if (match && match[1]) {
+          memoryItems.push({
+            type: "preference",
+            value: match[1].trim(),
+            confidence: 0.6,
+            timestamp: Date.now(),
+          })
+        }
+      }
+    }
   }
 
   return memoryItems
@@ -195,5 +269,75 @@ export const generateMemoryPrompt = (memory: ConversationMemory): string => {
     prompt += "- Your learning goals include: " + goals.map((g) => g.value).join(", ") + "\n"
   }
 
+  // Add concepts
+  const concepts = getMemoryItemsByType(memory, "concept")
+  if (concepts.length > 0) {
+    prompt += "- You've asked about these concepts: " + concepts.map((c) => c.value).join(", ") + "\n"
+  }
+
+  // Add demographic information
+  const demographics = getMemoryItemsByType(memory, "demographic")
+  if (demographics.length > 0) {
+    prompt += "- Your educational background includes: " + demographics.map((d) => d.value).join(", ") + "\n"
+  }
+
+  // Add preferences (if any)
+  const preferences = getMemoryItemsByType(memory, "preference")
+  if (preferences.length > 0) {
+    prompt += "- Your preferences include: " + preferences.map((p) => p.value).join(", ") + "\n"
+  }
+
   return prompt
+}
+
+// Merge two memory objects
+export const mergeMemories = (memory1: ConversationMemory, memory2: ConversationMemory): ConversationMemory => {
+  // Create a new memory with the same userId and sessionId as memory1
+  let mergedMemory = initializeMemory(memory1.userId, memory1.sessionId)
+
+  // Add all items from memory1
+  for (const item of memory1.items) {
+    mergedMemory = addMemoryItem(mergedMemory, item)
+  }
+
+  // Add all items from memory2
+  for (const item of memory2.items) {
+    mergedMemory = addMemoryItem(mergedMemory, item)
+  }
+
+  return mergedMemory
+}
+
+// Clear specific memory items by type
+export const clearMemoryByType = (memory: ConversationMemory, type: MemoryItem["type"]): ConversationMemory => {
+  return {
+    ...memory,
+    items: memory.items.filter((item) => item.type !== type),
+    lastUpdated: Date.now(),
+  }
+}
+
+// Get memory age in minutes
+export const getMemoryAge = (memory: ConversationMemory): number => {
+  return (Date.now() - memory.lastUpdated) / (1000 * 60)
+}
+
+// Check if memory is stale (older than specified minutes)
+export const isMemoryStale = (memory: ConversationMemory, minutes = 30): boolean => {
+  return getMemoryAge(memory) > minutes
+}
+
+export default {
+  initializeMemory,
+  addMemoryItem,
+  getMemoryItemsByType,
+  getTopMemoryItem,
+  persistMemory,
+  loadMemory,
+  extractMemoryFromMessages,
+  generateMemoryPrompt,
+  mergeMemories,
+  clearMemoryByType,
+  getMemoryAge,
+  isMemoryStale,
 }

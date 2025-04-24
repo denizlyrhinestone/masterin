@@ -27,6 +27,8 @@ export type QueryAnalysis = {
     type: string
     value: string
   }[]
+  executionTime?: number
+  optimizationSuggestions?: string[]
 }
 
 /**
@@ -35,6 +37,7 @@ export type QueryAnalysis = {
  * @returns Analysis of the query type and extracted information
  */
 export function analyzeQuery(query: string): QueryAnalysis {
+  const startTime = performance.now()
   const lowerQuery = query.toLowerCase().trim()
 
   // Initialize the analysis object
@@ -42,12 +45,14 @@ export function analyzeQuery(query: string): QueryAnalysis {
     type: "unknown",
     confidence: 0,
     entities: [],
+    optimizationSuggestions: [],
   }
 
   // Check for greetings
   if (/^(hi|hello|hey|greetings|howdy|good (morning|afternoon|evening))[\s\W]*$/i.test(lowerQuery)) {
     analysis.type = "greeting"
     analysis.confidence = 0.9
+    analysis.executionTime = performance.now() - startTime
     return analysis
   }
 
@@ -69,6 +74,7 @@ export function analyzeQuery(query: string): QueryAnalysis {
         analysis.confidence = 0.85
       }
 
+      analysis.executionTime = performance.now() - startTime
       return analysis
     }
   }
@@ -111,6 +117,7 @@ export function analyzeQuery(query: string): QueryAnalysis {
       })
     }
 
+    analysis.executionTime = performance.now() - startTime
     return analysis
   }
 
@@ -140,6 +147,7 @@ export function analyzeQuery(query: string): QueryAnalysis {
         }
       }
 
+      analysis.executionTime = performance.now() - startTime
       return analysis
     }
   }
@@ -154,6 +162,7 @@ export function analyzeQuery(query: string): QueryAnalysis {
   ) {
     analysis.type = "comparison_request"
     analysis.confidence = 0.7
+    analysis.executionTime = performance.now() - startTime
     return analysis
   }
 
@@ -161,6 +170,7 @@ export function analyzeQuery(query: string): QueryAnalysis {
   if (lowerQuery.startsWith("how") || lowerQuery.includes("how to")) {
     analysis.type = "how_to_question"
     analysis.confidence = 0.7
+    analysis.executionTime = performance.now() - startTime
     return analysis
   }
 
@@ -173,6 +183,7 @@ export function analyzeQuery(query: string): QueryAnalysis {
   ) {
     analysis.type = "definition_request"
     analysis.confidence = 0.7
+    analysis.executionTime = performance.now() - startTime
     return analysis
   }
 
@@ -185,6 +196,7 @@ export function analyzeQuery(query: string): QueryAnalysis {
   ) {
     analysis.type = "problem_solving"
     analysis.confidence = 0.7
+    analysis.executionTime = performance.now() - startTime
     return analysis
   }
 
@@ -198,6 +210,7 @@ export function analyzeQuery(query: string): QueryAnalysis {
   ) {
     analysis.type = "resource_request"
     analysis.confidence = 0.7
+    analysis.executionTime = performance.now() - startTime
     return analysis
   }
 
@@ -211,71 +224,23 @@ export function analyzeQuery(query: string): QueryAnalysis {
   ) {
     analysis.type = "account_question"
     analysis.confidence = 0.7
+    analysis.executionTime = performance.now() - startTime
     return analysis
   }
 
   // If we couldn't determine a specific type
-  return analysis
-}
+  analysis.executionTime = performance.now() - startTime
 
-/**
- * Generates a response template based on query analysis
- * @param analysis The analysis of the user's query
- * @returns A template string for the response
- */
-export function getResponseTemplate(analysis: QueryAnalysis): string {
-  switch (analysis.type) {
-    case "greeting":
-      return platformInfo.responseTemplates.greeting
-
-    case "subject_question":
-      if (analysis.subject) {
-        return platformInfo.responseTemplates.subjectInquiry.replace("{subject}", analysis.subject)
-      }
-      break
-
-    case "feature_inquiry":
-      if (analysis.feature) {
-        const feature = platformInfo.features.find((f) => f.name === analysis.feature || f.id === analysis.feature)
-
-        if (feature) {
-          return platformInfo.responseTemplates.featureExplanation
-            .replace("{feature}", feature.name)
-            .replace("{description}", feature.description)
-            .replace("{capabilities}", feature.capabilities.slice(0, 3).join(", "))
-        }
-      }
-      break
-
-    case "pricing_inquiry":
-      return platformInfo.responseTemplates.pricingInformation
-        .replace("{freePlan}", platformInfo.pricing.free.name)
-        .replace("{freePrice}", platformInfo.pricing.free.price)
-        .replace("{freeFeatures}", platformInfo.pricing.free.features.slice(0, 2).join(", "))
-        .replace("{premiumPlan}", platformInfo.pricing.premium.name)
-        .replace("{premiumPrice}", platformInfo.pricing.premium.price)
-        .replace("{premiumFeatures}", platformInfo.pricing.premium.features.slice(0, 2).join(", "))
-        .replace("{teamPlan}", platformInfo.pricing.team.name)
-        .replace("{teamPrice}", platformInfo.pricing.team.price)
-        .replace("{teamFeatures}", platformInfo.pricing.team.features.slice(0, 2).join(", "))
-
-    case "how_to_question":
-      return platformInfo.responseTemplates.problemSolving
-        .replace("{subject}", analysis.subject || "problem")
-        .replace("{steps}", "1. First step\n2. Second step\n3. Third step")
-
-    case "definition_request":
-      return platformInfo.responseTemplates.conceptExplanation
-        .replace("{concept}", "the concept")
-        .replace("{explanation}", "Detailed explanation would go here.")
-
-    default:
-      // For unknown query types, use a clarification request
-      return platformInfo.responseTemplates.clarificationRequest.replace("{interpretation}", "your question")
+  // Add optimization suggestions if the analysis took too long
+  if (analysis.executionTime > 50) {
+    analysis.optimizationSuggestions = [
+      "Consider using a more efficient pattern matching algorithm",
+      "Cache common query patterns for faster lookup",
+      "Use a machine learning model for more accurate classification",
+    ]
   }
 
-  // Fallback
-  return platformInfo.responseTemplates.greeting
+  return analysis
 }
 
 /**
@@ -318,8 +283,33 @@ export function suggestResources(analysis: QueryAnalysis): any[] {
   return resources.slice(0, 3) // Return at most 3 resources
 }
 
+/**
+ * Logs query analysis for debugging and improvement
+ * @param query The original query
+ * @param analysis The analysis result
+ */
+export function logQueryAnalysis(query: string, analysis: QueryAnalysis): void {
+  console.log(`Query Analysis:
+  Original: "${query}"
+  Type: ${analysis.type}
+  Confidence: ${analysis.confidence}
+  Subject: ${analysis.subject || "N/A"}
+  Topic: ${analysis.topic || "N/A"}
+  Feature: ${analysis.feature || "N/A"}
+  Execution Time: ${analysis.executionTime?.toFixed(2)}ms
+  Entities: ${analysis.entities.length}
+  `)
+
+  if (analysis.optimizationSuggestions && analysis.optimizationSuggestions.length > 0) {
+    console.log("Optimization Suggestions:")
+    analysis.optimizationSuggestions.forEach((suggestion, index) => {
+      console.log(`  ${index + 1}. ${suggestion}`)
+    })
+  }
+}
+
 export default {
   analyzeQuery,
-  getResponseTemplate,
   suggestResources,
+  logQueryAnalysis,
 }

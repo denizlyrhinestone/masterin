@@ -63,7 +63,6 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
     const fileType = file.type.split("/")[0] || "other"
 
     // For client-side usage, we'll use a blob URL
-    // In production, you would upload to a storage service
     let blobUrl = ""
 
     try {
@@ -82,6 +81,27 @@ export async function uploadFile(file: File): Promise<UploadedFile> {
         // For larger files, use a placeholder
         blobUrl = `/placeholder.svg?height=200&width=200&query=${encodeURIComponent(file.name)}`
       }
+    }
+
+    // Try to upload to Supabase storage if available
+    try {
+      if (supabase) {
+        const { data, error } = await supabase.storage.from("uploads").upload(`${fileType}/${fileId}`, file, {
+          cacheControl: "3600",
+          upsert: false,
+        })
+
+        if (!error && data) {
+          // Get public URL
+          const { data: publicUrlData } = supabase.storage.from("uploads").getPublicUrl(data.path)
+          if (publicUrlData && publicUrlData.publicUrl) {
+            blobUrl = publicUrlData.publicUrl
+          }
+        }
+      }
+    } catch (storageError) {
+      console.error("Error uploading to Supabase storage:", storageError)
+      // Continue with blob URL as fallback
     }
 
     return {
@@ -112,33 +132,15 @@ export async function storeAttachmentMetadata(
   try {
     // First, check if the tables exist
     const { error: tableCheckError } = await supabaseClient
-      .from("user_files")
+      .from("message_attachments")
       .select("id", { count: "exact", head: true })
       .limit(1)
       .catch(() => ({ error: new Error("Table check failed") }))
 
     // If the table doesn't exist, log an error but don't fail
     if (tableCheckError) {
-      console.error("Error checking user_files table:", tableCheckError)
+      console.error("Error checking message_attachments table:", tableCheckError)
       return true // Return true to prevent blocking the chat functionality
-    }
-
-    // Store the file metadata in the user_files table
-    const { error: fileError } = await supabaseClient
-      .from("user_files")
-      .insert({
-        id: file.id,
-        file_url: file.url,
-        filename: file.filename,
-        file_type: file.fileType,
-        content_type: file.contentType,
-        created_at: new Date().toISOString(),
-      })
-      .catch(() => ({ error: new Error("File metadata insertion failed") }))
-
-    if (fileError) {
-      console.error("Error storing file metadata:", fileError)
-      return false
     }
 
     // Associate the file with the message
@@ -158,6 +160,18 @@ export async function storeAttachmentMetadata(
     if (attachmentError) {
       console.error("Error storing attachment metadata:", attachmentError)
       return false
+    }
+
+    // Update the message to indicate it has attachments
+    const { error: messageUpdateError } = await supabaseClient
+      .from("chat_messages")
+      .update({ has_attachments: true })
+      .eq("id", messageId)
+      .catch(() => ({ error: new Error("Message update failed") }))
+
+    if (messageUpdateError) {
+      console.error("Error updating message:", messageUpdateError)
+      // Don't fail the operation if this update fails
     }
 
     return true
@@ -186,16 +200,14 @@ export async function deleteFile(fileId: string): Promise<boolean> {
       return false
     }
 
-    // Delete the file metadata from the user_files table
-    const { error: fileError } = await supabase
-      .from("user_files")
-      .delete()
-      .eq("id", fileId)
-      .catch(() => ({ error: new Error("File metadata deletion failed") }))
-
-    if (fileError) {
-      console.error("Error deleting file metadata:", fileError)
-      return false
+    // Try to delete from storage if available
+    try {
+      if (supabase) {
+        await supabase.storage.from("uploads").remove([`${fileId}`])
+      }
+    } catch (storageError) {
+      console.error("Error deleting from storage:", storageError)
+      // Continue even if storage deletion fails
     }
 
     return true
