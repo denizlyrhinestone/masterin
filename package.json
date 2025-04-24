@@ -62,11 +62,13 @@
     "dotenv": "latest",
     "@upstash/redis": "latest",
     "@supabase/ssr": "latest",
+    "uuid": "latest",
     "@ai-sdk/react": "latest",
     "react-markdown": "latest",
-    "uuid": "latest",
     "@ai-sdk/groq": "latest",
-    "ai": "latest"
+    "ai": "latest",
+    "@vercel/blob": "latest",
+    "@paralleldrive/cuid2": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

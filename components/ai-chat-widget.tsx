@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Send, Bot, User, ArrowRight, Loader2, ThumbsUp, ThumbsDown, HelpCircle } from "lucide-react"
+import { Send, Bot, User, ArrowRight, Loader2, ThumbsUp, ThumbsDown, HelpCircle, FileText } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -14,6 +14,9 @@ import { v4 as uuidv4 } from "uuid"
 import platformInfo from "@/lib/platform-info"
 import { analyzeQuery, suggestResources } from "@/lib/query-analyzer"
 import { initializeMemory, addMemoryItem, extractMemoryFromMessages, getTopMemoryItem } from "@/lib/conversation-memory"
+import FileUpload from "@/components/file-upload"
+import FilePreview from "@/components/file-preview"
+import type { UploadedFile } from "@/lib/file-upload"
 
 type Message = {
   id: string
@@ -21,6 +24,7 @@ type Message = {
   content: string
   isLoading?: boolean
   feedback?: "positive" | "negative"
+  attachments?: UploadedFile[]
 }
 
 type Resource = {
@@ -52,6 +56,8 @@ export default function AIChatWidget() {
   const [memory, setMemory] = useState(() => initializeMemory(user?.id || null, sessionId))
   const [suggestedResources, setSuggestedResources] = useState<Resource[]>([])
   const [showResources, setShowResources] = useState(false)
+  const [pendingAttachments, setPendingAttachments] = useState<UploadedFile[]>([])
+  const [showAttachmentPreview, setShowAttachmentPreview] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -84,7 +90,7 @@ export default function AIChatWidget() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!inputValue.trim()) return
+    if (!inputValue.trim() && pendingAttachments.length === 0) return
 
     // Analyze the query
     const analysis = analyzeQuery(inputValue)
@@ -126,11 +132,23 @@ export default function AIChatWidget() {
       setShowResources(false)
     }
 
+    // Create message content
+    let messageContent = inputValue.trim()
+
+    // Add file descriptions to the message if there are attachments
+    if (pendingAttachments.length > 0) {
+      if (messageContent) {
+        messageContent += "\n\n"
+      }
+      messageContent += `I've attached ${pendingAttachments.length} file${pendingAttachments.length > 1 ? "s" : ""}: ${pendingAttachments.map((a) => a.filename).join(", ")}`
+    }
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: inputValue,
+      content: messageContent,
+      attachments: pendingAttachments.length > 0 ? [...pendingAttachments] : undefined,
     }
 
     // Add a loading message from the assistant
@@ -143,6 +161,8 @@ export default function AIChatWidget() {
 
     setMessages((prev) => [...prev, userMessage, loadingMessage])
     setInputValue("")
+    setPendingAttachments([])
+    setShowAttachmentPreview(false)
     setIsTyping(true)
 
     // Scroll to bottom
@@ -160,14 +180,14 @@ export default function AIChatWidget() {
           {
             id: (Date.now() + 2).toString(),
             role: "assistant",
-            content: generateContextualResponse(inputValue, filtered, analysis, updatedMemory),
+            content: generateContextualResponse(inputValue, filtered, analysis, updatedMemory, pendingAttachments),
           },
         ]
       })
       setIsTyping(false)
 
       // Update suggested questions based on the conversation
-      updateSuggestedQuestions(inputValue, analysis)
+      updateSuggestedQuestions(inputValue, analysis, pendingAttachments)
 
       // Scroll to bottom again
       setTimeout(() => {
@@ -177,7 +197,42 @@ export default function AIChatWidget() {
   }
 
   // Update suggested questions based on the conversation context and query analysis
-  const updateSuggestedQuestions = (lastInput: string, analysis: any) => {
+  const updateSuggestedQuestions = (lastInput: string, analysis: any, attachments: UploadedFile[] = []) => {
+    // If there are attachments, suggest questions related to the file types
+    if (attachments.length > 0) {
+      const fileTypes = new Set(attachments.map((a) => a.fileType))
+
+      if (fileTypes.has("image")) {
+        setSuggestedQuestions([
+          "Can you explain what's in this image?",
+          "Can you solve this problem?",
+          "What does this diagram represent?",
+          "Can you help me understand this concept?",
+        ])
+        return
+      }
+
+      if (fileTypes.has("document")) {
+        setSuggestedQuestions([
+          "Can you summarize this document?",
+          "What are the key points in this text?",
+          "Can you explain this concept from the document?",
+          "How can I improve this writing?",
+        ])
+        return
+      }
+
+      if (fileTypes.has("code")) {
+        setSuggestedQuestions([
+          "Can you explain this code?",
+          "What does this function do?",
+          "How can I improve this code?",
+          "Is there a bug in this code?",
+        ])
+        return
+      }
+    }
+
     // Get the user's current interests from memory
     const subjectItem = getTopMemoryItem(memory, "subject")
     const featureItem = getTopMemoryItem(memory, "feature")
@@ -272,7 +327,53 @@ export default function AIChatWidget() {
   }
 
   // Enhanced response generation with platform context, query analysis, and memory
-  const generateContextualResponse = (input: string, prevMessages: Message[], analysis: any, memory: any): string => {
+  const generateContextualResponse = (
+    input: string,
+    prevMessages: Message[],
+    analysis: any,
+    memory: any,
+    attachments: UploadedFile[] = [],
+  ): string => {
+    // If there are attachments, generate a response based on the file types
+    if (attachments.length > 0) {
+      const fileTypes = new Set(attachments.map((a) => a.fileType))
+
+      if (fileTypes.has("image")) {
+        return `I see you've uploaded ${attachments.length > 1 ? "some images" : "an image"}. In the full chat experience, I can analyze these images to help with:
+
+- Solving math problems shown in the images
+- Explaining diagrams and charts
+- Identifying concepts in visual materials
+- Providing step-by-step solutions for homework
+
+To get detailed analysis of your ${attachments.length > 1 ? "images" : "image"}, please click the "Open Full Chat" button below where our advanced AI vision capabilities can provide comprehensive assistance.`
+      }
+
+      if (fileTypes.has("document")) {
+        return `Thank you for uploading ${attachments.length > 1 ? "documents" : "a document"}. In the full chat experience, I can analyze these files to:
+
+- Summarize key points and concepts
+- Explain complex topics from the text
+- Answer specific questions about the content
+- Provide feedback on written assignments
+
+For a detailed analysis of your ${attachments.length > 1 ? "documents" : "document"}, please click the "Open Full Chat" button below where our advanced document processing capabilities can provide comprehensive assistance.`
+      }
+
+      if (fileTypes.has("code")) {
+        return `I see you've shared some code. In the full chat experience, I can help you with:
+
+- Explaining what the code does line by line
+- Identifying potential bugs or issues
+- Suggesting improvements and optimizations
+- Answering questions about programming concepts
+
+To get detailed help with your code, please click the "Open Full Chat" button below where our advanced code analysis capabilities can provide comprehensive assistance.`
+      }
+
+      return `Thank you for uploading ${attachments.length > 1 ? "files" : "a file"}. To get the most detailed analysis and help with your ${attachments.length > 1 ? "files" : "file"}, please click the "Open Full Chat" button below where our advanced multi-modal AI can provide comprehensive assistance.`
+    }
+
     // Get memory items for context
     const subjectItem = getTopMemoryItem(memory, "subject")
     const featureItem = getTopMemoryItem(memory, "feature")
@@ -585,6 +686,20 @@ export default function AIChatWidget() {
     console.log(`Feedback for message ${messageId}: ${feedbackType}`)
   }
 
+  // Handle file upload
+  const handleFileUploaded = (file: UploadedFile) => {
+    setPendingAttachments((prev) => [...prev, file])
+    setShowAttachmentPreview(true)
+  }
+
+  // Remove a pending attachment
+  const handleRemoveAttachment = (fileId: string) => {
+    setPendingAttachments((prev) => prev.filter((file) => file.id !== fileId))
+    if (pendingAttachments.length <= 1) {
+      setShowAttachmentPreview(false)
+    }
+  }
+
   return (
     <Card className="border-0 shadow-lg overflow-hidden h-[500px] flex flex-col">
       <CardHeader
@@ -647,6 +762,22 @@ export default function AIChatWidget() {
 
                             return <div key={i} dangerouslySetInnerHTML={{ __html: formattedLine }} />
                           })}
+
+                          {/* Display attachments if any */}
+                          {message.attachments && message.attachments.length > 0 && (
+                            <div className="mt-2 space-y-2">
+                              {message.attachments.map((attachment) => (
+                                <FilePreview
+                                  key={attachment.id}
+                                  url={attachment.url}
+                                  filename={attachment.filename}
+                                  fileType={attachment.fileType}
+                                  contentType={attachment.contentType}
+                                  showRemove={false}
+                                />
+                              ))}
+                            </div>
+                          )}
 
                           {/* Feedback buttons for assistant messages */}
                           {message.role === "assistant" && !message.isLoading && message.id !== "welcome" && (
@@ -749,6 +880,28 @@ export default function AIChatWidget() {
                 </div>
               )}
 
+              {/* Pending attachments preview */}
+              {showAttachmentPreview && pendingAttachments.length > 0 && (
+                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                  <div className="font-medium mb-2 flex items-center">
+                    <FileText className="w-4 h-4 mr-1" />
+                    Pending Attachments
+                  </div>
+                  <div className="space-y-2">
+                    {pendingAttachments.map((attachment) => (
+                      <FilePreview
+                        key={attachment.id}
+                        url={attachment.url}
+                        filename={attachment.filename}
+                        fileType={attachment.fileType}
+                        contentType={attachment.contentType}
+                        onRemove={() => handleRemoveAttachment(attachment.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
           </CardContent>
@@ -773,19 +926,26 @@ export default function AIChatWidget() {
 
           <CardFooter className="p-3 border-t">
             <form onSubmit={handleSubmit} className="flex w-full space-x-2">
-              <Input
-                id="chat-input"
-                type="text"
-                placeholder="Ask about Masterin..."
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                className="flex-grow text-sm"
-                disabled={isTyping}
-              />
+              <div className="flex-grow flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 px-3">
+                <FileUpload onFileUploaded={handleFileUploaded} disabled={isTyping} />
+                <Input
+                  id="chat-input"
+                  type="text"
+                  placeholder="Ask about Masterin..."
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  className="flex-grow text-sm border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  disabled={isTyping}
+                />
+              </div>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button type="submit" size="sm" disabled={!inputValue.trim() || isTyping}>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={(!inputValue.trim() && pendingAttachments.length === 0) || isTyping}
+                    >
                       <Send className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>

@@ -1,10 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Send, PaperclipIcon, History, Plus, AlertTriangle } from "lucide-react"
+import { Send, PaperclipIcon, History, Plus, AlertTriangle, X, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,6 +17,7 @@ import { useAuth } from "@/contexts/auth-context"
 import ProtectedRoute from "@/components/protected-route"
 import ErrorBoundary from "@/components/error-boundary"
 import platformInfo from "@/lib/platform-info"
+import { uploadFile } from "@/lib/file-upload"
 
 // Types
 type Conversation = {
@@ -31,6 +31,15 @@ type Message = {
   role: "user" | "assistant" | "system"
   content: string
   createdAt?: Date
+  attachments?: Attachment[]
+}
+
+type Attachment = {
+  id: string
+  url: string
+  filename: string
+  fileType: string
+  contentType: string
 }
 
 // Generate context-aware quick prompts based on the platform information
@@ -70,10 +79,15 @@ export default function AIChat() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const [quickPrompts, setQuickPrompts] = useState<string[]>(generateQuickPrompts())
+  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([])
+  const [isUploading, setIsUploading] = useState(false)
 
   const { messages, input, handleInputChange, handleSubmit, isLoading, error, append, reload, setMessages } = useChat({
     api: "/api/chat",
-    body: { conversationId },
+    body: {
+      conversationId,
+      attachments: pendingAttachments,
+    },
     initialMessages,
     onResponse: (response) => {
       // Extract conversation ID from the response
@@ -87,6 +101,10 @@ export default function AIChat() {
           }
         })
       }
+    },
+    onFinish: () => {
+      // Clear pending attachments after message is sent
+      setPendingAttachments([])
     },
     onError: (error) => {
       console.error("Chat error:", error)
@@ -147,23 +165,55 @@ export default function AIChat() {
     async (id: string) => {
       setIsLoadingMessages(true)
       try {
-        const { data, error } = await supabase
+        // Fetch messages
+        const { data: messagesData, error: messagesError } = await supabase
           .from("chat_messages")
           .select("*")
           .eq("conversation_id", id)
           .order("created_at", { ascending: true })
 
-        if (error) {
-          throw error
+        if (messagesError) {
+          throw messagesError
+        }
+
+        // Fetch attachments for messages
+        const messageIds = messagesData.filter((msg) => msg.has_attachments).map((msg) => msg.id)
+
+        let attachmentsData: any[] = []
+        if (messageIds.length > 0) {
+          const { data: fetchedAttachments, error: attachmentsError } = await supabase
+            .from("message_attachments")
+            .select("*")
+            .in("message_id", messageIds)
+
+          if (attachmentsError) {
+            console.error("Error fetching attachments:", attachmentsError)
+          } else {
+            attachmentsData = fetchedAttachments || []
+          }
         }
 
         // Format messages for the chat component
-        const formattedMessages = data.map((msg) => ({
-          id: msg.id,
-          role: msg.role as "user" | "assistant" | "system",
-          content: msg.content,
-          createdAt: new Date(msg.created_at),
-        }))
+        const formattedMessages = messagesData.map((msg) => {
+          // Find attachments for this message
+          const msgAttachments = attachmentsData
+            .filter((att) => att.message_id === msg.id)
+            .map((att) => ({
+              id: att.file_id,
+              url: att.file_url,
+              filename: att.filename,
+              fileType: att.file_type,
+              contentType: att.content_type,
+            }))
+
+          return {
+            id: msg.id,
+            role: msg.role as "user" | "assistant" | "system",
+            content: msg.content,
+            createdAt: new Date(msg.created_at),
+            attachments: msgAttachments.length > 0 ? msgAttachments : undefined,
+          }
+        })
 
         setInitialMessages(formattedMessages)
         setMessages(formattedMessages)
@@ -261,10 +311,14 @@ export default function AIChat() {
     setMessages([welcomeMessage])
     // Generate new quick prompts for the new conversation
     setQuickPrompts(generateQuickPrompts())
+    // Clear any pending attachments
+    setPendingAttachments([])
   }
 
   const handleSelectConversation = (id: string) => {
     router.push(`/ai/chat?id=${id}`)
+    // Clear any pending attachments
+    setPendingAttachments([])
   }
 
   const handleQuickPrompt = (prompt: string) => {
@@ -278,42 +332,101 @@ export default function AIChat() {
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      // Check file size (limit to 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Please upload a file smaller than 5MB",
-          variant: "destructive",
-        })
-        return
-      }
+    if (!file) return
 
-      // Check file type
-      const allowedTypes = ["image/jpeg", "image/png", "image/gif", "application/pdf", "text/plain"]
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Unsupported file type",
-          description: "Please upload an image, PDF, or text file",
-          variant: "destructive",
-        })
-        return
-      }
-
-      // In a real implementation, you would upload the file to a server
-      // For now, we'll just add a message about the file
-      append({
-        role: "user",
-        content: `I've uploaded a file: ${file.name}`,
+    // Check file size (limit to 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file smaller than 10MB",
+        variant: "destructive",
       })
+      return
     }
 
-    // Reset the file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ""
+    // Check file type
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "application/pdf",
+      "text/plain",
+      "text/csv",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // docx
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // xlsx
+    ]
+
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Unsupported file type",
+        description: "Please upload an image, PDF, text, CSV, Word, or Excel file",
+        variant: "destructive",
+      })
+      return
     }
+
+    setIsUploading(true)
+
+    try {
+      // Upload the file
+      const uploadedFile = await uploadFile(file)
+
+      // Add to pending attachments
+      setPendingAttachments((prev) => [
+        ...prev,
+        {
+          id: uploadedFile.id,
+          url: uploadedFile.url,
+          filename: file.name,
+          fileType: file.type.split("/")[0],
+          contentType: file.type,
+        },
+      ])
+
+      toast({
+        title: "File uploaded",
+        description: `${file.name} has been uploaded successfully`,
+      })
+    } catch (error) {
+      console.error("Error uploading file:", error)
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload file. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploading(false)
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
+  }
+
+  // Remove a pending attachment
+  const handleRemoveAttachment = (fileId: string) => {
+    setPendingAttachments((prev) => prev.filter((file) => file.id !== fileId))
+  }
+
+  // Custom submit handler to include attachments
+  const handleCustomSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    // Don't submit if there's no input and no attachments
+    if (!input.trim() && pendingAttachments.length === 0) return
+
+    // Create message content
+    let messageContent = input.trim()
+
+    // Add file descriptions to the message if there are attachments
+    if (pendingAttachments.length > 0 && !messageContent) {
+      messageContent = `I've attached ${pendingAttachments.length} file${pendingAttachments.length > 1 ? "s" : ""} for analysis.`
+    }
+
+    // Call the original submit handler
+    handleSubmit(e)
   }
 
   return (
@@ -439,6 +552,73 @@ export default function AIChat() {
                               <div className="prose prose-sm max-w-none">
                                 <ReactMarkdown>{message.content}</ReactMarkdown>
                               </div>
+
+                              {/* Display attachments if any */}
+                              {message.attachments && message.attachments.length > 0 && (
+                                <div className="mt-2 space-y-2">
+                                  {message.attachments.map((attachment) => (
+                                    <div
+                                      key={attachment.id}
+                                      className="flex items-center p-2 rounded bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                                    >
+                                      <div className="mr-2 text-gray-500">
+                                        {attachment.fileType === "image" ? (
+                                          <img
+                                            src={attachment.url || "/placeholder.svg"}
+                                            alt={attachment.filename}
+                                            className="max-h-40 max-w-full rounded"
+                                          />
+                                        ) : attachment.fileType === "application" ? (
+                                          <svg
+                                            className="h-5 w-5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                            />
+                                          </svg>
+                                        ) : (
+                                          <svg
+                                            className="h-5 w-5"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                            />
+                                          </svg>
+                                        )}
+                                      </div>
+                                      <div className="flex-1 truncate text-sm">{attachment.filename}</div>
+                                      <a
+                                        href={attachment.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="ml-2 text-purple-600 hover:text-purple-800"
+                                      >
+                                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                          <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                                          />
+                                        </svg>
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
                               <div className="text-xs text-gray-500 mt-1">
                                 {message.createdAt?.toLocaleTimeString([], {
                                   hour: "2-digit",
@@ -503,8 +683,58 @@ export default function AIChat() {
                 </div>
               </div>
 
+              {/* Pending attachments */}
+              {pendingAttachments.length > 0 && (
+                <div className="px-4 py-2 border-t border-gray-200">
+                  <p className="text-sm text-gray-500 mb-2">Attachments:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {pendingAttachments.map((attachment) => (
+                      <div
+                        key={attachment.id}
+                        className="flex items-center p-2 rounded bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                      >
+                        <div className="mr-2 text-gray-500">
+                          {attachment.fileType === "image" ? (
+                            <img
+                              src={attachment.url || "/placeholder.svg"}
+                              alt={attachment.filename}
+                              className="h-8 w-8 object-cover rounded"
+                            />
+                          ) : attachment.fileType === "application" ? (
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                          ) : (
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                        <div className="flex-1 truncate text-sm">{attachment.filename}</div>
+                        <button
+                          onClick={() => handleRemoveAttachment(attachment.id)}
+                          className="ml-2 text-gray-500 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Input form */}
-              <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
+              <form onSubmit={handleCustomSubmit} className="p-4 border-t border-gray-200">
                 <div className="flex items-end gap-2">
                   <div className="flex-1 relative">
                     <Textarea
@@ -515,28 +745,35 @@ export default function AIChat() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault()
-                          handleSubmit(e)
+                          handleCustomSubmit(e)
                         }
                       }}
-                      disabled={isLoading}
+                      disabled={isLoading || isUploading}
                     />
                     <button
                       type="button"
                       onClick={handleFileUpload}
                       className="absolute right-3 bottom-3 text-gray-400 hover:text-gray-600"
-                      disabled={isLoading}
+                      disabled={isLoading || isUploading}
                     >
-                      <PaperclipIcon className="h-5 w-5" />
+                      {isUploading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <PaperclipIcon className="h-5 w-5" />
+                      )}
                     </button>
                     <input
                       type="file"
                       ref={fileInputRef}
                       onChange={handleFileChange}
                       className="hidden"
-                      accept="image/jpeg,image/png,image/gif,application/pdf,text/plain"
+                      accept="image/jpeg,image/png,image/gif,application/pdf,text/plain,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     />
                   </div>
-                  <Button type="submit" disabled={isLoading || !input.trim()}>
+                  <Button
+                    type="submit"
+                    disabled={isLoading || isUploading || (!input.trim() && pendingAttachments.length === 0)}
+                  >
                     <Send className="h-4 w-4" />
                     <span className="sr-only">Send</span>
                   </Button>

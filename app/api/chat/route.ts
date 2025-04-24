@@ -6,6 +6,7 @@ import { rateLimit } from "@/lib/rate-limit"
 import platformInfo from "@/lib/platform-info"
 import { analyzeQuery } from "@/lib/query-analyzer"
 import { extractMemoryFromMessages, generateMemoryPrompt } from "@/lib/conversation-memory"
+import { storeAttachmentMetadata } from "@/lib/file-upload"
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30
@@ -72,12 +73,13 @@ export async function POST(req: Request) {
     }
 
     // Parse request body
-    let messages, conversationId, memory
+    let messages, conversationId, memory, attachments
     try {
       const body = await req.json()
       messages = body.messages
       conversationId = body.conversationId
       memory = body.memory || null
+      attachments = body.attachments || []
     } catch (error) {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
     }
@@ -123,18 +125,33 @@ export async function POST(req: Request) {
     }
 
     // Store user message in database
+    let userMessageId = null
     if (messages.length > 0) {
       const latestMessage = messages[messages.length - 1]
       if (latestMessage.role === "user") {
-        const { error: messageError } = await supabase.from("chat_messages").insert({
-          conversation_id: conversation.id,
-          role: latestMessage.role,
-          content: latestMessage.content,
-        })
+        const { data: messageData, error: messageError } = await supabase
+          .from("chat_messages")
+          .insert({
+            conversation_id: conversation.id,
+            role: latestMessage.role,
+            content: latestMessage.content,
+            has_attachments: attachments.length > 0,
+          })
+          .select()
+          .single()
 
         if (messageError) {
           console.error("Error storing user message:", messageError)
           // Continue execution even if message storage fails
+        } else {
+          userMessageId = messageData.id
+
+          // Store attachments if any
+          if (attachments.length > 0 && userMessageId) {
+            for (const attachment of attachments) {
+              await storeAttachmentMetadata(userMessageId, attachment, supabase)
+            }
+          }
         }
       }
     }
@@ -163,6 +180,18 @@ export async function POST(req: Request) {
       }
     }
 
+    // Create attachment descriptions for the AI
+    let attachmentDescriptions = ""
+    if (attachments.length > 0) {
+      attachmentDescriptions = `
+USER ATTACHMENTS:
+The user has uploaded ${attachments.length} file(s):
+${attachments.map((att, index) => `${index + 1}. ${att.filename} (${att.contentType})`).join("\n")}
+
+For image files, I'll describe what I see in them. For document files, I'll analyze their content and provide insights.
+`
+    }
+
     // Enhanced system prompt with platform-specific context and user context
     const enhancedSystemPrompt = `
 You are an AI assistant from ${platformInfo.name}, an educational platform that offers AI-powered learning tools. Your goal is to provide helpful, accurate, and engaging responses about the platform and educational topics.
@@ -179,9 +208,23 @@ PRICING:
 SUBJECTS COVERED:
 ${platformInfo.subjects.map((subject) => subject.name).join(", ")}
 
-${memoryPrompt ? `USER CONTEXT:\n${memoryPrompt}\n` : ""}
+${
+  memoryPrompt
+    ? `USER CONTEXT:
+${memoryPrompt}
+`
+    : ""
+}
 
-${queryAnalysis ? `QUERY ANALYSIS:\nThe user's query appears to be a ${queryAnalysis.type.replace("_", " ")}${queryAnalysis.subject ? ` about ${queryAnalysis.subject}` : ""}${queryAnalysis.feature ? ` regarding the ${queryAnalysis.feature} feature` : ""} with ${queryAnalysis.confidence * 100}% confidence.\n` : ""}
+${
+  queryAnalysis
+    ? `QUERY ANALYSIS:
+The user's query appears to be a ${queryAnalysis.type.replace("_", " ")}${queryAnalysis.subject ? ` about ${queryAnalysis.subject}` : ""}${queryAnalysis.feature ? ` regarding the ${queryAnalysis.feature} feature` : ""} with ${queryAnalysis.confidence * 100}% confidence.
+`
+    : ""
+}
+
+${attachmentDescriptions}
 
 GUIDELINES:
 1. Be educational, supportive, and engaging
@@ -192,6 +235,8 @@ GUIDELINES:
 6. Tailor responses to the user's questions and needs
 7. If asked about a topic outside your knowledge, acknowledge limitations and suggest resources
 8. When appropriate, recommend relevant platform features that could help the user
+9. For uploaded images, describe what you see and provide relevant educational context
+10. For uploaded documents, analyze the content and provide helpful insights
 
 Remember to maintain a helpful, educational tone throughout the conversation.
 `
