@@ -66,9 +66,7 @@
     "@ai-sdk/react": "latest",
     "react-markdown": "latest",
     "@ai-sdk/groq": "latest",
-    "ai": "latest",
-    "@vercel/blob": "latest",
-    "@paralleldrive/cuid2": "latest"
+    "ai": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
