@@ -24,6 +24,7 @@ type ShapeType = "freehand" | "line" | "circle" | "rectangle"
 
 export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [color, setColor] = useState("#000000")
@@ -31,6 +32,7 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
   const [tool, setTool] = useState<DrawingTool>("brush")
   const [shape, setShape] = useState<ShapeType>("freehand")
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null)
+  const [canvasInitialized, setCanvasInitialized] = useState(false)
 
   // Store drawing history for undo functionality
   const [history, setHistory] = useState<ImageData[]>([])
@@ -50,22 +52,14 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     "#9900ff",
   ]
 
-  // Initialize canvas
+  // Initialize canvas with a fixed size first, then adjust
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    // Set canvas size to match container
-    const resizeCanvas = () => {
-      const container = canvas.parentElement
-      if (container) {
-        canvas.width = container.clientWidth
-        canvas.height = container.clientHeight
-      }
-    }
-
-    resizeCanvas()
-    window.addEventListener("resize", resizeCanvas)
+    // Set initial fixed size to ensure canvas is valid
+    canvas.width = 800
+    canvas.height = 600
 
     // Get context
     const context = canvas.getContext("2d")
@@ -77,43 +71,140 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       // Initialize with white background
       context.fillStyle = "#ffffff"
       context.fillRect(0, 0, canvas.width, canvas.height)
-
-      // Save initial state to history
-      saveToHistory(context)
     }
 
-    return () => {
-      window.removeEventListener("resize", resizeCanvas)
-    }
+    // Delay the resize to ensure the container is rendered
+    const timer = setTimeout(() => {
+      resizeCanvas()
+      setCanvasInitialized(true)
+    }, 100)
+
+    return () => clearTimeout(timer)
   }, [])
+
+  // Separate effect for resizing
+  useEffect(() => {
+    const handleResize = () => {
+      if (canvasInitialized) {
+        resizeCanvas()
+      }
+    }
+
+    window.addEventListener("resize", handleResize)
+    return () => {
+      window.removeEventListener("resize", handleResize)
+    }
+  }, [canvasInitialized])
+
+  // Effect to save initial state after canvas is properly sized
+  useEffect(() => {
+    if (canvasInitialized && ctx && canvasRef.current) {
+      try {
+        // Save initial state to history
+        saveToHistory(ctx)
+      } catch (error) {
+        console.error("Error saving initial canvas state:", error)
+      }
+    }
+  }, [canvasInitialized, ctx])
+
+  // Resize canvas function
+  const resizeCanvas = () => {
+    const canvas = canvasRef.current
+    const container = containerRef.current
+    if (!canvas || !container || !ctx) return
+
+    // Get current image data (if any)
+    let imageData: ImageData | null = null
+    try {
+      if (canvas.width > 0 && canvas.height > 0) {
+        imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      }
+    } catch (e) {
+      console.error("Error getting image data during resize:", e)
+    }
+
+    // Set canvas size to match container
+    const rect = container.getBoundingClientRect()
+    const width = Math.floor(rect.width)
+    const height = Math.floor(rect.height)
+
+    // Ensure we have valid dimensions
+    if (width > 0 && height > 0) {
+      canvas.width = width
+      canvas.height = height
+
+      // Restore context properties
+      ctx.lineCap = "round"
+      ctx.lineJoin = "round"
+
+      // Restore the image if we had one
+      if (imageData) {
+        try {
+          // Fill with white first
+          ctx.fillStyle = "#ffffff"
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+          // Draw the previous image centered
+          const x = Math.max(0, (canvas.width - imageData.width) / 2)
+          const y = Math.max(0, (canvas.height - imageData.height) / 2)
+          ctx.putImageData(imageData, x, y)
+        } catch (e) {
+          console.error("Error restoring image data after resize:", e)
+
+          // If restoration fails, at least ensure we have a white background
+          ctx.fillStyle = "#ffffff"
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+        }
+      } else {
+        // If no previous image, just fill with white
+        ctx.fillStyle = "#ffffff"
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+      }
+    }
+  }
 
   // Save current canvas state to history
   const saveToHistory = (context: CanvasRenderingContext2D) => {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    // Get current canvas state
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
-
-    // If we're not at the end of the history, remove future states
-    if (historyIndex < history.length - 1) {
-      setHistory(history.slice(0, historyIndex + 1))
+    // Ensure canvas has valid dimensions
+    if (canvas.width <= 0 || canvas.height <= 0) {
+      console.warn("Cannot save history: Canvas has invalid dimensions")
+      return
     }
 
-    // Add current state to history
-    setHistory((prev) => [...prev, imageData])
-    setHistoryIndex((prev) => prev + 1)
+    try {
+      // Get current canvas state
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
+
+      // If we're not at the end of the history, remove future states
+      if (historyIndex < history.length - 1) {
+        setHistory(history.slice(0, historyIndex + 1))
+      }
+
+      // Add current state to history
+      setHistory((prev) => [...prev, imageData])
+      setHistoryIndex((prev) => prev + 1)
+    } catch (error) {
+      console.error("Error saving canvas state to history:", error)
+    }
   }
 
   // Undo last action
   const handleUndo = () => {
     if (historyIndex <= 0 || !ctx || !canvasRef.current) return
 
-    setHistoryIndex((prev) => prev - 1)
-    const newIndex = historyIndex - 1
+    try {
+      setHistoryIndex((prev) => prev - 1)
+      const newIndex = historyIndex - 1
 
-    if (newIndex >= 0) {
-      ctx.putImageData(history[newIndex], 0, 0)
+      if (newIndex >= 0) {
+        ctx.putImageData(history[newIndex], 0, 0)
+      }
+    } catch (error) {
+      console.error("Error during undo operation:", error)
     }
   }
 
@@ -121,9 +212,13 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
   const handleRedo = () => {
     if (historyIndex >= history.length - 1 || !ctx || !canvasRef.current) return
 
-    const newIndex = historyIndex + 1
-    setHistoryIndex(newIndex)
-    ctx.putImageData(history[newIndex], 0, 0)
+    try {
+      const newIndex = historyIndex + 1
+      setHistoryIndex(newIndex)
+      ctx.putImageData(history[newIndex], 0, 0)
+    } catch (error) {
+      console.error("Error during redo operation:", error)
+    }
   }
 
   // Start drawing
@@ -160,28 +255,32 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       ctx.lineTo(x, y)
       ctx.stroke()
     } else if (startPoint) {
-      // For shapes, we need to redraw on the canvas each time
-      // First, restore the canvas to its state before starting the shape
-      if (historyIndex >= 0) {
-        ctx.putImageData(history[historyIndex], 0, 0)
+      try {
+        // For shapes, we need to redraw on the canvas each time
+        // First, restore the canvas to its state before starting the shape
+        if (historyIndex >= 0 && history[historyIndex]) {
+          ctx.putImageData(history[historyIndex], 0, 0)
+        }
+
+        // Then draw the shape
+        ctx.beginPath()
+        ctx.strokeStyle = tool === "eraser" ? "#ffffff" : color
+        ctx.lineWidth = brushSize
+
+        if (shape === "line") {
+          ctx.moveTo(startPoint.x, startPoint.y)
+          ctx.lineTo(x, y)
+        } else if (shape === "circle") {
+          const radius = Math.sqrt(Math.pow(x - startPoint.x, 2) + Math.pow(y - startPoint.y, 2))
+          ctx.arc(startPoint.x, startPoint.y, radius, 0, 2 * Math.PI)
+        } else if (shape === "rectangle") {
+          ctx.rect(startPoint.x, startPoint.y, x - startPoint.x, y - startPoint.y)
+        }
+
+        ctx.stroke()
+      } catch (error) {
+        console.error("Error during shape drawing:", error)
       }
-
-      // Then draw the shape
-      ctx.beginPath()
-      ctx.strokeStyle = tool === "eraser" ? "#ffffff" : color
-      ctx.lineWidth = brushSize
-
-      if (shape === "line") {
-        ctx.moveTo(startPoint.x, startPoint.y)
-        ctx.lineTo(x, y)
-      } else if (shape === "circle") {
-        const radius = Math.sqrt(Math.pow(x - startPoint.x, 2) + Math.pow(y - startPoint.y, 2))
-        ctx.arc(startPoint.x, startPoint.y, radius, 0, 2 * Math.PI)
-      } else if (shape === "rectangle") {
-        ctx.rect(startPoint.x, startPoint.y, x - startPoint.x, y - startPoint.y)
-      }
-
-      ctx.stroke()
     }
   }
 
@@ -226,19 +325,29 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
   const clearCanvas = () => {
     if (!ctx || !canvasRef.current) return
 
-    ctx.fillStyle = "#ffffff"
-    ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+    try {
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height)
 
-    // Save the cleared state to history
-    saveToHistory(ctx)
+      // Save the cleared state to history
+      saveToHistory(ctx)
+    } catch (error) {
+      console.error("Error clearing canvas:", error)
+    }
   }
 
   // Send drawing
   const sendDrawing = () => {
     if (!canvasRef.current) return
 
-    const imageData = canvasRef.current.toDataURL("image/png")
-    onSend(imageData)
+    try {
+      const imageData = canvasRef.current.toDataURL("image/png")
+      onSend(imageData)
+    } catch (error) {
+      console.error("Error sending drawing:", error)
+      // Provide fallback or error message
+      onClose()
+    }
   }
 
   return (
@@ -250,7 +359,7 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
         </Button>
       </div>
 
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-hidden" ref={containerRef} style={{ minHeight: "300px" }}>
         <canvas
           ref={canvasRef}
           className="absolute top-0 left-0 w-full h-full cursor-crosshair touch-none"
