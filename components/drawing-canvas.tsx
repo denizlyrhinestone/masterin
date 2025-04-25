@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useRef, useState, useEffect } from "react"
+import { useRef, useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Paintbrush, Eraser, Trash2, Send, X, Circle, Square, Minus, ChevronDown } from "lucide-react"
@@ -22,6 +22,10 @@ interface DrawingCanvasProps {
 type DrawingTool = "brush" | "eraser"
 type ShapeType = "freehand" | "line" | "circle" | "rectangle"
 
+// Minimum dimensions to ensure canvas is never invalid
+const MIN_CANVAS_WIDTH = 300
+const MIN_CANVAS_HEIGHT = 200
+
 export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -33,6 +37,10 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
   const [shape, setShape] = useState<ShapeType>("freehand")
   const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null)
   const [canvasInitialized, setCanvasInitialized] = useState(false)
+  const [canvasDimensions, setCanvasDimensions] = useState({ width: MIN_CANVAS_WIDTH, height: MIN_CANVAS_HEIGHT })
+  const [initializationAttempts, setInitializationAttempts] = useState(0)
+  const [canvasError, setCanvasError] = useState<string | null>(null)
+  const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Store drawing history for undo functionality
   const [history, setHistory] = useState<ImageData[]>([])
@@ -52,18 +60,48 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     "#9900ff",
   ]
 
-  // Initialize canvas with a fixed size first, then adjust
-  useEffect(() => {
+  // Verify canvas is in a valid state
+  const verifyCanvasState = useCallback(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas) return false
 
-    // Set initial fixed size to ensure canvas is valid
-    canvas.width = 800
-    canvas.height = 600
+    // Check if canvas dimensions are valid
+    if (canvas.width <= 0 || canvas.height <= 0) {
+      console.warn("Canvas has invalid dimensions", { width: canvas.width, height: canvas.height })
+      return false
+    }
 
-    // Get context
+    // Check if context is available
     const context = canvas.getContext("2d")
-    if (context) {
+    if (!context) {
+      console.warn("Canvas context is not available")
+      return false
+    }
+
+    return true
+  }, [])
+
+  // Initialize canvas with guaranteed valid dimensions
+  const initializeCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) {
+      console.error("Canvas element not found during initialization")
+      return false
+    }
+
+    try {
+      // Always set to minimum dimensions first to ensure canvas is valid
+      canvas.width = Math.max(MIN_CANVAS_WIDTH, canvasDimensions.width)
+      canvas.height = Math.max(MIN_CANVAS_HEIGHT, canvasDimensions.height)
+
+      // Get context
+      const context = canvas.getContext("2d")
+      if (!context) {
+        console.error("Failed to get canvas context during initialization")
+        return false
+      }
+
+      // Set context properties
       context.lineCap = "round"
       context.lineJoin = "round"
       setCtx(context)
@@ -71,105 +109,285 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       // Initialize with white background
       context.fillStyle = "#ffffff"
       context.fillRect(0, 0, canvas.width, canvas.height)
+
+      console.log("Canvas initialized successfully", {
+        width: canvas.width,
+        height: canvas.height,
+        context: !!context,
+      })
+
+      return true
+    } catch (error) {
+      console.error("Error during canvas initialization:", error)
+      setCanvasError(`Initialization error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      return false
     }
+  }, [canvasDimensions.width, canvasDimensions.height])
 
-    // Delay the resize to ensure the container is rendered
-    const timer = setTimeout(() => {
-      resizeCanvas()
-      setCanvasInitialized(true)
-    }, 100)
-
-    return () => clearTimeout(timer)
-  }, [])
-
-  // Separate effect for resizing
+  // Effect for initial canvas setup with retry mechanism
   useEffect(() => {
-    const handleResize = () => {
-      if (canvasInitialized) {
-        resizeCanvas()
-      }
+    // Maximum number of initialization attempts
+    const MAX_ATTEMPTS = 3
+
+    if (initializationAttempts >= MAX_ATTEMPTS) {
+      console.error(`Failed to initialize canvas after ${MAX_ATTEMPTS} attempts`)
+      setCanvasError(`Failed to initialize canvas after ${MAX_ATTEMPTS} attempts`)
+      return
     }
 
-    window.addEventListener("resize", handleResize)
-    return () => {
-      window.removeEventListener("resize", handleResize)
-    }
-  }, [canvasInitialized])
+    const initTimer = setTimeout(
+      () => {
+        const success = initializeCanvas()
+
+        if (!success) {
+          // Retry initialization with incremented attempt counter
+          setInitializationAttempts((prev) => prev + 1)
+          return
+        }
+
+        // Delay the resize to ensure the container is rendered
+        const resizeTimer = setTimeout(() => {
+          resizeCanvas()
+
+          // Verify canvas state after resize
+          if (verifyCanvasState()) {
+            setCanvasInitialized(true)
+            console.log("Canvas fully initialized and ready")
+          } else {
+            // If verification fails, retry initialization
+            console.warn("Canvas verification failed after resize, retrying...")
+            setInitializationAttempts((prev) => prev + 1)
+          }
+        }, 300) // Increased timeout for better reliability
+
+        return () => clearTimeout(resizeTimer)
+      },
+      100 * (initializationAttempts + 1),
+    ) // Increasing delay for each retry
+
+    return () => clearTimeout(initTimer)
+  }, [initializeCanvas, verifyCanvasState, initializationAttempts])
 
   // Effect to save initial state after canvas is properly sized
   useEffect(() => {
     if (canvasInitialized && ctx && canvasRef.current) {
-      try {
-        // Save initial state to history
-        saveToHistory(ctx)
-      } catch (error) {
-        console.error("Error saving initial canvas state:", error)
+      // Verify canvas has valid dimensions before saving initial state
+      const canvas = canvasRef.current
+      if (canvas.width > 0 && canvas.height > 0) {
+        try {
+          // Save initial state to history
+          saveToHistory(ctx)
+          console.log("Initial canvas state saved to history")
+        } catch (error) {
+          console.error("Error saving initial canvas state:", error)
+          setCanvasError(`Error saving initial state: ${error instanceof Error ? error.message : "Unknown error"}`)
+        }
+      } else {
+        console.warn("Cannot save initial state: Canvas has invalid dimensions", {
+          width: canvas.width,
+          height: canvas.height,
+        })
       }
     }
   }, [canvasInitialized, ctx])
 
-  // Resize canvas function
+  // Debounced resize handler
+  const debouncedResize = useCallback(() => {
+    if (resizeTimeoutRef.current) {
+      clearTimeout(resizeTimeoutRef.current)
+    }
+
+    resizeTimeoutRef.current = setTimeout(() => {
+      if (canvasInitialized) {
+        resizeCanvas()
+      }
+    }, 150) // Debounce delay
+  }, [canvasInitialized])
+
+  // Separate effect for resizing with improved event handling
+  useEffect(() => {
+    const handleResize = () => debouncedResize()
+
+    const handleOrientationChange = () => {
+      // For orientation changes, we use a longer delay
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current)
+      }
+
+      // First immediate resize to prevent blank canvas
+      resizeCanvas()
+
+      // Then a delayed resize to adjust after orientation change completes
+      resizeTimeoutRef.current = setTimeout(() => {
+        resizeCanvas()
+        // Verify canvas state after orientation change
+        if (!verifyCanvasState()) {
+          console.warn("Canvas verification failed after orientation change, attempting recovery")
+          recoverCanvas()
+        }
+      }, 500)
+    }
+
+    window.addEventListener("resize", handleResize)
+    window.addEventListener("orientationchange", handleOrientationChange)
+
+    return () => {
+      window.removeEventListener("resize", handleResize)
+      window.removeEventListener("orientationchange", handleOrientationChange)
+
+      if (resizeTimeoutRef.current) {
+        clearTimeout(resizeTimeoutRef.current)
+      }
+    }
+  }, [canvasInitialized, debouncedResize, verifyCanvasState])
+
+  // Canvas recovery function
+  const recoverCanvas = useCallback(() => {
+    console.log("Attempting canvas recovery")
+    const canvas = canvasRef.current
+    if (!canvas || !ctx) return false
+
+    try {
+      // Re-initialize with minimum dimensions
+      canvas.width = MIN_CANVAS_WIDTH
+      canvas.height = MIN_CANVAS_HEIGHT
+
+      // Restore context properties
+      ctx.lineCap = "round"
+      ctx.lineJoin = "round"
+
+      // Fill with white background
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Try to restore from history if available
+      if (historyIndex >= 0 && history[historyIndex]) {
+        try {
+          // Only restore if the history dimensions are valid
+          const historyData = history[historyIndex]
+          if (historyData.width > 0 && historyData.height > 0) {
+            // Create a temporary canvas to scale the history data if needed
+            const tempCanvas = document.createElement("canvas")
+            tempCanvas.width = historyData.width
+            tempCanvas.height = historyData.height
+            const tempCtx = tempCanvas.getContext("2d")
+
+            if (tempCtx) {
+              tempCtx.putImageData(historyData, 0, 0)
+
+              // Draw the scaled image to our main canvas
+              ctx.drawImage(tempCanvas, 0, 0, historyData.width, historyData.height, 0, 0, canvas.width, canvas.height)
+            }
+          }
+        } catch (e) {
+          console.error("Error restoring history during recovery:", e)
+          // Continue with recovery even if history restoration fails
+        }
+      }
+
+      // Force a resize to get proper dimensions
+      setTimeout(() => {
+        resizeCanvas()
+      }, 100)
+
+      console.log("Canvas recovery completed")
+      setCanvasError(null)
+      return true
+    } catch (error) {
+      console.error("Canvas recovery failed:", error)
+      setCanvasError(`Recovery failed: ${error instanceof Error ? error.message : "Unknown error"}`)
+      return false
+    }
+  }, [ctx, history, historyIndex])
+
+  // Resize canvas function with improved error handling and validation
   const resizeCanvas = () => {
     const canvas = canvasRef.current
     const container = containerRef.current
-    if (!canvas || !container || !ctx) return
-
-    // Get current image data (if any)
-    let imageData: ImageData | null = null
-    try {
-      if (canvas.width > 0 && canvas.height > 0) {
-        imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      }
-    } catch (e) {
-      console.error("Error getting image data during resize:", e)
+    if (!canvas || !container || !ctx) {
+      console.warn("Cannot resize: Missing canvas, container, or context")
+      return
     }
 
-    // Set canvas size to match container
-    const rect = container.getBoundingClientRect()
-    const width = Math.max(1, Math.floor(rect.width))
-    const height = Math.max(1, Math.floor(rect.height))
+    try {
+      // Get container dimensions, ensuring they're valid
+      const rect = container.getBoundingClientRect()
+      const containerWidth = Math.max(MIN_CANVAS_WIDTH, Math.floor(rect.width))
+      const containerHeight = Math.max(MIN_CANVAS_HEIGHT, Math.floor(rect.height))
 
-    // Ensure we have valid dimensions
-    canvas.width = width
-    canvas.height = height
+      console.log("Resizing canvas", { containerWidth, containerHeight })
 
-    // Restore context properties
-    ctx.lineCap = "round"
-    ctx.lineJoin = "round"
-
-    // Restore the image if we had one
-    if (imageData) {
+      // Get current image data (if any)
+      let imageData: ImageData | null = null
       try {
-        // Fill with white first
-        ctx.fillStyle = "#ffffff"
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-        // Draw the previous image centered
-        const x = Math.max(0, (canvas.width - imageData.width) / 2)
-        const y = Math.max(0, (canvas.height - imageData.height) / 2)
-        ctx.putImageData(imageData, x, y)
+        if (canvas.width > 0 && canvas.height > 0) {
+          imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        }
       } catch (e) {
-        console.error("Error restoring image data after resize:", e)
+        console.error("Error getting image data during resize:", e)
+      }
 
-        // If restoration fails, at least ensure we have a white background
+      // Set canvas size to match container with minimum dimensions
+      const newWidth = Math.max(MIN_CANVAS_WIDTH, containerWidth)
+      const newHeight = Math.max(MIN_CANVAS_HEIGHT, containerHeight)
+
+      // Update state to track dimensions
+      setCanvasDimensions({ width: newWidth, height: newHeight })
+
+      // Set canvas dimensions
+      canvas.width = newWidth
+      canvas.height = newHeight
+
+      // Restore context properties
+      ctx.lineCap = "round"
+      ctx.lineJoin = "round"
+
+      // Restore the image if we had one
+      if (imageData) {
+        try {
+          // Fill with white first
+          ctx.fillStyle = "#ffffff"
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+          // Draw the previous image centered
+          const x = Math.max(0, (canvas.width - imageData.width) / 2)
+          const y = Math.max(0, (canvas.height - imageData.height) / 2)
+          ctx.putImageData(imageData, x, y)
+        } catch (e) {
+          console.error("Error restoring image data after resize:", e)
+
+          // If restoration fails, at least ensure we have a white background
+          ctx.fillStyle = "#ffffff"
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+        }
+      } else {
+        // If no previous image, just fill with white
         ctx.fillStyle = "#ffffff"
         ctx.fillRect(0, 0, canvas.width, canvas.height)
       }
-    } else {
-      // If no previous image, just fill with white
-      ctx.fillStyle = "#ffffff"
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Clear any previous error state
+      setCanvasError(null)
+    } catch (error) {
+      console.error("Error during canvas resize:", error)
+      setCanvasError(`Resize error: ${error instanceof Error ? error.message : "Unknown error"}`)
+
+      // Attempt recovery
+      recoverCanvas()
     }
   }
 
-  // Save current canvas state to history
+  // Save current canvas state to history with improved validation
   const saveToHistory = (context: CanvasRenderingContext2D) => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     // Ensure canvas has valid dimensions
     if (canvas.width <= 0 || canvas.height <= 0) {
-      console.warn("Cannot save history: Canvas has invalid dimensions")
+      console.warn("Cannot save history: Canvas has invalid dimensions", {
+        width: canvas.width,
+        height: canvas.height,
+      })
       return
     }
 
@@ -187,14 +405,25 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       setHistoryIndex((prev) => prev + 1)
     } catch (error) {
       console.error("Error saving canvas state to history:", error)
+      setCanvasError(`History error: ${error instanceof Error ? error.message : "Unknown error"}`)
     }
   }
 
-  // Undo last action
+  // Undo last action with improved error handling
   const handleUndo = () => {
     if (historyIndex <= 0 || !ctx || !canvasRef.current) return
 
     try {
+      const canvas = canvasRef.current
+      // Verify canvas has valid dimensions
+      if (canvas.width <= 0 || canvas.height <= 0) {
+        console.warn("Cannot undo: Canvas has invalid dimensions", {
+          width: canvas.width,
+          height: canvas.height,
+        })
+        return
+      }
+
       setHistoryIndex((prev) => prev - 1)
       const newIndex = historyIndex - 1
 
@@ -203,14 +432,28 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       }
     } catch (error) {
       console.error("Error during undo operation:", error)
+      setCanvasError(`Undo error: ${error instanceof Error ? error.message : "Unknown error"}`)
+
+      // Attempt recovery
+      recoverCanvas()
     }
   }
 
-  // Redo last undone action
+  // Redo last undone action with improved error handling
   const handleRedo = () => {
     if (historyIndex >= history.length - 1 || !ctx || !canvasRef.current) return
 
     try {
+      const canvas = canvasRef.current
+      // Verify canvas has valid dimensions
+      if (canvas.width <= 0 || canvas.height <= 0) {
+        console.warn("Cannot redo: Canvas has invalid dimensions", {
+          width: canvas.width,
+          height: canvas.height,
+        })
+        return
+      }
+
       const newIndex = historyIndex + 1
       setHistoryIndex(newIndex)
       if (history[newIndex]) {
@@ -218,12 +461,23 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       }
     } catch (error) {
       console.error("Error during redo operation:", error)
+      setCanvasError(`Redo error: ${error instanceof Error ? error.message : "Unknown error"}`)
+
+      // Attempt recovery
+      recoverCanvas()
     }
   }
 
-  // Start drawing
+  // Start drawing with validation
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!ctx || !canvasRef.current) return
+
+    // Verify canvas state before drawing
+    if (!verifyCanvasState()) {
+      console.warn("Cannot start drawing: Canvas in invalid state")
+      recoverCanvas()
+      return
+    }
 
     setIsDrawing(true)
 
@@ -239,9 +493,17 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     }
   }
 
-  // Draw
+  // Draw with validation
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawing || !ctx || !canvasRef.current) return
+
+    // Verify canvas state during drawing
+    if (!verifyCanvasState()) {
+      console.warn("Cannot continue drawing: Canvas in invalid state")
+      stopDrawing()
+      recoverCanvas()
+      return
+    }
 
     // Get coordinates
     const { x, y } = getCoordinates(e)
@@ -256,6 +518,16 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       ctx.stroke()
     } else if (startPoint) {
       try {
+        const canvas = canvasRef.current
+        // Verify canvas has valid dimensions
+        if (canvas.width <= 0 || canvas.height <= 0) {
+          console.warn("Cannot draw shape: Canvas has invalid dimensions", {
+            width: canvas.width,
+            height: canvas.height,
+          })
+          return
+        }
+
         // For shapes, we need to redraw on the canvas each time
         // First, restore the canvas to its state before starting the shape
         if (historyIndex >= 0 && history[historyIndex]) {
@@ -280,11 +552,14 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
         ctx.stroke()
       } catch (error) {
         console.error("Error during shape drawing:", error)
+        setCanvasError(`Drawing error: ${error instanceof Error ? error.message : "Unknown error"}`)
+        stopDrawing()
+        recoverCanvas()
       }
     }
   }
 
-  // Stop drawing
+  // Stop drawing with validation
   const stopDrawing = () => {
     if (!isDrawing || !ctx) return
 
@@ -296,8 +571,13 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     ctx.closePath()
     setIsDrawing(false)
 
-    // Save the current state to history
-    saveToHistory(ctx)
+    // Save the current state to history if canvas is valid
+    if (verifyCanvasState()) {
+      saveToHistory(ctx)
+    } else {
+      console.warn("Cannot save drawing state: Canvas in invalid state")
+      recoverCanvas()
+    }
   }
 
   // Helper to get coordinates from mouse or touch event
@@ -321,30 +601,63 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     return { x, y }
   }
 
-  // Clear canvas
+  // Clear canvas with validation
   const clearCanvas = () => {
     if (!ctx || !canvasRef.current) return
 
     try {
+      const canvas = canvasRef.current
+      // Verify canvas has valid dimensions
+      if (canvas.width <= 0 || canvas.height <= 0) {
+        console.warn("Cannot clear canvas: Canvas has invalid dimensions", {
+          width: canvas.width,
+          height: canvas.height,
+        })
+        recoverCanvas()
+        return
+      }
+
       ctx.fillStyle = "#ffffff"
-      ctx.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height)
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
 
       // Save the cleared state to history
       saveToHistory(ctx)
     } catch (error) {
       console.error("Error clearing canvas:", error)
+      setCanvasError(`Clear error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      recoverCanvas()
     }
   }
 
-  // Send drawing
+  // Send drawing with improved error handling and validation
   const sendDrawing = () => {
     if (!canvasRef.current) return
 
     try {
-      const imageData = canvasRef.current.toDataURL("image/png")
+      const canvas = canvasRef.current
+      // Verify canvas has valid dimensions
+      if (canvas.width <= 0 || canvas.height <= 0) {
+        console.warn("Cannot send drawing: Canvas has invalid dimensions", {
+          width: canvas.width,
+          height: canvas.height,
+        })
+
+        // Attempt recovery before sending
+        if (recoverCanvas()) {
+          // Retry sending after recovery
+          setTimeout(() => sendDrawing(), 100)
+        } else {
+          // Fallback to closing without sending if recovery fails
+          onClose()
+        }
+        return
+      }
+
+      const imageData = canvas.toDataURL("image/png")
       onSend(imageData)
     } catch (error) {
       console.error("Error sending drawing:", error)
+      setCanvasError(`Send error: ${error instanceof Error ? error.message : "Unknown error"}`)
       // Provide fallback or error message
       onClose()
     }
@@ -359,7 +672,29 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
         </Button>
       </div>
 
-      <div className="flex-1 relative overflow-hidden" ref={containerRef} style={{ minHeight: "300px" }}>
+      {canvasError && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded relative" role="alert">
+          <span className="block sm:inline">{canvasError}</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="absolute top-0 right-0 mt-1 mr-1"
+            onClick={() => {
+              setCanvasError(null)
+              recoverCanvas()
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      )}
+
+      <div
+        className="flex-1 relative overflow-hidden"
+        ref={containerRef}
+        style={{ minHeight: MIN_CANVAS_HEIGHT }}
+        data-testid="drawing-container"
+      >
         <canvas
           ref={canvasRef}
           className="absolute top-0 left-0 w-full h-full cursor-crosshair touch-none"
@@ -370,6 +705,7 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
           onTouchStart={startDrawing}
           onTouchMove={draw}
           onTouchEnd={stopDrawing}
+          data-testid="drawing-canvas"
         />
       </div>
 
