@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
+import { ChatErrorBoundary } from "@/components/chat-error-boundary"
 
 export default function AILayout({ children }: { children: ReactNode }) {
-  // Remove the error boundary for now to isolate the issue
-  return <>{children}</>
+  return <ChatErrorBoundary>{children}</ChatErrorBoundary>
 }
