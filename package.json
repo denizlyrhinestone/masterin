@@ -61,10 +61,10 @@
     "@supabase/supabase-js": "latest",
     "dotenv": "latest",
     "@upstash/redis": "latest",
-    "uuid": "latest",
     "@supabase/ssr": "latest",
-    "@ai-sdk/react": "latest",
-    "react-markdown": "latest"
+    "ai": "latest",
+    "@ai-sdk/groq": "latest",
+    "uuid": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

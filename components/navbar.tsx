@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import AIStatusIndicator from "@/components/ai-status-indicator"
 
 // Update the navigation links to include About page
 const navLinks = [
@@ -88,6 +89,7 @@ export default function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center space-x-4">
+            <AIStatusIndicator />
             {isLoading ? (
               <div className="h-9 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-md"></div>
             ) : isAuthenticated ? (
@@ -223,6 +225,9 @@ export default function Navbar() {
                 </div>
               ) : (
                 <div className="flex items-center px-3 space-x-2">
+                  <div className="flex items-center mb-2">
+                    <AIStatusIndicator />
+                  </div>
                   <Link href="/auth/sign-in" className="w-full">
                     <Button variant="outline" size="sm" className="w-full">
                       Sign In

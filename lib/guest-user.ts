@@ -1,3 +1,5 @@
+"use client"
+
 // Utility functions for managing guest user data
 import { v4 as uuidv4 } from "uuid"
 

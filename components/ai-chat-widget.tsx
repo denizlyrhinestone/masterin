@@ -5,27 +5,10 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import {
-  Send,
-  Bot,
-  User,
-  ArrowRight,
-  Loader2,
-  ThumbsUp,
-  ThumbsDown,
-  FileText,
-  AlertTriangle,
-  RefreshCw,
-} from "lucide-react"
+import { Send, Bot, User, ArrowRight, Loader2, ThumbsUp, ThumbsDown, AlertTriangle, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { useAuth } from "@/contexts/auth-context"
 import { v4 as uuidv4 } from "uuid"
-import platformInfo from "@/lib/platform-info"
-import FileUpload from "@/components/file-upload"
-import FilePreview from "@/components/file-preview"
-import type { UploadedFile } from "@/lib/file-upload"
 import { useToast } from "@/hooks/use-toast"
 
 type Message = {
@@ -34,17 +17,15 @@ type Message = {
   content: string
   isLoading?: boolean
   feedback?: "positive" | "negative"
-  attachments?: UploadedFile[]
 }
 
 export default function AIChatWidget() {
-  const { user } = useAuth()
   const { toast } = useToast()
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       role: "assistant",
-      content: `Hi there! I'm your AI assistant from ${platformInfo.name}. How can I help you learn about our platform today?`,
+      content: "Hi there! I'm your AI assistant from Masterin. How can I help you learn about our platform today?",
     },
   ])
   const [inputValue, setInputValue] = useState("")
@@ -57,8 +38,6 @@ export default function AIChatWidget() {
   ])
   const [isTyping, setIsTyping] = useState(false)
   const [sessionId] = useState(() => uuidv4())
-  const [pendingAttachments, setPendingAttachments] = useState<UploadedFile[]>([])
-  const [showAttachmentPreview, setShowAttachmentPreview] = useState(false)
   const [isError, setIsError] = useState(false)
   const [retryAttempt, setRetryAttempt] = useState(0)
 
@@ -75,25 +54,13 @@ export default function AIChatWidget() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!inputValue.trim() && pendingAttachments.length === 0) return
-
-    // Create message content
-    let messageContent = inputValue.trim()
-
-    // Add file descriptions to the message if there are attachments
-    if (pendingAttachments.length > 0) {
-      if (messageContent) {
-        messageContent += "\n\n"
-      }
-      messageContent += `I've attached ${pendingAttachments.length} file${pendingAttachments.length > 1 ? "s" : ""}: ${pendingAttachments.map((a) => a.filename).join(", ")}`
-    }
+    if (!inputValue.trim()) return
 
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: messageContent,
-      attachments: pendingAttachments.length > 0 ? [...pendingAttachments] : undefined,
+      content: inputValue.trim(),
     }
 
     // Add a loading message from the assistant
@@ -106,8 +73,6 @@ export default function AIChatWidget() {
 
     setMessages((prev) => [...prev, userMessage, loadingMessage])
     setInputValue("")
-    setPendingAttachments([])
-    setShowAttachmentPreview(false)
     setIsTyping(true)
     setIsError(false)
 
@@ -117,47 +82,70 @@ export default function AIChatWidget() {
     }, 100)
 
     try {
-      // Make API call to get response
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: [
-            // Include all messages except the loading one
-            ...messages.filter((msg) => !msg.isLoading),
-            userMessage,
-          ],
-          attachments: pendingAttachments.length > 0 ? [...pendingAttachments] : [],
-          sessionId,
-        }),
-      })
+      // Prepare messages for API - only include content and role
+      const apiMessages = messages
+        .filter((msg) => !msg.isLoading && msg.role !== "error")
+        .map(({ role, content }) => ({ role, content }))
 
+      // Add the new user message
+      apiMessages.push({ role: userMessage.role, content: userMessage.content })
+
+      // Make API call with error handling
+      let response
+      try {
+        response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: apiMessages, sessionId }),
+        })
+      } catch (fetchError) {
+        console.error("Network error:", fetchError)
+        throw new Error("Network error. Please check your connection.")
+      }
+
+      // Handle non-OK responses
+      if (!response.ok) {
+        let errorMessage = `Error: ${response.status} ${response.statusText}`
+
+        try {
+          const errorData = await response.json()
+          if (errorData.error) {
+            errorMessage = errorData.error
+          }
+        } catch (e) {
+          // If we can't parse JSON, try to get text
+          try {
+            const text = await response.text()
+            if (text) errorMessage = text
+          } catch (textError) {
+            // If we can't get text either, use the default error message
+          }
+        }
+
+        throw new Error(errorMessage)
+      }
+
+      // Parse the JSON response
       let data
       try {
         data = await response.json()
-      } catch (error) {
-        console.error("Error parsing response:", error)
-        throw new Error("Failed to parse response")
+      } catch (jsonError) {
+        console.error("Error parsing response:", jsonError)
+        throw new Error("Received invalid response from server")
       }
 
-      if (!response.ok && !data.content) {
-        throw new Error(`API request failed with status ${response.status}`)
-      }
+      // Remove the loading message
+      setMessages((prev) => prev.filter((msg) => !msg.isLoading))
 
-      // Remove the loading message and add the API response
-      setMessages((prev) => {
-        const filtered = prev.filter((msg) => !msg.isLoading)
-        return [
-          ...filtered,
-          {
-            id: (Date.now() + 2).toString(),
-            role: "assistant",
-            content: data.content || "I apologize, but I'm having trouble generating a response right now.",
-          },
-        ]
-      })
+      // Add the response as an assistant message
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: (Date.now() + 2).toString(),
+          role: "assistant",
+          content: data.text || "I received your message but couldn't generate a proper response.",
+        },
+      ])
 
       // Reset retry attempts on successful response
       setRetryAttempt(0)
@@ -169,14 +157,14 @@ export default function AIChatWidget() {
         const filtered = prev.filter((msg) => !msg.isLoading)
 
         // If we've had multiple errors, show an error message
-        if (retryAttempt > 1) {
+        if (retryAttempt > 0) {
           setIsError(true)
           return [
             ...filtered,
             {
               id: (Date.now() + 2).toString(),
               role: "error",
-              content: "I'm experiencing technical difficulties. Please try again in a moment or refresh the page.",
+              content: `I'm experiencing technical difficulties. ${error instanceof Error ? error.message : "Please try again in a moment or refresh the page."}`,
             },
           ]
         }
@@ -187,7 +175,7 @@ export default function AIChatWidget() {
           {
             id: (Date.now() + 2).toString(),
             role: "assistant",
-            content: generateFallbackResponse(messageContent),
+            content: generateFallbackResponse(inputValue.trim()),
           },
         ]
       })
@@ -196,10 +184,13 @@ export default function AIChatWidget() {
       setRetryAttempt((prev) => prev + 1)
 
       // Show a toast notification on error
-      if (retryAttempt > 1) {
+      if (retryAttempt > 0) {
         toast({
           title: "Connection Error",
-          description: "Having trouble connecting to the AI service. Please try again later.",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Having trouble connecting to the AI service. Please try again later.",
           variant: "destructive",
         })
       }
@@ -207,7 +198,7 @@ export default function AIChatWidget() {
       setIsTyping(false)
 
       // Update suggested questions based on the conversation
-      updateSuggestedQuestions(messageContent)
+      updateSuggestedQuestions(inputValue.trim())
 
       // Scroll to bottom again
       setTimeout(() => {
@@ -218,16 +209,11 @@ export default function AIChatWidget() {
 
   // Generate a fallback response when API call fails
   const generateFallbackResponse = (input: string): string => {
-    // If there are attachments, generate a response about them
-    if (pendingAttachments.length > 0) {
-      return `I see you've uploaded ${pendingAttachments.length > 1 ? "some files" : "a file"}, but I'm having trouble processing them right now. Please try again in a moment or click "Open Full Chat" below for more features.`
-    }
-
     // Simple response based on input keywords
     const lowerInput = input.toLowerCase()
 
     if (lowerInput.includes("hello") || lowerInput.includes("hi") || lowerInput.includes("hey")) {
-      return `Hello! I'm here to help with your questions about ${platformInfo.name} and assist with your learning needs. What would you like to know?`
+      return "Hello! I'm here to help with your questions about Masterin and assist with your learning needs. What would you like to know?"
     }
 
     if (lowerInput.includes("thank")) {
@@ -235,48 +221,23 @@ export default function AIChatWidget() {
     }
 
     if (lowerInput.includes("price") || lowerInput.includes("cost") || lowerInput.includes("subscription")) {
-      return `${platformInfo.name} offers several pricing plans, including a free tier with basic features. For complete details on our Premium and Team plans, please click "Open Full Chat" below.`
+      return 'Masterin offers several pricing plans, including a free tier with basic features. For complete details on our Premium and Team plans, please click "Open Full Chat" below.'
     }
 
     if (lowerInput.includes("subject") || lowerInput.includes("topic") || lowerInput.includes("learn")) {
-      return `We cover a wide range of subjects including Mathematics, Science, Computer Science, and Humanities. For more details, please click "Open Full Chat" below.`
+      return 'We cover a wide range of subjects including Mathematics, Science, Computer Science, and Humanities. For more details, please click "Open Full Chat" below.'
     }
 
     if (lowerInput.includes("feature") || lowerInput.includes("tool") || lowerInput.includes("offer")) {
-      return `${platformInfo.name} offers several AI-powered learning tools including an AI Tutor for personalized explanations, Essay Assistant for writing help, Math Problem Solver, and more. For details, please click "Open Full Chat" below.`
+      return 'Masterin offers several AI-powered learning tools including an AI Tutor for personalized explanations, Essay Assistant for writing help, Math Problem Solver, and more. For details, please click "Open Full Chat" below.'
     }
 
     // Generic fallback when all else fails
-    return `Thank you for your question. For the best experience and most detailed answers, please click the "Open Full Chat" button below where I can better assist you.`
+    return 'Thank you for your question. For the best experience and most detailed answers, please click the "Open Full Chat" button below where I can better assist you.'
   }
 
   // Update suggested questions based on the conversation context
   const updateSuggestedQuestions = (lastInput: string) => {
-    // If there are attachments, suggest questions related to the file types
-    if (pendingAttachments.length > 0) {
-      const fileTypes = new Set(pendingAttachments.map((a) => a.fileType))
-
-      if (fileTypes.has("image")) {
-        setSuggestedQuestions([
-          "Can you explain what's in this image?",
-          "Can you solve this problem?",
-          "What does this diagram represent?",
-          "Can you help me understand this concept?",
-        ])
-        return
-      }
-
-      if (fileTypes.has("document")) {
-        setSuggestedQuestions([
-          "Can you summarize this document?",
-          "What are the key points in this text?",
-          "Can you explain this concept from the document?",
-          "How can I improve this writing?",
-        ])
-        return
-      }
-    }
-
     // Simple pattern matching for common topics
     const lowerInput = lastInput.toLowerCase()
 
@@ -355,20 +316,6 @@ export default function AIChatWidget() {
     console.log(`Feedback for message ${messageId}: ${feedbackType}`)
   }
 
-  // Handle file upload
-  const handleFileUploaded = (file: UploadedFile) => {
-    setPendingAttachments((prev) => [...prev, file])
-    setShowAttachmentPreview(true)
-  }
-
-  // Remove a pending attachment
-  const handleRemoveAttachment = (fileId: string) => {
-    setPendingAttachments((prev) => prev.filter((file) => file.id !== fileId))
-    if (pendingAttachments.length <= 1) {
-      setShowAttachmentPreview(false)
-    }
-  }
-
   return (
     <Card className="border-0 shadow-lg overflow-hidden h-[500px] flex flex-col">
       <CardHeader
@@ -430,29 +377,7 @@ export default function AIChatWidget() {
                         </div>
                       ) : (
                         <div className="whitespace-pre-line">
-                          {message.content.split("\n").map((line, i) => {
-                            // Handle markdown-style bold text
-                            const boldPattern = /\*\*(.*?)\*\*/g
-                            const formattedLine = line.replace(boldPattern, "<strong>$1</strong>")
-
-                            return <div key={i} dangerouslySetInnerHTML={{ __html: formattedLine }} />
-                          })}
-
-                          {/* Display attachments if any */}
-                          {message.attachments && message.attachments.length > 0 && (
-                            <div className="mt-2 space-y-2">
-                              {message.attachments.map((attachment) => (
-                                <FilePreview
-                                  key={attachment.id}
-                                  url={attachment.url}
-                                  filename={attachment.filename}
-                                  fileType={attachment.fileType}
-                                  contentType={attachment.contentType}
-                                  showRemove={false}
-                                />
-                              ))}
-                            </div>
-                          )}
+                          {message.content}
 
                           {/* Retry button for error messages */}
                           {message.role === "error" && (
@@ -490,28 +415,6 @@ export default function AIChatWidget() {
                 </div>
               ))}
 
-              {/* Pending attachments preview */}
-              {showAttachmentPreview && pendingAttachments.length > 0 && (
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-                  <div className="font-medium mb-2 flex items-center">
-                    <FileText className="w-4 h-4 mr-1" />
-                    Pending Attachments
-                  </div>
-                  <div className="space-y-2">
-                    {pendingAttachments.map((attachment) => (
-                      <FilePreview
-                        key={attachment.id}
-                        url={attachment.url}
-                        filename={attachment.filename}
-                        fileType={attachment.fileType}
-                        contentType={attachment.contentType}
-                        onRemove={() => handleRemoveAttachment(attachment.id)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
               <div ref={messagesEndRef} />
             </div>
           </CardContent>
@@ -536,34 +439,18 @@ export default function AIChatWidget() {
 
           <CardFooter className="p-3 border-t">
             <form onSubmit={handleSubmit} className="flex w-full space-x-2">
-              <div className="flex-grow flex items-center space-x-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 px-3">
-                <FileUpload onFileUploaded={handleFileUploaded} disabled={isTyping} />
-                <Input
-                  id="chat-input"
-                  type="text"
-                  placeholder="Ask about Masterin..."
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  className="flex-grow text-sm border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                  disabled={isTyping}
-                />
-              </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={(!inputValue.trim() && pendingAttachments.length === 0) || isTyping}
-                    >
-                      <Send className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Send message</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Input
+                id="chat-input"
+                type="text"
+                placeholder="Ask about Masterin..."
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                className="flex-grow text-sm"
+                disabled={isTyping}
+              />
+              <Button type="submit" size="sm" disabled={!inputValue.trim() || isTyping}>
+                <Send className="w-4 h-4" />
+              </Button>
             </form>
           </CardFooter>
         </>
