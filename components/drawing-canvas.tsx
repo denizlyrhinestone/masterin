@@ -126,41 +126,39 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
 
     // Set canvas size to match container
     const rect = container.getBoundingClientRect()
-    const width = Math.floor(rect.width)
-    const height = Math.floor(rect.height)
+    const width = Math.max(1, Math.floor(rect.width))
+    const height = Math.max(1, Math.floor(rect.height))
 
     // Ensure we have valid dimensions
-    if (width > 0 && height > 0) {
-      canvas.width = width
-      canvas.height = height
+    canvas.width = width
+    canvas.height = height
 
-      // Restore context properties
-      ctx.lineCap = "round"
-      ctx.lineJoin = "round"
+    // Restore context properties
+    ctx.lineCap = "round"
+    ctx.lineJoin = "round"
 
-      // Restore the image if we had one
-      if (imageData) {
-        try {
-          // Fill with white first
-          ctx.fillStyle = "#ffffff"
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
+    // Restore the image if we had one
+    if (imageData) {
+      try {
+        // Fill with white first
+        ctx.fillStyle = "#ffffff"
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-          // Draw the previous image centered
-          const x = Math.max(0, (canvas.width - imageData.width) / 2)
-          const y = Math.max(0, (canvas.height - imageData.height) / 2)
-          ctx.putImageData(imageData, x, y)
-        } catch (e) {
-          console.error("Error restoring image data after resize:", e)
+        // Draw the previous image centered
+        const x = Math.max(0, (canvas.width - imageData.width) / 2)
+        const y = Math.max(0, (canvas.height - imageData.height) / 2)
+        ctx.putImageData(imageData, x, y)
+      } catch (e) {
+        console.error("Error restoring image data after resize:", e)
 
-          // If restoration fails, at least ensure we have a white background
-          ctx.fillStyle = "#ffffff"
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
-        }
-      } else {
-        // If no previous image, just fill with white
+        // If restoration fails, at least ensure we have a white background
         ctx.fillStyle = "#ffffff"
         ctx.fillRect(0, 0, canvas.width, canvas.height)
       }
+    } else {
+      // If no previous image, just fill with white
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
     }
   }
 
@@ -200,7 +198,7 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       setHistoryIndex((prev) => prev - 1)
       const newIndex = historyIndex - 1
 
-      if (newIndex >= 0) {
+      if (newIndex >= 0 && history[newIndex]) {
         ctx.putImageData(history[newIndex], 0, 0)
       }
     } catch (error) {
@@ -215,7 +213,9 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     try {
       const newIndex = historyIndex + 1
       setHistoryIndex(newIndex)
-      ctx.putImageData(history[newIndex], 0, 0)
+      if (history[newIndex]) {
+        ctx.putImageData(history[newIndex], 0, 0)
+      }
     } catch (error) {
       console.error("Error during redo operation:", error)
     }
