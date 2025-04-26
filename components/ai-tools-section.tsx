@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { Brain, MessageSquare, FileText, Calculator, Code, BookOpen, Lock } from "lucide-react"
+import { Brain, FileText, Calculator, Code, BookOpen, Lock, Globe } from "lucide-react"
 
 // Define the AI tools data
 const aiTools = [
@@ -18,7 +18,7 @@ const aiTools = [
     title: "AI Tutor",
     description: "Get personalized explanations and answers to any academic question",
     icon: <Brain className="h-6 w-6" />,
-    image: "/placeholder.svg?height=200&width=400&query=ai tutor chat interface",
+    image: "/ai-tutor-interface.png",
     path: "/ai/chat",
     popular: true,
   },
@@ -27,7 +27,7 @@ const aiTools = [
     title: "Essay Assistant",
     description: "Get help with writing, editing, and improving your essays",
     icon: <FileText className="h-6 w-6" />,
-    image: "/placeholder.svg?height=200&width=400&query=essay writing assistant interface",
+    image: "/digital-essay-workspace.png",
     path: "/ai/essay",
     new: true,
   },
@@ -36,7 +36,7 @@ const aiTools = [
     title: "Math Problem Solver",
     description: "Step-by-step solutions for algebra, calculus, and more",
     icon: <Calculator className="h-6 w-6" />,
-    image: "/placeholder.svg?height=200&width=400&query=math problem solver with equations",
+    image: "/digital-equation-solver.png",
     path: "/ai/math",
   },
   {
@@ -44,7 +44,7 @@ const aiTools = [
     title: "Code Mentor",
     description: "Learn programming with AI-guided coding exercises and explanations",
     icon: <Code className="h-6 w-6" />,
-    image: "/placeholder.svg?height=200&width=400&query=coding tutorial interface",
+    image: "/interactive-code-lesson.png",
     path: "/ai/code",
   },
   {
@@ -52,14 +52,14 @@ const aiTools = [
     title: "Study Notes Generator",
     description: "Create concise study notes from textbooks or lecture materials",
     icon: <BookOpen className="h-6 w-6" />,
-    image: "/placeholder.svg?height=200&width=400&query=study notes generator interface",
+    image: "/study-notes-generator-interface.png",
     path: "/ai/notes",
   },
   {
     id: "language-tutor",
     title: "Language Tutor",
     description: "Practice conversations and improve your language skills",
-    icon: <MessageSquare className="h-6 w-6" />,
+    icon: <Globe className="h-6 w-6" />,
     image: "/placeholder.svg?height=200&width=400&query=language learning conversation interface",
     path: "/ai/language",
   },
@@ -70,6 +70,16 @@ export default function AIToolsSection() {
   const { toast } = useToast()
   const router = useRouter()
   const [usageCount, setUsageCount] = useState<Record<string, number>>({})
+
+  // Load usage counts from localStorage on component mount
+  useEffect(() => {
+    try {
+      const storedUsage = JSON.parse(localStorage.getItem("tool_usage") || "{}")
+      setUsageCount(storedUsage)
+    } catch (e) {
+      console.error("Error loading usage data:", e)
+    }
+  }, [])
 
   // Function to handle tool access
   const handleToolAccess = (toolId: string, path: string) => {
@@ -94,16 +104,16 @@ export default function AIToolsSection() {
         })
       } else {
         // Increment usage and allow access
-        setUsageCount((prev) => ({
-          ...prev,
+        const newUsageCount = {
+          ...usageCount,
           [toolId]: currentUsage + 1,
-        }))
+        }
+
+        setUsageCount(newUsageCount)
 
         // Store in localStorage to persist between page refreshes
         try {
-          const storedUsage = JSON.parse(localStorage.getItem("tool_usage") || "{}")
-          storedUsage[toolId] = (storedUsage[toolId] || 0) + 1
-          localStorage.setItem("tool_usage", JSON.stringify(storedUsage))
+          localStorage.setItem("tool_usage", JSON.stringify(newUsageCount))
         } catch (e) {
           console.error("Error storing usage data:", e)
         }
