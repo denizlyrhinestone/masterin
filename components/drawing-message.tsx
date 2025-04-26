@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
+import { Download, Maximize2, Minimize2 } from "lucide-react"
 
 interface DrawingMessageProps {
   imageData: string
@@ -10,8 +10,13 @@ interface DrawingMessageProps {
 }
 
 export default function DrawingMessage({ imageData, alt = "Drawing" }: DrawingMessageProps) {
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(false)
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen)
+  }
 
   const handleImageError = () => {
     setError("Failed to load drawing")
@@ -25,25 +30,63 @@ export default function DrawingMessage({ imageData, alt = "Drawing" }: DrawingMe
 
   const handleDownload = () => {
     try {
-      // Validate image data before download
-      if (!imageData || !imageData.startsWith("data:image/")) {
-        throw new Error("Invalid image data")
+      // Validate imageData before attempting to download
+      if (!imageData || !imageData.startsWith("data:")) {
+        console.error("Invalid image data for download")
+        setError("Invalid image data")
+        return
       }
 
       const link = document.createElement("a")
       link.href = imageData
-      link.download = `drawing-${new Date().toISOString().slice(0, 19).replace(/:/g, "-")}.png`
+      link.download = `drawing-${new Date().toISOString().slice(0, 10)}.png`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
     } catch (error) {
-      console.error("Download error:", error)
-      setError("Failed to download drawing")
+      console.error("Error downloading image:", error)
+      setError("Download failed")
     }
   }
 
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+        <div className="relative max-w-full max-h-full">
+          {error ? (
+            <div className="bg-gray-800 rounded-md p-6 text-center">
+              <p className="text-red-400">{error}</p>
+              <p className="text-sm text-gray-400 mt-2">The drawing could not be displayed</p>
+              <Button variant="outline" size="sm" onClick={toggleFullscreen} className="mt-4">
+                <Minimize2 className="h-4 w-4 mr-2" /> Close
+              </Button>
+            </div>
+          ) : (
+            <>
+              <img
+                src={imageData || "/placeholder.svg"}
+                alt={alt}
+                className="max-w-full max-h-[90vh] object-contain"
+                onError={handleImageError}
+                onLoad={handleImageLoad}
+              />
+              <div className="absolute top-2 right-2 flex gap-2">
+                <Button variant="outline" size="icon" onClick={handleDownload} className="bg-white/20">
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button variant="outline" size="icon" onClick={toggleFullscreen} className="bg-white/20">
+                  <Minimize2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="relative">
+    <div className="relative group">
       {error ? (
         <div className="bg-gray-100 dark:bg-gray-800 rounded-md p-4 text-center">
           <p className="text-red-500">{error}</p>
@@ -54,21 +97,19 @@ export default function DrawingMessage({ imageData, alt = "Drawing" }: DrawingMe
           <img
             src={imageData || "/placeholder.svg"}
             alt={alt}
-            className="max-w-full rounded-md border border-gray-200 dark:border-gray-700"
-            style={{ maxHeight: "300px" }}
+            className="max-h-60 rounded-md"
             onError={handleImageError}
             onLoad={handleImageLoad}
           />
           {loaded && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="absolute top-2 right-2 bg-white/80 dark:bg-gray-800/80"
-              onClick={handleDownload}
-            >
-              <Download className="h-4 w-4 mr-1" />
-              Save
-            </Button>
+            <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button variant="outline" size="icon" onClick={handleDownload} className="bg-white/20">
+                <Download className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" onClick={toggleFullscreen} className="bg-white/20">
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+            </div>
           )}
         </>
       )}

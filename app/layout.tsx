@@ -5,6 +5,7 @@ import Navbar from "@/components/navbar"
 import Footer from "@/components/footer"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
+import { GlobalErrorBoundary } from "@/components/global-error-boundary"
 import type { Metadata } from "next"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -37,15 +38,17 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
-          <AuthProvider>
-            <div className="flex flex-col min-h-screen">
-              <Navbar />
-              <main className="flex-grow">{children}</main>
-              <Footer />
-            </div>
-          </AuthProvider>
-        </ThemeProvider>
+        <GlobalErrorBoundary>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+            <AuthProvider>
+              <div className="flex flex-col min-h-screen">
+                <Navbar />
+                <main className="flex-grow">{children}</main>
+                <Footer />
+              </div>
+            </AuthProvider>
+          </ThemeProvider>
+        </GlobalErrorBoundary>
       </body>
     </html>
   )
