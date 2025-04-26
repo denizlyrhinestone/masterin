@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import AdminDashboard from "@/components/admin/dashboard"
+import { SupabaseEnvChecker } from "@/components/supabase-env-checker"
 
 export default function AdminPage() {
   const { user, isAuthenticated, isLoading } = useAuth()
@@ -58,5 +59,10 @@ export default function AdminPage() {
     return null // Will redirect in the useEffect
   }
 
-  return <AdminDashboard />
+  return (
+    <div className="container mx-auto py-8">
+      <SupabaseEnvChecker />
+      <AdminDashboard />
+    </div>
+  )
 }

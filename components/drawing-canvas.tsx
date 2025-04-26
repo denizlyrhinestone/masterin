@@ -13,6 +13,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { logError } from "@/lib/error-logger"
 
 interface DrawingCanvasProps {
   onSend: (imageData: string) => void
@@ -25,6 +26,9 @@ type ShapeType = "freehand" | "line" | "circle" | "rectangle"
 // Minimum dimensions to ensure canvas is never invalid
 const MIN_CANVAS_WIDTH = 300
 const MIN_CANVAS_HEIGHT = 200
+
+// Maximum initialization attempts
+const MAX_INIT_ATTEMPTS = 5
 
 export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -41,6 +45,8 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
   const [initializationAttempts, setInitializationAttempts] = useState(0)
   const [canvasError, setCanvasError] = useState<string | null>(null)
   const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const initTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const mountedRef = useRef(true)
 
   // Store drawing history for undo functionality
   const [history, setHistory] = useState<ImageData[]>([])
@@ -60,10 +66,24 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     "#9900ff",
   ]
 
+  // Set mounted ref on component mount/unmount
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      // Clear any pending timeouts on unmount
+      if (resizeTimeoutRef.current) clearTimeout(resizeTimeoutRef.current)
+      if (initTimeoutRef.current) clearTimeout(initTimeoutRef.current)
+    }
+  }, [])
+
   // Verify canvas is in a valid state
   const verifyCanvasState = useCallback(() => {
     const canvas = canvasRef.current
-    if (!canvas) return false
+    if (!canvas) {
+      console.warn("Canvas element not found during verification")
+      return false
+    }
 
     // Check if canvas dimensions are valid
     if (canvas.width <= 0 || canvas.height <= 0) {
@@ -120,53 +140,93 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     } catch (error) {
       console.error("Error during canvas initialization:", error)
       setCanvasError(`Initialization error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      logError(error instanceof Error ? error : new Error(String(error)), {
+        severity: "high",
+        context: { component: "DrawingCanvas", method: "initializeCanvas" },
+      })
       return false
     }
   }, [canvasDimensions.width, canvasDimensions.height])
 
+  // Force canvas dimensions update based on container size
+  const updateCanvasDimensions = useCallback(() => {
+    if (!containerRef.current) return false
+
+    try {
+      const rect = containerRef.current.getBoundingClientRect()
+      const containerWidth = Math.max(MIN_CANVAS_WIDTH, Math.floor(rect.width))
+      const containerHeight = Math.max(MIN_CANVAS_HEIGHT, Math.floor(rect.height))
+
+      // Only update if dimensions have changed
+      if (containerWidth !== canvasDimensions.width || containerHeight !== canvasDimensions.height) {
+        console.log("Updating canvas dimensions", { containerWidth, containerHeight })
+        setCanvasDimensions({ width: containerWidth, height: containerHeight })
+        return true
+      }
+    } catch (error) {
+      console.error("Error updating canvas dimensions:", error)
+    }
+
+    return false
+  }, [canvasDimensions.width, canvasDimensions.height])
+
   // Effect for initial canvas setup with retry mechanism
   useEffect(() => {
-    // Maximum number of initialization attempts
-    const MAX_ATTEMPTS = 3
-
-    if (initializationAttempts >= MAX_ATTEMPTS) {
-      console.error(`Failed to initialize canvas after ${MAX_ATTEMPTS} attempts`)
-      setCanvasError(`Failed to initialize canvas after ${MAX_ATTEMPTS} attempts`)
+    if (initializationAttempts >= MAX_INIT_ATTEMPTS) {
+      console.error(`Failed to initialize canvas after ${MAX_INIT_ATTEMPTS} attempts`)
+      setCanvasError(`Failed to initialize canvas after ${MAX_INIT_ATTEMPTS} attempts. Please try refreshing the page.`)
       return
     }
 
-    const initTimer = setTimeout(
-      () => {
-        const success = initializeCanvas()
+    // Clear any existing timeout
+    if (initTimeoutRef.current) {
+      clearTimeout(initTimeoutRef.current)
+    }
 
-        if (!success) {
-          // Retry initialization with incremented attempt counter
+    // Increasing delay for each retry to handle potential race conditions
+    const delay = 100 * (initializationAttempts + 1)
+
+    initTimeoutRef.current = setTimeout(() => {
+      if (!mountedRef.current) return
+
+      // First update dimensions based on container
+      updateCanvasDimensions()
+
+      // Then initialize the canvas
+      const success = initializeCanvas()
+
+      if (!success) {
+        // Retry initialization with incremented attempt counter
+        setInitializationAttempts((prev) => prev + 1)
+        return
+      }
+
+      // Delay the resize to ensure the container is rendered
+      const resizeTimer = setTimeout(() => {
+        if (!mountedRef.current) return
+
+        resizeCanvas()
+
+        // Verify canvas state after resize
+        if (verifyCanvasState()) {
+          setCanvasInitialized(true)
+          console.log("Canvas fully initialized and ready")
+        } else {
+          // If verification fails, retry initialization
+          console.warn("Canvas verification failed after resize, retrying...")
           setInitializationAttempts((prev) => prev + 1)
-          return
         }
+      }, 300) // Increased timeout for better reliability
 
-        // Delay the resize to ensure the container is rendered
-        const resizeTimer = setTimeout(() => {
-          resizeCanvas()
+      return () => clearTimeout(resizeTimer)
+    }, delay)
 
-          // Verify canvas state after resize
-          if (verifyCanvasState()) {
-            setCanvasInitialized(true)
-            console.log("Canvas fully initialized and ready")
-          } else {
-            // If verification fails, retry initialization
-            console.warn("Canvas verification failed after resize, retrying...")
-            setInitializationAttempts((prev) => prev + 1)
-          }
-        }, 300) // Increased timeout for better reliability
-
-        return () => clearTimeout(resizeTimer)
-      },
-      100 * (initializationAttempts + 1),
-    ) // Increasing delay for each retry
-
-    return () => clearTimeout(initTimer)
-  }, [initializeCanvas, verifyCanvasState, initializationAttempts])
+    return () => {
+      if (initTimeoutRef.current) {
+        clearTimeout(initTimeoutRef.current)
+      }
+    }
+  }, [initializeCanvas, verifyCanvasState, initializationAttempts, updateCanvasDimensions])
 
   // Effect to save initial state after canvas is properly sized
   useEffect(() => {
@@ -181,6 +241,10 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
         } catch (error) {
           console.error("Error saving initial canvas state:", error)
           setCanvasError(`Error saving initial state: ${error instanceof Error ? error.message : "Unknown error"}`)
+          logError(error instanceof Error ? error : new Error(String(error)), {
+            severity: "medium",
+            context: { component: "DrawingCanvas", method: "saveInitialState" },
+          })
         }
       } else {
         console.warn("Cannot save initial state: Canvas has invalid dimensions", {
@@ -191,6 +255,22 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     }
   }, [canvasInitialized, ctx])
 
+  // Effect to update canvas when dimensions change
+  useEffect(() => {
+    if (canvasInitialized && ctx && canvasRef.current) {
+      const canvas = canvasRef.current
+
+      // Only resize if dimensions have actually changed
+      if (canvas.width !== canvasDimensions.width || canvas.height !== canvasDimensions.height) {
+        console.log("Canvas dimensions changed, resizing", {
+          current: { width: canvas.width, height: canvas.height },
+          new: canvasDimensions,
+        })
+        resizeCanvas()
+      }
+    }
+  }, [canvasDimensions, canvasInitialized])
+
   // Debounced resize handler
   const debouncedResize = useCallback(() => {
     if (resizeTimeoutRef.current) {
@@ -198,11 +278,19 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     }
 
     resizeTimeoutRef.current = setTimeout(() => {
+      if (!mountedRef.current) return
+
       if (canvasInitialized) {
-        resizeCanvas()
+        // Update dimensions first
+        const dimensionsChanged = updateCanvasDimensions()
+
+        // If dimensions didn't change, force a resize anyway to ensure canvas is valid
+        if (!dimensionsChanged) {
+          resizeCanvas()
+        }
       }
     }, 150) // Debounce delay
-  }, [canvasInitialized])
+  }, [canvasInitialized, updateCanvasDimensions])
 
   // Separate effect for resizing with improved event handling
   useEffect(() => {
@@ -215,11 +303,18 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       }
 
       // First immediate resize to prevent blank canvas
-      resizeCanvas()
+      updateCanvasDimensions()
 
       // Then a delayed resize to adjust after orientation change completes
       resizeTimeoutRef.current = setTimeout(() => {
+        if (!mountedRef.current) return
+
+        // Update dimensions again after orientation change completes
+        updateCanvasDimensions()
+
+        // Force a resize
         resizeCanvas()
+
         // Verify canvas state after orientation change
         if (!verifyCanvasState()) {
           console.warn("Canvas verification failed after orientation change, attempting recovery")
@@ -228,8 +323,12 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       }, 500)
     }
 
+    // Add event listeners
     window.addEventListener("resize", handleResize)
     window.addEventListener("orientationchange", handleOrientationChange)
+
+    // Initial resize
+    debouncedResize()
 
     return () => {
       window.removeEventListener("resize", handleResize)
@@ -239,13 +338,21 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
         clearTimeout(resizeTimeoutRef.current)
       }
     }
-  }, [canvasInitialized, debouncedResize, verifyCanvasState])
+  }, [canvasInitialized, debouncedResize, verifyCanvasState, updateCanvasDimensions])
 
   // Canvas recovery function
   const recoverCanvas = useCallback(() => {
     console.log("Attempting canvas recovery")
     const canvas = canvasRef.current
-    if (!canvas || !ctx) return false
+    if (!canvas) {
+      console.error("Cannot recover: Canvas element not found")
+      return false
+    }
+
+    if (!ctx) {
+      console.error("Cannot recover: Canvas context not available")
+      return false
+    }
 
     try {
       // Re-initialize with minimum dimensions
@@ -287,7 +394,10 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
 
       // Force a resize to get proper dimensions
       setTimeout(() => {
-        resizeCanvas()
+        if (mountedRef.current) {
+          updateCanvasDimensions()
+          resizeCanvas()
+        }
       }, 100)
 
       console.log("Canvas recovery completed")
@@ -296,27 +406,28 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     } catch (error) {
       console.error("Canvas recovery failed:", error)
       setCanvasError(`Recovery failed: ${error instanceof Error ? error.message : "Unknown error"}`)
+      logError(error instanceof Error ? error : new Error(String(error)), {
+        severity: "high",
+        context: { component: "DrawingCanvas", method: "recoverCanvas" },
+      })
       return false
     }
-  }, [ctx, history, historyIndex])
+  }, [ctx, history, historyIndex, updateCanvasDimensions])
 
   // Resize canvas function with improved error handling and validation
   const resizeCanvas = () => {
     const canvas = canvasRef.current
-    const container = containerRef.current
-    if (!canvas || !container || !ctx) {
-      console.warn("Cannot resize: Missing canvas, container, or context")
+    if (!canvas) {
+      console.warn("Cannot resize: Canvas element not found")
+      return
+    }
+
+    if (!ctx) {
+      console.warn("Cannot resize: Canvas context not available")
       return
     }
 
     try {
-      // Get container dimensions, ensuring they're valid
-      const rect = container.getBoundingClientRect()
-      const containerWidth = Math.max(MIN_CANVAS_WIDTH, Math.floor(rect.width))
-      const containerHeight = Math.max(MIN_CANVAS_HEIGHT, Math.floor(rect.height))
-
-      console.log("Resizing canvas", { containerWidth, containerHeight })
-
       // Get current image data (if any)
       let imageData: ImageData | null = null
       try {
@@ -328,11 +439,13 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       }
 
       // Set canvas size to match container with minimum dimensions
-      const newWidth = Math.max(MIN_CANVAS_WIDTH, containerWidth)
-      const newHeight = Math.max(MIN_CANVAS_HEIGHT, containerHeight)
+      const newWidth = Math.max(MIN_CANVAS_WIDTH, canvasDimensions.width)
+      const newHeight = Math.max(MIN_CANVAS_HEIGHT, canvasDimensions.height)
 
-      // Update state to track dimensions
-      setCanvasDimensions({ width: newWidth, height: newHeight })
+      console.log("Resizing canvas", {
+        from: { width: canvas.width, height: canvas.height },
+        to: { width: newWidth, height: newHeight },
+      })
 
       // Set canvas dimensions
       canvas.width = newWidth
@@ -371,6 +484,10 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     } catch (error) {
       console.error("Error during canvas resize:", error)
       setCanvasError(`Resize error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      logError(error instanceof Error ? error : new Error(String(error)), {
+        severity: "high",
+        context: { component: "DrawingCanvas", method: "resizeCanvas" },
+      })
 
       // Attempt recovery
       recoverCanvas()
@@ -406,6 +523,10 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     } catch (error) {
       console.error("Error saving canvas state to history:", error)
       setCanvasError(`History error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      logError(error instanceof Error ? error : new Error(String(error)), {
+        severity: "medium",
+        context: { component: "DrawingCanvas", method: "saveToHistory" },
+      })
     }
   }
 
@@ -433,6 +554,10 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     } catch (error) {
       console.error("Error during undo operation:", error)
       setCanvasError(`Undo error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      logError(error instanceof Error ? error : new Error(String(error)), {
+        severity: "medium",
+        context: { component: "DrawingCanvas", method: "handleUndo" },
+      })
 
       // Attempt recovery
       recoverCanvas()
@@ -462,6 +587,10 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     } catch (error) {
       console.error("Error during redo operation:", error)
       setCanvasError(`Redo error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      logError(error instanceof Error ? error : new Error(String(error)), {
+        severity: "medium",
+        context: { component: "DrawingCanvas", method: "handleRedo" },
+      })
 
       // Attempt recovery
       recoverCanvas()
@@ -553,6 +682,10 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
       } catch (error) {
         console.error("Error during shape drawing:", error)
         setCanvasError(`Drawing error: ${error instanceof Error ? error.message : "Unknown error"}`)
+        logError(error instanceof Error ? error : new Error(String(error)), {
+          severity: "medium",
+          context: { component: "DrawingCanvas", method: "draw" },
+        })
         stopDrawing()
         recoverCanvas()
       }
@@ -625,6 +758,10 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     } catch (error) {
       console.error("Error clearing canvas:", error)
       setCanvasError(`Clear error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      logError(error instanceof Error ? error : new Error(String(error)), {
+        severity: "medium",
+        context: { component: "DrawingCanvas", method: "clearCanvas" },
+      })
       recoverCanvas()
     }
   }
@@ -658,6 +795,10 @@ export default function DrawingCanvas({ onSend, onClose }: DrawingCanvasProps) {
     } catch (error) {
       console.error("Error sending drawing:", error)
       setCanvasError(`Send error: ${error instanceof Error ? error.message : "Unknown error"}`)
+      logError(error instanceof Error ? error : new Error(String(error)), {
+        severity: "high",
+        context: { component: "DrawingCanvas", method: "sendDrawing" },
+      })
       // Provide fallback or error message
       onClose()
     }

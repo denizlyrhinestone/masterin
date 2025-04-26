@@ -6,6 +6,7 @@ import { Component, type ReactNode } from "react"
 import { AlertTriangle, RefreshCw, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { logError } from "@/lib/error-logger"
 
 interface ErrorBoundaryState {
   hasError: boolean
@@ -33,8 +34,14 @@ export class GlobalErrorBoundary extends Component<{ children: ReactNode }, Erro
     console.error("Global error boundary caught an error:", error, errorInfo)
     this.setState({ errorInfo })
 
-    // You could also log to an error reporting service here
-    // logErrorToService(error, errorInfo);
+    // Log to our error tracking system
+    logError(error, {
+      severity: "high",
+      context: {
+        component: "GlobalErrorBoundary",
+        errorInfo: errorInfo.componentStack,
+      },
+    })
   }
 
   resetErrorBoundary = () => {

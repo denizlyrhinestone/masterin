@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, RefreshCw, Home } from "lucide-react"
+import { logError } from "@/lib/error-logger"
 
 export default function ErrorPage({
   error,
@@ -14,6 +15,10 @@ export default function ErrorPage({
   useEffect(() => {
     // Log the error to an error reporting service
     console.error("Application error:", error)
+    logError(error, {
+      severity: "high",
+      context: { component: "ErrorPage", digest: error.digest },
+    })
   }, [error])
 
   return (
