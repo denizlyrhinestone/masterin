@@ -47,7 +47,7 @@ export default function CoursesPage() {
               {
                 title: "Web Development Bootcamp",
                 description: "A comprehensive course covering HTML, CSS, JavaScript, and modern frameworks.",
-                image: "/code-on-screen.png",
+                image: "/course-web-development.png",
                 level: "Beginner to Intermediate",
                 duration: "16 weeks",
                 students: "5,432",
@@ -59,7 +59,7 @@ export default function CoursesPage() {
               {
                 title: "Artificial Intelligence Fundamentals",
                 description: "Learn the core concepts of AI, machine learning, and neural networks.",
-                image: "/interconnected-ai-nodes.png",
+                image: "/course-ai-fundamentals.png",
                 level: "Intermediate",
                 duration: "12 weeks",
                 students: "4,123",
@@ -71,7 +71,7 @@ export default function CoursesPage() {
               {
                 title: "Digital Marketing Mastery",
                 description: "Master digital marketing strategies, SEO, social media, and analytics.",
-                image: "/data-driven-marketing.png",
+                image: "/course-digital-marketing.png",
                 level: "All Levels",
                 duration: "10 weeks",
                 students: "3,987",
@@ -82,15 +82,28 @@ export default function CoursesPage() {
               },
             ].map((course, index) => (
               <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="relative h-48">
-                  <Image src={course.image || "/placeholder.svg"} alt={course.title} fill className="object-cover" />
-                  <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
-                    <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
-                    {course.rating}
+                <Link href={course.link} className="block">
+                  <div className="relative h-48 overflow-hidden">
+                    <Image
+                      src={course.image || "/placeholder.svg"}
+                      alt={course.title}
+                      fill
+                      className="object-cover transition-transform duration-300 hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      priority={index < 3}
+                    />
+                    <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
+                      <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
+                      {course.rating}
+                    </div>
                   </div>
-                </div>
+                </Link>
                 <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-2">{course.title}</h3>
+                  <Link href={course.link}>
+                    <h3 className="text-xl font-semibold mb-2 hover:text-purple-600 transition-colors">
+                      {course.title}
+                    </h3>
+                  </Link>
                   <p className="text-gray-600 dark:text-gray-300 mb-4">{course.description}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Instructor: {course.instructor}</p>
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -130,7 +143,7 @@ export default function CoursesPage() {
               {
                 title: "Introduction to Machine Learning",
                 description: "Learn the fundamentals of machine learning algorithms and applications.",
-                image: "/interconnected-learning.png",
+                image: "/course-machine-learning.png",
                 level: "Beginner",
                 duration: "8 weeks",
                 students: "2,345",
@@ -142,7 +155,7 @@ export default function CoursesPage() {
               {
                 title: "Advanced Python Programming",
                 description: "Master Python with advanced concepts and real-world projects.",
-                image: "/python-code-snippet.png",
+                image: "/course-python-programming.png",
                 level: "Intermediate",
                 duration: "10 weeks",
                 students: "1,876",
@@ -154,7 +167,7 @@ export default function CoursesPage() {
               {
                 title: "Data Science Fundamentals",
                 description: "Discover how to analyze and visualize data to extract meaningful insights.",
-                image: "/interactive-data-dashboard.png",
+                image: "/course-data-science.png",
                 level: "Beginner",
                 duration: "12 weeks",
                 students: "3,210",
@@ -165,15 +178,27 @@ export default function CoursesPage() {
               },
             ].map((course, index) => (
               <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="relative h-48">
-                  <Image src={course.image || "/placeholder.svg"} alt={course.title} fill className="object-cover" />
-                  <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
-                    <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
-                    {course.rating}
+                <Link href={course.link} className="block">
+                  <div className="relative h-48 overflow-hidden">
+                    <Image
+                      src={course.image || "/placeholder.svg"}
+                      alt={course.title}
+                      fill
+                      className="object-cover transition-transform duration-300 hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                    <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
+                      <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
+                      {course.rating}
+                    </div>
                   </div>
-                </div>
+                </Link>
                 <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-2">{course.title}</h3>
+                  <Link href={course.link}>
+                    <h3 className="text-xl font-semibold mb-2 hover:text-purple-600 transition-colors">
+                      {course.title}
+                    </h3>
+                  </Link>
                   <p className="text-gray-600 dark:text-gray-300 mb-4">{course.description}</p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Instructor: {course.instructor}</p>
                   <div className="flex flex-wrap gap-2 mb-4">
@@ -213,57 +238,63 @@ export default function CoursesPage() {
               {
                 name: "Computer Science",
                 count: 42,
-                icon: "/code-icon-abstract.png",
+                icon: "/category-computer-science.png",
                 link: "/courses/category/computer-science",
               },
               {
                 name: "Data Science",
                 count: 38,
-                icon: "/data-analysis-icon.png",
+                icon: "/category-data-science.png",
                 link: "/courses/category/data-science",
               },
               {
                 name: "Mathematics",
                 count: 29,
-                icon: "/math-formula-icon.png",
+                icon: "/category-mathematics.png",
                 link: "/courses/category/mathematics",
               },
               {
                 name: "Business",
                 count: 35,
-                icon: "/upward-trend-chart.png",
+                icon: "/category-business.png",
                 link: "/courses/category/business",
               },
               {
                 name: "Language Learning",
                 count: 27,
-                icon: "/multilingual-speech-bubbles.png",
+                icon: "/category-language.png",
                 link: "/courses/category/languages",
               },
               {
                 name: "Science",
                 count: 31,
-                icon: "/science-lab-icon.png",
+                icon: "/category-science.png",
                 link: "/courses/category/science",
               },
               {
                 name: "Arts & Design",
                 count: 24,
-                icon: "/colorful-art-palette.png",
+                icon: "/category-arts-design.png",
                 link: "/courses/category/arts",
               },
               {
                 name: "Personal Development",
                 count: 19,
-                icon: "/placeholder.svg?height=40&width=40&query=personal growth icon",
+                icon: "/category-personal-development.png",
                 link: "/courses/category/personal-development",
               },
             ].map((category, index) => (
               <Link href={category.link} key={index}>
                 <Card className="border-0 shadow-md hover:shadow-lg transition-shadow cursor-pointer h-full">
                   <CardContent className="p-6 flex items-center">
-                    <div className="w-10 h-10 mr-4 rounded-full overflow-hidden flex-shrink-0">
-                      <Image src={category.icon || "/placeholder.svg"} alt={category.name} width={40} height={40} />
+                    <div className="w-12 h-12 mr-4 rounded-full overflow-hidden flex-shrink-0">
+                      <Image
+                        src={category.icon || "/placeholder.svg"}
+                        alt={category.name}
+                        width={48}
+                        height={48}
+                        className="object-cover"
+                      />
                     </div>
                     <div>
                       <h3 className="font-medium">{category.name}</h3>
@@ -294,21 +325,21 @@ export default function CoursesPage() {
                   "The AI-enhanced learning experience was incredible. I could ask questions anytime and get immediate, personalized help that really improved my understanding.",
                 author: "John Smith",
                 role: "Web Development Student",
-                image: "/placeholder.svg?height=80&width=80&query=professional man student",
+                image: "/testimonial-student-1.png",
               },
               {
                 quote:
                   "As someone with a busy schedule, the flexibility of these courses combined with the AI tutor made it possible for me to learn at my own pace without sacrificing quality.",
                 author: "Emily Chen",
                 role: "Data Science Student",
-                image: "/placeholder.svg?height=80&width=80&query=professional woman tech",
+                image: "/testimonial-student-2.png",
               },
               {
                 quote:
                   "The interactive exercises and real-time feedback helped me master concepts much faster than traditional courses. The AI tutor felt like having a personal instructor.",
                 author: "Michael Johnson",
                 role: "AI Fundamentals Student",
-                image: "/placeholder.svg?height=80&width=80&query=professional man business",
+                image: "/testimonial-student-3.png",
               },
             ].map((testimonial, index) => (
               <Card key={index} className="border-0 shadow-lg">
@@ -328,6 +359,7 @@ export default function CoursesPage() {
                         alt={testimonial.author}
                         width={48}
                         height={48}
+                        className="object-cover"
                       />
                     </div>
                     <div>
