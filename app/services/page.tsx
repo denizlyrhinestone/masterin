@@ -37,6 +37,89 @@ export default function CoursesPage() {
         </div>
       </section>
 
+      {/* Popular Courses */}
+      <section className="py-16">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-2xl font-bold mb-8">Top Courses</h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                title: "Web Development Bootcamp",
+                description: "A comprehensive course covering HTML, CSS, JavaScript, and modern frameworks.",
+                image: "/code-on-screen.png",
+                level: "Beginner to Intermediate",
+                duration: "16 weeks",
+                students: "5,432",
+                rating: 4.9,
+                instructor: "Jessica Williams",
+                price: "$79.99",
+                link: "/courses/web-development-bootcamp",
+              },
+              {
+                title: "Artificial Intelligence Fundamentals",
+                description: "Learn the core concepts of AI, machine learning, and neural networks.",
+                image: "/interconnected-ai-nodes.png",
+                level: "Intermediate",
+                duration: "12 weeks",
+                students: "4,123",
+                rating: 4.8,
+                instructor: "Dr. Michael Rodriguez",
+                price: "$69.99",
+                link: "/courses/ai-fundamentals",
+              },
+              {
+                title: "Digital Marketing Mastery",
+                description: "Master digital marketing strategies, SEO, social media, and analytics.",
+                image: "/data-driven-marketing.png",
+                level: "All Levels",
+                duration: "10 weeks",
+                students: "3,987",
+                rating: 4.7,
+                instructor: "Emma Thompson",
+                price: "$59.99",
+                link: "/courses/digital-marketing",
+              },
+            ].map((course, index) => (
+              <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+                <div className="relative h-48">
+                  <Image src={course.image || "/placeholder.svg"} alt={course.title} fill className="object-cover" />
+                  <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
+                    <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
+                    {course.rating}
+                  </div>
+                </div>
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-semibold mb-2">{course.title}</h3>
+                  <p className="text-gray-600 dark:text-gray-300 mb-4">{course.description}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Instructor: {course.instructor}</p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 text-xs px-2 py-1 rounded-full flex items-center">
+                      <BookOpen className="w-3 h-3 mr-1" />
+                      {course.level}
+                    </span>
+                    <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2 py-1 rounded-full flex items-center">
+                      <Clock className="w-3 h-3 mr-1" />
+                      {course.duration}
+                    </span>
+                    <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs px-2 py-1 rounded-full flex items-center">
+                      <Users className="w-3 h-3 mr-1" />
+                      {course.students} students
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-lg font-bold">{course.price}</span>
+                    <Link href={course.link}>
+                      <Button>Enroll Now</Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Featured Courses */}
       <section className="py-12">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -130,43 +213,43 @@ export default function CoursesPage() {
               {
                 name: "Computer Science",
                 count: 42,
-                icon: "/placeholder.svg?height=40&width=40&query=computer code icon",
+                icon: "/code-icon-abstract.png",
                 link: "/courses/category/computer-science",
               },
               {
                 name: "Data Science",
                 count: 38,
-                icon: "/placeholder.svg?height=40&width=40&query=data chart icon",
+                icon: "/data-analysis-icon.png",
                 link: "/courses/category/data-science",
               },
               {
                 name: "Mathematics",
                 count: 29,
-                icon: "/placeholder.svg?height=40&width=40&query=math formula icon",
+                icon: "/math-formula-icon.png",
                 link: "/courses/category/mathematics",
               },
               {
                 name: "Business",
                 count: 35,
-                icon: "/placeholder.svg?height=40&width=40&query=business chart icon",
+                icon: "/upward-trend-chart.png",
                 link: "/courses/category/business",
               },
               {
                 name: "Language Learning",
                 count: 27,
-                icon: "/placeholder.svg?height=40&width=40&query=language speech icon",
+                icon: "/multilingual-speech-bubbles.png",
                 link: "/courses/category/languages",
               },
               {
                 name: "Science",
                 count: 31,
-                icon: "/placeholder.svg?height=40&width=40&query=science lab icon",
+                icon: "/science-lab-icon.png",
                 link: "/courses/category/science",
               },
               {
                 name: "Arts & Design",
                 count: 24,
-                icon: "/placeholder.svg?height=40&width=40&query=art palette icon",
+                icon: "/colorful-art-palette.png",
                 link: "/courses/category/arts",
               },
               {
@@ -189,89 +272,6 @@ export default function CoursesPage() {
                   </CardContent>
                 </Card>
               </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Popular Courses */}
-      <section className="py-16">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold mb-8">Most Popular Courses</h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Web Development Bootcamp",
-                description: "A comprehensive course covering HTML, CSS, JavaScript, and modern frameworks.",
-                image: "/placeholder.svg?height=200&width=400&query=web development code",
-                level: "Beginner to Intermediate",
-                duration: "16 weeks",
-                students: "5,432",
-                rating: 4.9,
-                instructor: "Jessica Williams",
-                price: "$79.99",
-                link: "/courses/web-development-bootcamp",
-              },
-              {
-                title: "Artificial Intelligence Fundamentals",
-                description: "Learn the core concepts of AI, machine learning, and neural networks.",
-                image: "/placeholder.svg?height=200&width=400&query=artificial intelligence network",
-                level: "Intermediate",
-                duration: "12 weeks",
-                students: "4,123",
-                rating: 4.8,
-                instructor: "Dr. Michael Rodriguez",
-                price: "$69.99",
-                link: "/courses/ai-fundamentals",
-              },
-              {
-                title: "Digital Marketing Mastery",
-                description: "Master digital marketing strategies, SEO, social media, and analytics.",
-                image: "/placeholder.svg?height=200&width=400&query=digital marketing analytics",
-                level: "All Levels",
-                duration: "10 weeks",
-                students: "3,987",
-                rating: 4.7,
-                instructor: "Emma Thompson",
-                price: "$59.99",
-                link: "/courses/digital-marketing",
-              },
-            ].map((course, index) => (
-              <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <div className="relative h-48">
-                  <Image src={course.image || "/placeholder.svg"} alt={course.title} fill className="object-cover" />
-                  <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
-                    <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
-                    {course.rating}
-                  </div>
-                </div>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-2">{course.title}</h3>
-                  <p className="text-gray-600 dark:text-gray-300 mb-4">{course.description}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">Instructor: {course.instructor}</p>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300 text-xs px-2 py-1 rounded-full flex items-center">
-                      <BookOpen className="w-3 h-3 mr-1" />
-                      {course.level}
-                    </span>
-                    <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 text-xs px-2 py-1 rounded-full flex items-center">
-                      <Clock className="w-3 h-3 mr-1" />
-                      {course.duration}
-                    </span>
-                    <span className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-xs px-2 py-1 rounded-full flex items-center">
-                      <Users className="w-3 h-3 mr-1" />
-                      {course.students} students
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-bold">{course.price}</span>
-                    <Link href={course.link}>
-                      <Button>Enroll Now</Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
             ))}
           </div>
         </div>
