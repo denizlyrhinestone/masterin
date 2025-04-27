@@ -11,7 +11,7 @@ import { Loader2, Send, Bot, User, RefreshCw, ThumbsUp, ThumbsDown } from "lucid
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { v4 as uuidv4 } from "uuid"
-import { type AIToolType, type ConversationMessage, generateAIResponse } from "@/lib/ai-service"
+import { type AIToolType, type ConversationMessage, sendChatMessage } from "@/lib/ai-service"
 import ReactMarkdown from "react-markdown"
 import { cn } from "@/lib/utils"
 
@@ -35,7 +35,10 @@ export default function AIChatInterface({
   onResponse,
 }: AIChatInterfaceProps) {
   const [input, setInput] = useState("")
-  const [messages, setMessages] = useState<ConversationMessage[]>(initialMessages)
+  const [messages, setMessages] = useState<ConversationMessage[]>([
+    { role: "system", content: systemPrompt },
+    ...initialMessages,
+  ])
   const [isLoading, setIsLoading] = useState(false)
   const [conversationId] = useState(() => uuidv4())
   const [error, setError] = useState<string | null>(null)
@@ -65,21 +68,20 @@ export default function AIChatInterface({
     setError(null)
 
     try {
-      // Generate AI response
-      const response = await generateAIResponse(input.trim(), messages, {
-        model: "gpt-4o", // Default to GPT-4o
-        provider: "openai", // Default to OpenAI
-        temperature: 0.7,
-        systemPrompt,
-        userId: user?.id,
-        toolId: toolType,
+      // Send message to API
+      const response = await sendChatMessage(messages.concat(userMessage), {
         conversationId,
+        toolType,
       })
+
+      if (response.error) {
+        throw response.error
+      }
 
       // Add AI response to chat
       const assistantMessage: ConversationMessage = {
         role: "assistant",
-        content: response,
+        content: response.text,
         timestamp: Date.now(),
       }
 
@@ -87,7 +89,7 @@ export default function AIChatInterface({
 
       // Call onResponse callback if provided
       if (onResponse) {
-        onResponse(response)
+        onResponse(response.text)
       }
     } catch (err) {
       console.error("Error generating response:", err)
@@ -116,24 +118,23 @@ export default function AIChatInterface({
     setMessages(newMessages)
 
     // Retry with the last user message
-    setInput(lastUserMessage.content)
     setIsLoading(true)
     setError(null)
 
     try {
-      const response = await generateAIResponse(lastUserMessage.content, newMessages, {
-        model: "gpt-4o",
-        provider: "openai",
-        temperature: 0.7,
-        systemPrompt,
-        userId: user?.id,
-        toolId: toolType,
+      // Send message to API
+      const response = await sendChatMessage(newMessages.concat({ role: "user", content: lastUserMessage.content }), {
         conversationId,
+        toolType,
       })
+
+      if (response.error) {
+        throw response.error
+      }
 
       const assistantMessage: ConversationMessage = {
         role: "assistant",
-        content: response,
+        content: response.text,
         timestamp: Date.now(),
       }
 
@@ -141,7 +142,7 @@ export default function AIChatInterface({
       setInput("")
 
       if (onResponse) {
-        onResponse(response)
+        onResponse(response.text)
       }
     } catch (err) {
       console.error("Error retrying response:", err)
@@ -159,74 +160,76 @@ export default function AIChatInterface({
   return (
     <div className={cn("flex flex-col h-full", className)}>
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={cn("flex items-start gap-3", message.role === "user" ? "justify-end" : "justify-start")}
-          >
-            {message.role === "assistant" && showAvatar && (
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-purple-100 text-purple-600">
-                  <Bot className="h-4 w-4" />
-                </AvatarFallback>
-              </Avatar>
-            )}
-            <Card
-              className={cn(
-                "max-w-[80%]",
-                message.role === "user" ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800",
-              )}
+        {messages
+          .filter((m) => m.role !== "system")
+          .map((message, index) => (
+            <div
+              key={index}
+              className={cn("flex items-start gap-3", message.role === "user" ? "justify-end" : "justify-start")}
             >
-              <CardContent className="p-3">
-                {message.role === "assistant" ? (
-                  <ReactMarkdown className="prose dark:prose-invert prose-sm max-w-none">
-                    {message.content}
-                  </ReactMarkdown>
-                ) : (
-                  <p>{message.content}</p>
+              {message.role === "assistant" && showAvatar && (
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-purple-100 text-purple-600">
+                    <Bot className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <Card
+                className={cn(
+                  "max-w-[80%]",
+                  message.role === "user" ? "bg-purple-600 text-white" : "bg-gray-100 dark:bg-gray-800",
                 )}
+              >
+                <CardContent className="p-3">
+                  {message.role === "assistant" ? (
+                    <ReactMarkdown className="prose dark:prose-invert prose-sm max-w-none">
+                      {message.content}
+                    </ReactMarkdown>
+                  ) : (
+                    <p>{message.content}</p>
+                  )}
 
-                {message.role === "assistant" && (
-                  <div className="flex items-center justify-end mt-2 space-x-2 text-xs text-gray-500">
-                    <span className="mr-1">Helpful?</span>
-                    <button
-                      onClick={() => {
-                        toast({
-                          title: "Feedback received",
-                          description: "Thank you for your feedback!",
-                        })
-                      }}
-                      className="p-1 rounded-full hover:bg-gray-200"
-                      aria-label="Thumbs up"
-                    >
-                      <ThumbsUp className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        toast({
-                          title: "Feedback received",
-                          description: "Thank you for your feedback!",
-                        })
-                      }}
-                      className="p-1 rounded-full hover:bg-gray-200"
-                      aria-label="Thumbs down"
-                    >
-                      <ThumbsDown className="h-3 w-3" />
-                    </button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            {message.role === "user" && showAvatar && (
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-purple-100 text-purple-600">
-                  <User className="h-4 w-4" />
-                </AvatarFallback>
-                {user?.avatar_url && <AvatarImage src={user.avatar_url || "/placeholder.svg"} />}
-              </Avatar>
-            )}
-          </div>
-        ))}
+                  {message.role === "assistant" && (
+                    <div className="flex items-center justify-end mt-2 space-x-2 text-xs text-gray-500">
+                      <span className="mr-1">Helpful?</span>
+                      <button
+                        onClick={() => {
+                          toast({
+                            title: "Feedback received",
+                            description: "Thank you for your feedback!",
+                          })
+                        }}
+                        className="p-1 rounded-full hover:bg-gray-200"
+                        aria-label="Thumbs up"
+                      >
+                        <ThumbsUp className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          toast({
+                            title: "Feedback received",
+                            description: "Thank you for your feedback!",
+                          })
+                        }}
+                        className="p-1 rounded-full hover:bg-gray-200"
+                        aria-label="Thumbs down"
+                      >
+                        <ThumbsDown className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              {message.role === "user" && showAvatar && (
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback className="bg-purple-100 text-purple-600">
+                    <User className="h-4 w-4" />
+                  </AvatarFallback>
+                  {user?.avatar_url && <AvatarImage src={user.avatar_url || "/placeholder.svg"} />}
+                </Avatar>
+              )}
+            </div>
+          ))}
 
         {isLoading && (
           <div className="flex items-start gap-3">

@@ -1,8 +1,11 @@
-import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
-import { groq } from "@ai-sdk/groq"
+/**
+ * AI Service module for interacting with AI models
+ * @module ai-service
+ */
+
+import { v4 as uuidv4 } from "uuid"
 import { createClient } from "@supabase/supabase-js"
-import { GROQ_API_KEY, OPENAI_API_KEY } from "@/lib/env-config"
+import { logError } from "./error-logger"
 
 // Initialize Supabase client for storing conversation history
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
@@ -11,26 +14,8 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 // Create a singleton instance
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Define the available AI models
-export type AIModel = "gpt-4o" | "llama3-8b-8192" | "llama3-70b-8192" | "claude-3-opus" | "claude-3-sonnet"
-
-// Define the AI service providers
-export type AIProvider = "openai" | "groq" | "anthropic"
-
 // Define the AI tool types
 export type AIToolType = "language-tutor" | "study-notes" | "code-mentor" | "math-solver" | "essay-assistant"
-
-// Interface for AI request options
-export interface AIRequestOptions {
-  model: AIModel
-  provider: AIProvider
-  temperature?: number
-  maxTokens?: number
-  systemPrompt?: string
-  userId?: string
-  toolId: AIToolType
-  conversationId?: string
-}
 
 // Interface for conversation history
 export interface ConversationMessage {
@@ -40,79 +25,95 @@ export interface ConversationMessage {
 }
 
 /**
- * Generate AI response based on user input
+ * Sends a message to the AI chat service
+ * @async
+ * @param {Array<{role: string, content: string}>} messages - The messages to send
+ * @param {Object} options - Options for the chat request
+ * @returns {Promise<{text: string, conversationId: string, error?: Error}>} The chat response
  */
-export async function generateAIResponse(
-  prompt: string,
-  messages: ConversationMessage[] = [],
-  options: AIRequestOptions,
-): Promise<string> {
+export async function sendChatMessage(
+  messages: Array<{ role: string; content: string }>,
+  options: {
+    conversationId?: string
+    toolType?: string
+    temperature?: number
+    maxTokens?: number
+  } = {},
+): Promise<{
+  text: string
+  conversationId: string
+  error?: Error
+}> {
+  const { conversationId = `conv-${uuidv4()}`, toolType, temperature, maxTokens } = options
+
   try {
-    // Validate API keys
-    if (options.provider === "openai" && !OPENAI_API_KEY) {
-      throw new Error("OpenAI API key is not configured")
-    }
-    if (options.provider === "groq" && !GROQ_API_KEY) {
-      throw new Error("Groq API key is not configured")
+    // Validate messages
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      throw new Error("Invalid messages: Messages must be a non-empty array")
     }
 
-    // Prepare conversation history
-    const conversationHistory = [
-      ...(options.systemPrompt
-        ? [
-            {
-              role: "system" as const,
-              content: options.systemPrompt,
-            },
-          ]
-        : []),
-      ...messages,
-      {
-        role: "user" as const,
-        content: prompt,
+    // Prepare request body
+    const requestBody = {
+      messages,
+      conversationId,
+      toolType,
+      temperature,
+      maxTokens,
+    }
+
+    // Send request to API
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    ]
+      body: JSON.stringify(requestBody),
+    })
 
-    // Generate response based on provider
-    let response
-    if (options.provider === "openai") {
-      response = await generateText({
-        model: openai(options.model as any),
-        messages: conversationHistory,
-        temperature: options.temperature || 0.7,
-        maxTokens: options.maxTokens,
-      })
-    } else if (options.provider === "groq") {
-      response = await generateText({
-        model: groq(options.model as any),
-        messages: conversationHistory,
-        temperature: options.temperature || 0.7,
-        maxTokens: options.maxTokens,
-      })
-    } else {
-      throw new Error(`Provider ${options.provider} is not supported`)
+    // Handle non-OK responses
+    if (!response.ok) {
+      let errorMessage = `Error: ${response.status} ${response.statusText}`
+
+      try {
+        const errorData = await response.json()
+        if (errorData.error) {
+          errorMessage = errorData.error
+        }
+      } catch (e) {
+        // If we can't parse JSON, use the default error message
+      }
+
+      throw new Error(errorMessage)
     }
 
-    // Store conversation in Supabase if user is authenticated and conversationId is provided
-    if (options.userId && options.conversationId) {
-      await storeConversation(options.userId, options.conversationId, options.toolId, [
-        ...messages,
-        { role: "user", content: prompt },
-        { role: "assistant", content: response.text },
-      ])
-    }
+    // Parse response
+    const data = await response.json()
 
-    return response.text
+    return {
+      text: data.text,
+      conversationId: data.conversationId || conversationId,
+    }
   } catch (error) {
-    console.error("Error generating AI response:", error)
-    throw error
+    // Log error
+    logError(error instanceof Error ? error : new Error(String(error)), {
+      severity: "medium",
+      tags: ["ai", "chat"],
+      context: { toolType, conversationId },
+    })
+
+    // Return error in response
+    return {
+      text: "I'm sorry, I encountered an error while processing your request. Please try again later.",
+      conversationId,
+      error: error instanceof Error ? error : new Error(String(error)),
+    }
   }
 }
 
 /**
  * Store conversation history in Supabase
  */
-async function storeConversation(
+export async function storeConversation(
   userId: string,
   conversationId: string,
   toolType: AIToolType,
@@ -199,5 +200,55 @@ export async function getUserConversations(userId: string, toolType?: AIToolType
   } catch (error) {
     console.error("Error fetching user conversations:", error)
     return []
+  }
+}
+
+/**
+ * Tool types for AI tools
+ * @enum {string}
+ */
+export const ToolType = {
+  /** General AI tutor */
+  TUTOR: "tutor",
+  /** Math problem solver */
+  MATH: "math",
+  /** Code mentor */
+  CODE: "code",
+  /** Language tutor */
+  LANGUAGE: "language",
+  /** Essay assistant */
+  ESSAY: "essay",
+} as const
+
+/**
+ * Type for tool types
+ * @typedef {typeof ToolType[keyof typeof ToolType]} ToolTypeValue
+ */
+export type ToolTypeValue = (typeof ToolType)[keyof typeof ToolType]
+
+/**
+ * Gets the system prompt for a specific tool type
+ * @param {ToolTypeValue} toolType - The tool type
+ * @returns {string} The system prompt
+ */
+export function getSystemPrompt(toolType: ToolTypeValue): string {
+  switch (toolType) {
+    case ToolType.TUTOR:
+      return "You are an AI tutor from Masterin, designed to help students learn and understand various subjects. Provide clear, concise explanations and ask questions to guide the student's learning."
+
+    case ToolType.MATH:
+      return "You are a math problem solver from Masterin. Your goal is to help students solve math problems by providing step-by-step solutions and explanations. Break down complex problems into manageable steps."
+
+    case ToolType.CODE:
+      return "You are a code mentor from Masterin. Your goal is to help students learn programming by explaining code, debugging issues, and providing guidance on best practices. Use code examples to illustrate concepts."
+
+    case ToolType.LANGUAGE:
+      return "You are a language tutor from Masterin. Your goal is to help students learn and practice languages. Correct grammar and vocabulary errors, provide translations, and engage in conversations to improve fluency."
+
+    case ToolType.ESSAY:
+      return "You are an essay assistant from Masterin. Your goal is to help students plan, write, and edit essays. Provide feedback on structure, clarity, and argumentation. Help with brainstorming ideas and improving writing style."
+
+    default:
+      return "You are an AI assistant from Masterin, designed to help students with their educational needs. Provide helpful, accurate, and educational responses."
   }
 }

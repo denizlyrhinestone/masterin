@@ -18,7 +18,6 @@ export async function POST(req: Request) {
       )
     }
 
-    // Rest of the existing code...
     // Parse request body
     let body
     try {

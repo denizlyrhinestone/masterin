@@ -65,7 +65,6 @@
     "@ai-sdk/groq": "latest",
     "uuid": "latest",
     "@supabase/ssr": "latest",
-    "@ai-sdk/openai": "latest",
     "react-markdown": "latest"
   },
   "devDependencies": {
