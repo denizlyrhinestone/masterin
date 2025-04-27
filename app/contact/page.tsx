@@ -100,11 +100,7 @@ export default function ContactPage() {
                     <Mail className="w-6 h-6 text-purple-600 flex-shrink-0 mt-1" />
                     <div>
                       <h3 className="font-semibold mb-2">Email</h3>
-                      <p className="text-gray-600 dark:text-gray-300">
-                        info@eduai.com
-                        <br />
-                        support@eduai.com
-                      </p>
+                      <p className="text-gray-600 dark:text-gray-300">admin@masterin.org</p>
                     </div>
                   </CardContent>
                 </Card>

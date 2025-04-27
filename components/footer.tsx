@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Facebook, Twitter, Instagram, Linkedin, Github } from "lucide-react"
+import { Facebook, Twitter, Instagram, Linkedin, Github, Mail } from "lucide-react"
 import Image from "next/image"
 
 export default function Footer() {
@@ -15,6 +15,9 @@ export default function Footer() {
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Empowering students and educators with AI-enhanced learning experiences.
+            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              <Mail className="inline-block mr-1 h-4 w-4" /> admin@masterin.org
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-gray-500 hover:text-purple-600">
@@ -107,7 +110,7 @@ export default function Footer() {
         <div className="border-t border-gray-200 dark:border-gray-800 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-xs text-gray-600 dark:text-gray-400">
-              &copy; {new Date().getFullYear()} EduAI. All rights reserved.
+              &copy; {new Date().getFullYear()} Masterin. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy" className="text-xs text-gray-600 dark:text-gray-400 hover:text-purple-600">
