@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { BookOpen, Clock, Users, Star, Filter, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import CourseVideoPreview from "@/components/course-video-preview"
 
 export default function CoursesPage() {
   return (
@@ -48,6 +49,7 @@ export default function CoursesPage() {
                 title: "Web Development Bootcamp",
                 description: "A comprehensive course covering HTML, CSS, JavaScript, and modern frameworks.",
                 image: "/course-web-development.png",
+                videoUrl: "/videos/web-development-preview.mp4",
                 level: "Beginner to Intermediate",
                 duration: "16 weeks",
                 students: "5,432",
@@ -60,6 +62,7 @@ export default function CoursesPage() {
                 title: "Artificial Intelligence Fundamentals",
                 description: "Learn the core concepts of AI, machine learning, and neural networks.",
                 image: "/course-ai-fundamentals.png",
+                videoUrl: "/videos/ai-fundamentals-preview.mp4",
                 level: "Intermediate",
                 duration: "12 weeks",
                 students: "4,123",
@@ -72,6 +75,7 @@ export default function CoursesPage() {
                 title: "Digital Marketing Mastery",
                 description: "Master digital marketing strategies, SEO, social media, and analytics.",
                 image: "/course-digital-marketing.png",
+                videoUrl: "/videos/digital-marketing-preview.mp4",
                 level: "All Levels",
                 duration: "10 weeks",
                 students: "3,987",
@@ -82,22 +86,21 @@ export default function CoursesPage() {
               },
             ].map((course, index) => (
               <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <Link href={course.link} className="block">
-                  <div className="relative h-48 overflow-hidden">
-                    <Image
-                      src={course.image || "/placeholder.svg"}
-                      alt={course.title}
-                      fill
-                      className="object-cover transition-transform duration-300 hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      priority={index < 3}
-                    />
-                    <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
-                      <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
-                      {course.rating}
-                    </div>
+                <div className="relative h-48 overflow-hidden">
+                  <Image
+                    src={course.image || "/placeholder.svg"}
+                    alt={course.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    priority={index < 3}
+                  />
+                  <CourseVideoPreview title={course.title} videoUrl={course.videoUrl} thumbnailUrl={course.image} />
+                  <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
+                    <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
+                    {course.rating}
                   </div>
-                </Link>
+                </div>
                 <CardContent className="p-6">
                   <Link href={course.link}>
                     <h3 className="text-xl font-semibold mb-2 hover:text-purple-600 transition-colors">
@@ -144,6 +147,7 @@ export default function CoursesPage() {
                 title: "Introduction to Machine Learning",
                 description: "Learn the fundamentals of machine learning algorithms and applications.",
                 image: "/course-machine-learning.png",
+                videoUrl: "/videos/machine-learning-preview.mp4",
                 level: "Beginner",
                 duration: "8 weeks",
                 students: "2,345",
@@ -156,6 +160,7 @@ export default function CoursesPage() {
                 title: "Advanced Python Programming",
                 description: "Master Python with advanced concepts and real-world projects.",
                 image: "/course-python-programming.png",
+                videoUrl: "/videos/python-programming-preview.mp4",
                 level: "Intermediate",
                 duration: "10 weeks",
                 students: "1,876",
@@ -168,6 +173,7 @@ export default function CoursesPage() {
                 title: "Data Science Fundamentals",
                 description: "Discover how to analyze and visualize data to extract meaningful insights.",
                 image: "/course-data-science.png",
+                videoUrl: "/videos/data-science-preview.mp4",
                 level: "Beginner",
                 duration: "12 weeks",
                 students: "3,210",
@@ -178,21 +184,20 @@ export default function CoursesPage() {
               },
             ].map((course, index) => (
               <Card key={index} className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
-                <Link href={course.link} className="block">
-                  <div className="relative h-48 overflow-hidden">
-                    <Image
-                      src={course.image || "/placeholder.svg"}
-                      alt={course.title}
-                      fill
-                      className="object-cover transition-transform duration-300 hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-                    <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
-                      <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
-                      {course.rating}
-                    </div>
+                <div className="relative h-48 overflow-hidden">
+                  <Image
+                    src={course.image || "/placeholder.svg"}
+                    alt={course.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  />
+                  <CourseVideoPreview title={course.title} videoUrl={course.videoUrl} thumbnailUrl={course.image} />
+                  <div className="absolute top-2 right-2 bg-white dark:bg-gray-800 rounded-full px-2 py-1 text-xs font-semibold flex items-center">
+                    <Star className="h-3 w-3 text-yellow-400 mr-1" fill="currentColor" />
+                    {course.rating}
                   </div>
-                </Link>
+                </div>
                 <CardContent className="p-6">
                   <Link href={course.link}>
                     <h3 className="text-xl font-semibold mb-2 hover:text-purple-600 transition-colors">
