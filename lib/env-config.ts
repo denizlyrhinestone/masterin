@@ -4,6 +4,7 @@
 // Feature flags
 export const ENABLE_AI_FEATURES = true
 export const ENABLE_ADMIN_FEATURES = process.env.ENABLE_ADMIN_FEATURES === "true"
+export const ENABLE_ANALYTICS = process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === "true"
 
 // Admin configuration
 export const ADMIN_EMAIL = process.env.ADMIN_EMAIL || ""

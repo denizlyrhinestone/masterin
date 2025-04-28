@@ -6,7 +6,7 @@ import Footer from "@/components/footer"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { GlobalErrorBoundary } from "@/components/global-error-boundary"
-import { AnalyticsProvider } from "@/components/analytics-provider"
+import { AnalyticsInitializer } from "@/components/analytics-initializer"
 import type { Metadata } from "next"
 import { Suspense } from "react"
 
@@ -43,15 +43,15 @@ export default function RootLayout({
         <GlobalErrorBoundary>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
             <AuthProvider>
-              <AnalyticsProvider>
-                <div className="flex flex-col min-h-screen">
-                  <Navbar />
-                  <Suspense>
-                    <main className="flex-grow">{children}</main>
-                  </Suspense>
-                  <Footer />
-                </div>
-              </AnalyticsProvider>
+              <div className="flex flex-col min-h-screen">
+                <Navbar />
+                <Suspense>
+                  <main className="flex-grow">{children}</main>
+                </Suspense>
+                <Footer />
+              </div>
+              {/* Analytics initializer - client-side only */}
+              <AnalyticsInitializer />
             </AuthProvider>
           </ThemeProvider>
         </GlobalErrorBoundary>

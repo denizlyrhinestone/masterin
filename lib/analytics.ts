@@ -1,41 +1,43 @@
-// Analytics utility functions
+/**
+ * Analytics utility for Masterin
+ *
+ * This module provides functions for tracking page views and events
+ * conditionally based on the NEXT_PUBLIC_ENABLE_ANALYTICS environment variable.
+ */
 
-// Import the environment config
-import { NEXT_PUBLIC_ENABLE_ANALYTICS } from "@/lib/env-config"
+// Check if analytics are enabled via environment variable
+export const isAnalyticsEnabled = process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === "true"
 
-// Google Analytics Measurement ID - typically starts with "G-"
-// In a real implementation, this would also be an environment variable
+// Replace with your actual Google Analytics Measurement ID
 const GA_MEASUREMENT_ID = "G-XXXXXXXXXX"
 
-// Type for analytics events
-type AnalyticsEvent = {
-  action: string
-  category?: string
-  label?: string
-  value?: number
-  // Additional properties can be added as needed
-  [key: string]: any
+/**
+ * Safe wrapper for console logging in analytics
+ * Only logs in development or when debug mode is enabled
+ */
+const logAnalytics = (message: string, data?: any) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[Analytics] ${message}`, data || "")
+  }
 }
 
 /**
  * Initialize Google Analytics
- * This function safely initializes GA only if analytics are enabled
+ * This function is called client-side to load and initialize GA
  */
-export const initializeAnalytics = () => {
+export function initializeAnalytics(): boolean {
   try {
-    if (!NEXT_PUBLIC_ENABLE_ANALYTICS) {
-      console.log("Analytics are disabled via NEXT_PUBLIC_ENABLE_ANALYTICS")
+    // Don't run during SSR or if analytics are disabled
+    if (typeof window === "undefined" || !isAnalyticsEnabled) {
       return false
-    }
-
-    if (typeof window === "undefined") {
-      return false // Don't run during SSR
     }
 
     // Check if GA is already initialized
     if (window.gtag) {
       return true
     }
+
+    logAnalytics("Initializing analytics")
 
     // Load Google Analytics script
     const script = document.createElement("script")
@@ -50,82 +52,77 @@ export const initializeAnalytics = () => {
     }
     window.gtag("js", new Date())
     window.gtag("config", GA_MEASUREMENT_ID, {
-      send_page_view: false, // We'll handle page views manually
+      send_page_view: false, // We'll track page views manually
     })
 
-    console.log("Analytics initialized successfully")
+    logAnalytics("Analytics initialized successfully")
     return true
   } catch (error) {
-    console.error("Failed to initialize analytics:", error)
+    console.error("[Analytics] Failed to initialize:", error)
     return false
   }
 }
 
 /**
  * Track a page view
- * @param url The URL to track
+ * @param path The path to track (without query parameters)
  */
-export const trackPageView = (url: string) => {
+export function trackPageView(path: string): boolean {
   try {
-    if (!NEXT_PUBLIC_ENABLE_ANALYTICS) {
+    // Don't run during SSR or if analytics are disabled
+    if (typeof window === "undefined" || !isAnalyticsEnabled || !window.gtag) {
       return false
     }
 
-    if (typeof window === "undefined" || !window.gtag) {
-      return false
-    }
+    logAnalytics(`Tracking page view: ${path}`)
 
     window.gtag("event", "page_view", {
-      page_path: url,
+      page_path: path,
     })
     return true
   } catch (error) {
-    console.error("Failed to track page view:", error)
+    console.error("[Analytics] Failed to track page view:", error)
     return false
   }
 }
 
 /**
  * Track a custom event
- * @param event The event to track
+ * @param eventName The name of the event to track
+ * @param eventParams Additional parameters for the event
  */
-export const trackEvent = (event: AnalyticsEvent) => {
+export function trackEvent(eventName: string, eventParams?: Record<string, any>): boolean {
   try {
-    if (!NEXT_PUBLIC_ENABLE_ANALYTICS) {
+    // Don't run during SSR or if analytics are disabled
+    if (typeof window === "undefined" || !isAnalyticsEnabled || !window.gtag) {
       return false
     }
 
-    if (typeof window === "undefined" || !window.gtag) {
-      return false
-    }
+    logAnalytics(`Tracking event: ${eventName}`, eventParams)
 
-    window.gtag("event", event.action, {
-      event_category: event.category,
-      event_label: event.label,
-      value: event.value,
-      ...event, // Include any additional properties
-    })
+    window.gtag("event", eventName, eventParams)
     return true
   } catch (error) {
-    console.error("Failed to track event:", error)
+    console.error(`[Analytics] Failed to track event ${eventName}:`, error)
     return false
   }
 }
 
 /**
- * Check if analytics are currently enabled and working
- * @returns Object with status and details
+ * Check the current analytics status
+ * @returns Object with status information
  */
-export const checkAnalyticsStatus = () => {
-  // Check environment variable
-  const envEnabled = NEXT_PUBLIC_ENABLE_ANALYTICS
-
-  // Check if GA is loaded
-  const gaLoaded = typeof window !== "undefined" && !!window.gtag
-
+export function checkAnalyticsStatus() {
   return {
-    enabled: envEnabled,
-    initialized: gaLoaded,
-    measurementId: envEnabled ? GA_MEASUREMENT_ID : null,
+    enabled: isAnalyticsEnabled,
+    measurementId: isAnalyticsEnabled ? GA_MEASUREMENT_ID : null,
+    initialized: typeof window !== "undefined" && !!window.gtag,
+    environmentValue: process.env.NEXT_PUBLIC_ENABLE_ANALYTICS || "not set",
   }
 }
+
+/**
+ * Get the current analytics status (alias for checkAnalyticsStatus)
+ * @returns Object with status information
+ */
+export const getAnalyticsStatus = checkAnalyticsStatus
