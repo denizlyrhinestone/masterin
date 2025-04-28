@@ -4,12 +4,12 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
-import { Brain, FileText, Calculator, Code, BookOpen, Lock, Globe } from "lucide-react"
+import { Brain, FileText, Calculator, Code, BookOpen, Lock, Globe, Sparkles } from "lucide-react"
 
 // Define the AI tools data
 const aiTools = [
@@ -21,6 +21,7 @@ const aiTools = [
     image: "/ai-tutor-interface.png",
     path: "/ai/chat",
     popular: true,
+    color: "from-purple-500 to-indigo-600",
   },
   {
     id: "essay-assistant",
@@ -30,6 +31,7 @@ const aiTools = [
     image: "/digital-essay-workspace.png",
     path: "/ai/essay",
     new: true,
+    color: "from-blue-500 to-cyan-600",
   },
   {
     id: "math-solver",
@@ -38,6 +40,7 @@ const aiTools = [
     icon: <Calculator className="h-6 w-6" />,
     image: "/digital-equation-solver.png",
     path: "/ai/math",
+    color: "from-green-500 to-emerald-600",
   },
   {
     id: "code-mentor",
@@ -46,6 +49,7 @@ const aiTools = [
     icon: <Code className="h-6 w-6" />,
     image: "/interactive-code-lesson.png",
     path: "/ai/code",
+    color: "from-orange-500 to-amber-600",
   },
   {
     id: "study-notes",
@@ -54,14 +58,16 @@ const aiTools = [
     icon: <BookOpen className="h-6 w-6" />,
     image: "/study-notes-generator-interface.png",
     path: "/ai/notes",
+    color: "from-pink-500 to-rose-600",
   },
   {
     id: "language-tutor",
     title: "Language Tutor",
     description: "Practice conversations and improve your language skills",
     icon: <Globe className="h-6 w-6" />,
-    image: "/placeholder.svg?height=200&width=400&query=language learning conversation interface",
+    image: "/multilingual-chat.png",
     path: "/ai/language",
+    color: "from-violet-500 to-purple-600",
   },
 ]
 
@@ -70,6 +76,7 @@ export default function AIToolsSection() {
   const { toast } = useToast()
   const router = useRouter()
   const [usageCount, setUsageCount] = useState<Record<string, number>>({})
+  const [hoveredTool, setHoveredTool] = useState<string | null>(null)
 
   // Load usage counts from localStorage on component mount
   useEffect(() => {
@@ -124,9 +131,12 @@ export default function AIToolsSection() {
   }
 
   return (
-    <section className="py-16 md:py-24">
+    <section className="py-16 md:py-24 bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
+          <Badge className="mb-4 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30">
+            AI-Powered Learning
+          </Badge>
           <h2 className="text-3xl md:text-4xl font-bold mb-6">Explore Our AI Learning Tools</h2>
           <p className="text-lg text-gray-600 dark:text-gray-300">
             Powerful AI tools designed to enhance your learning experience and help you master any subject
@@ -138,6 +148,8 @@ export default function AIToolsSection() {
             <Card
               key={tool.id}
               className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group"
+              onMouseEnter={() => setHoveredTool(tool.id)}
+              onMouseLeave={() => setHoveredTool(null)}
             >
               <div className="relative h-48">
                 <Image
@@ -146,20 +158,22 @@ export default function AIToolsSection() {
                   fill
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                {tool.popular && <Badge className="absolute top-2 right-2 bg-purple-600">Popular</Badge>}
-                {tool.new && <Badge className="absolute top-2 right-2 bg-green-600">New</Badge>}
-              </div>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400">
-                    {tool.icon}
-                  </div>
-                  <CardTitle>{tool.title}</CardTitle>
+                <div
+                  className={`absolute inset-0 bg-gradient-to-t ${tool.color} opacity-60 group-hover:opacity-70 transition-opacity`}
+                ></div>
+                <div className="absolute inset-0 flex flex-col justify-center items-center text-white p-6">
+                  <div className="bg-white/20 p-3 rounded-full backdrop-blur-sm mb-4">{tool.icon}</div>
+                  <h3 className="text-xl font-bold text-center mb-2">{tool.title}</h3>
+                  <p className="text-sm text-center text-white/90">{tool.description}</p>
                 </div>
-                <CardDescription>{tool.description}</CardDescription>
-              </CardHeader>
-              <CardFooter className="flex justify-between items-center">
+                {tool.popular && (
+                  <Badge className="absolute top-2 right-2 bg-purple-600 text-white">
+                    <Sparkles className="w-3 h-3 mr-1" /> Popular
+                  </Badge>
+                )}
+                {tool.new && <Badge className="absolute top-2 right-2 bg-green-600 text-white">New</Badge>}
+              </div>
+              <CardFooter className="flex justify-between items-center p-4 bg-white dark:bg-gray-800">
                 <div className="text-sm text-gray-500 dark:text-gray-400">
                   {!isAuthenticated && (
                     <div className="flex items-center">
@@ -167,7 +181,11 @@ export default function AIToolsSection() {
                     </div>
                   )}
                 </div>
-                <Button onClick={() => handleToolAccess(tool.id, tool.path)} variant="default">
+                <Button
+                  onClick={() => handleToolAccess(tool.id, tool.path)}
+                  variant="default"
+                  className={`${hoveredTool === tool.id ? "scale-105" : ""} transition-transform`}
+                >
                   {isAuthenticated ? (
                     "Try Now"
                   ) : (
@@ -184,12 +202,21 @@ export default function AIToolsSection() {
 
         {!isAuthenticated && (
           <div className="mt-12 text-center">
-            <p className="text-gray-600 dark:text-gray-300 mb-4">Want unlimited access to all AI tools?</p>
-            <Link href="/auth/sign-up">
-              <Button size="lg" className="px-8">
-                Sign Up for Free
-              </Button>
-            </Link>
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg max-w-2xl mx-auto">
+              <h3 className="text-2xl font-bold mb-4">Want unlimited access to all AI tools?</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                Sign up for a free account to get unlimited access to all our AI learning tools and personalized
+                learning features.
+              </p>
+              <Link href="/auth/sign-up">
+                <Button
+                  size="lg"
+                  className="px-8 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                >
+                  Sign Up for Free
+                </Button>
+              </Link>
+            </div>
           </div>
         )}
       </div>

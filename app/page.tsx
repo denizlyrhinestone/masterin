@@ -62,53 +62,74 @@ export default function Home() {
       {/* Free Trial Banner */}
       <FreeTrialBanner checkClientSide={true} />
 
-      {/* AI Chat Integration Section */}
-      <section className="py-16 md:py-24">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center gap-12">
-            <div className="lg:w-1/2">
+      {/* AI Chat Integration Section - REFACTORED TO 20/80 SPLIT */}
+      <section className="py-16 md:py-24 relative overflow-hidden">
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/10 dark:to-indigo-950/10 opacity-70"></div>
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 25px 25px, rgba(128, 90, 213, 0.1) 2%, transparent 0%), radial-gradient(circle at 75px 75px, rgba(79, 70, 229, 0.1) 2%, transparent 0%)",
+            backgroundSize: "100px 100px",
+          }}
+        ></div>
+
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="flex flex-col lg:flex-row items-start gap-8">
+            {/* Content section - 20% width */}
+            <div className="lg:w-1/5 lg:sticky lg:top-24">
               <Badge className="mb-4 bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 hover:bg-purple-100 dark:hover:bg-purple-900/30">
                 Featured Tool
               </Badge>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                Your Personal AI Tutor,{" "}
+              <h2 className="text-2xl font-bold mb-4">
                 <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                  Available Now
+                  Try our AI Tutor
                 </span>
               </h2>
-              <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-                Ask any question and get instant, detailed explanations. Our AI tutor adapts to your learning style and
-                helps you master any subject.
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                Ask any question and get instant, detailed explanations tailored to your learning style.
               </p>
-              <ul className="space-y-4 mb-8">
+
+              <ul className="space-y-2 mb-4 text-sm">
                 <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  <div className="w-4 h-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-1.5 mt-0.5">
+                    <CheckCircle className="w-2 h-2 text-green-600" />
                   </div>
-                  <span>Ask questions in natural language</span>
+                  <span>Ask in natural language</span>
                 </li>
                 <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  <div className="w-4 h-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-1.5 mt-0.5">
+                    <CheckCircle className="w-2 h-2 text-green-600" />
                   </div>
-                  <span>Get step-by-step explanations</span>
+                  <span>Get step-by-step help</span>
                 </li>
                 <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
-                    <CheckCircle className="w-4 h-4 text-green-600" />
+                  <div className="w-4 h-4 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-1.5 mt-0.5">
+                    <CheckCircle className="w-2 h-2 text-green-600" />
                   </div>
-                  <span>Available for all subjects and topics</span>
+                  <span>Upload images of problems</span>
                 </li>
               </ul>
-              <Link href="/ai/chat">
-                <Button className="group">
-                  Open Full Chat Experience
-                  <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+
+              <Link href="/ai">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full group border-purple-600 text-purple-600 hover:bg-purple-50 dark:border-purple-400 dark:text-purple-400 dark:hover:bg-purple-950/30"
+                >
+                  More AI Tools
+                  <ArrowRight className="ml-1 w-3 h-3 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
             </div>
-            <div className="lg:w-1/2">
-              <AIChatWidget />
+
+            {/* Chat widget section - 80% width */}
+            <div className="lg:w-4/5 mt-8 lg:mt-0">
+              <div className="relative">
+                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+                <AIChatWidget expanded={true} />
+              </div>
             </div>
           </div>
         </div>

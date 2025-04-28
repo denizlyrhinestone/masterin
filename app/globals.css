@@ -159,3 +159,29 @@ body {
 .animate-pulse-border {
   animation: pulse-border 2s infinite;
 }
+
+/* Prevent flickering in chat widget */
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+/* Optimize rendering performance */
+.will-change-transform {
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+/* Prevent layout shifts */
+.chat-message-container {
+  contain: content;
+}
+
+/* Reduce animation impact */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-gradient-text,
+  .animate-pulse-border,
+  .animate-pulse {
+    animation: none !important;
+  }
+}
