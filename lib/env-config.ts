@@ -1,4 +1,5 @@
 // Environment configuration
+// This file centralizes all environment variable access
 
 // Feature flags
 export const ENABLE_AI_FEATURES = true
@@ -7,7 +8,7 @@ export const ENABLE_ADMIN_FEATURES = process.env.ENABLE_ADMIN_FEATURES === "true
 // Admin configuration
 export const ADMIN_EMAIL = process.env.ADMIN_EMAIL || ""
 
-// API Keys (server-side only)
+// API Keys - only accessible server-side
 export const GROQ_API_KEY = process.env.GROQ_API_KEY || ""
 export const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ""
 
@@ -49,21 +50,18 @@ export function validateOpenAIApiKey(): { valid: boolean; message: string } {
   return { valid: true, message: "OPENAI_API_KEY is valid" }
 }
 
-// IMPORTANT: Do not export the actual API keys to client components
-// Instead, create methods that can be called from API routes
+// Safe client-side configuration
+// These functions don't expose the actual keys
+export const isGroqConfigured = () => !!process.env.GROQ_API_KEY
+export const isOpenAIConfigured = () => !!process.env.OPENAI_API_KEY
 
-/**
- * Safe method to check if Groq API is configured
- * This is safe to use in client components as it doesn't expose the actual key
- */
-export function isGroqConfigured(): boolean {
-  return !!GROQ_API_KEY && GROQ_API_KEY.startsWith("gsk_")
-}
+// Database configuration
+export const DATABASE_URL = process.env.DATABASE_URL || process.env.POSTGRES_URL || ""
 
-/**
- * Safe method to check if OpenAI API is configured
- * This is safe to use in client components as it doesn't expose the actual key
- */
-export function isOpenAIConfigured(): boolean {
-  return !!OPENAI_API_KEY && OPENAI_API_KEY.startsWith("sk-")
-}
+// Supabase configuration
+export const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+export const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+
+// Public configuration that's safe to expose to the client
+export const NEXT_PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || ""
+export const NEXT_PUBLIC_ENABLE_ANALYTICS = process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === "true"

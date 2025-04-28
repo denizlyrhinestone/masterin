@@ -64,7 +64,8 @@
     "ai": "latest",
     "uuid": "latest",
     "@supabase/ssr": "latest",
-    "react-markdown": "latest"
+    "react-markdown": "latest",
+    "@supabase/auth-helpers-nextjs": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

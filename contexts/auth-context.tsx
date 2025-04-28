@@ -11,6 +11,7 @@ interface UserProfile {
   email: string
   name: string | null
   avatar_url: string | null
+  isAdmin?: boolean // Added isAdmin property
 }
 
 interface AuthContextType {
@@ -18,6 +19,7 @@ interface AuthContextType {
   session: Session | null
   isAuthenticated: boolean
   isLoading: boolean
+  isAdmin: boolean // Added isAdmin flag
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   signInWithGoogle: () => Promise<{ error: AuthError | null }>
   signUp: (email: string, password: string, name: string) => Promise<{ error: AuthError | null; userId: string | null }>
@@ -25,6 +27,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>
   updatePassword: (password: string) => Promise<{ error: AuthError | null }>
   updateProfile: (data: Partial<UserProfile>) => Promise<{ error: Error | null }>
+  checkAdminStatus: () => Promise<boolean> // Added admin check function
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -32,6 +35,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   isAuthenticated: false,
   isLoading: true,
+  isAdmin: false, // Added default value
   signIn: async () => ({ error: null }),
   signInWithGoogle: async () => ({ error: null }),
   signUp: async () => ({ error: null, userId: null }),
@@ -39,6 +43,7 @@ const AuthContext = createContext<AuthContextType>({
   resetPassword: async () => ({ error: null }),
   updatePassword: async () => ({ error: null }),
   updateProfile: async () => ({ error: null }),
+  checkAdminStatus: async () => false, // Added default implementation
 })
 
 interface AuthProviderProps {
@@ -50,8 +55,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [isAdmin, setIsAdmin] = useState(false) // Added admin state
   const { toast } = useToast()
   const router = useRouter()
+
+  // Function to check if user is admin
+  const checkAdminStatus = useCallback(async (): Promise<boolean> => {
+    try {
+      if (!user?.email) return false
+
+      // Call the server API to check admin status
+      const response = await fetch("/api/check-admin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include", // Important for cookies/auth
+      })
+
+      if (!response.ok) return false
+
+      const data = await response.json()
+      return !!data.isAdmin
+    } catch (error) {
+      console.error("Error checking admin status:", error)
+      return false
+    }
+  }, [user?.email])
 
   // Function to fetch user profile from Supabase
   const fetchUserProfile = useCallback(async (userId: string) => {
@@ -129,17 +159,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             }
           }
           setIsAuthenticated(true)
+
+          // Check admin status after setting user
+          const adminStatus = await checkAdminStatus()
+          setIsAdmin(adminStatus)
         } else {
           setUser(null)
           setIsAuthenticated(false)
+          setIsAdmin(false)
         }
       } catch (error) {
         console.error("Error in updateUserState:", error)
         setUser(null)
         setIsAuthenticated(false)
+        setIsAdmin(false)
       }
     },
-    [fetchUserProfile, createUserProfile],
+    [fetchUserProfile, createUserProfile, checkAdminStatus],
   )
 
   useEffect(() => {
@@ -158,6 +194,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         if (event === "SIGNED_OUT") {
           setUser(null)
           setIsAuthenticated(false)
+          setIsAdmin(false)
           router.push("/auth/sign-in")
         } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
           await updateUserState(currentSession)
@@ -451,6 +488,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     session,
     isAuthenticated,
     isLoading,
+    isAdmin, // Expose isAdmin to consumers
     signIn,
     signInWithGoogle,
     signUp,
@@ -458,6 +496,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     resetPassword,
     updatePassword,
     updateProfile,
+    checkAdminStatus, // Expose the admin check function
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

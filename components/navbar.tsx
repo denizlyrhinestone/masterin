@@ -27,7 +27,7 @@ const navLinks = [
   { name: "AI Tutor", href: "/ai" },
   { name: "Resources", href: "/resources" },
   { name: "Community", href: "/contact" },
-  { label: "Groq Test", href: "/groq-test" },
+  { label: "Groq Test", href: "/groq-test", adminOnly: true }, // Mark as admin-only
 ]
 
 export default function Navbar() {
@@ -35,7 +35,7 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const pathname = usePathname()
   const isMobile = useMobile()
-  const { user, isAuthenticated, signOut, isLoading } = useAuth()
+  const { user, isAuthenticated, signOut, isLoading, isAdmin } = useAuth()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -61,6 +61,9 @@ export default function Navbar() {
     return user.email.charAt(0).toUpperCase()
   }
 
+  // Filter nav links based on admin status
+  const filteredNavLinks = navLinks.filter((link) => !link.adminOnly || isAdmin)
+
   return (
     <header
       className={`fixed top-0 w-full z-50 transition-all duration-300 ${
@@ -77,7 +80,7 @@ export default function Navbar() {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex space-x-8">
-            {navLinks.map((link) => (
+            {filteredNavLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
@@ -91,8 +94,14 @@ export default function Navbar() {
           </nav>
 
           <div className="hidden md:flex items-center space-x-4">
-            <AIStatusIndicator />
-            <GroqStatusIndicator />
+            {/* Only show status indicators for admins */}
+            {isAdmin && (
+              <>
+                <AIStatusIndicator />
+                <GroqStatusIndicator />
+              </>
+            )}
+
             {isLoading ? (
               <div className="h-9 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-md"></div>
             ) : isAuthenticated ? (
@@ -111,6 +120,9 @@ export default function Navbar() {
                     <div className="flex flex-col space-y-0.5 leading-none">
                       <p className="font-medium text-sm">{user?.name || "User"}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</p>
+                      {isAdmin && (
+                        <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Administrator</p>
+                      )}
                     </div>
                   </div>
                   <DropdownMenuSeparator />
@@ -169,7 +181,7 @@ export default function Navbar() {
       {isOpen && (
         <div className="md:hidden bg-white dark:bg-gray-900 shadow-lg">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            {navLinks.map((link) => (
+            {filteredNavLinks.map((link) => (
               <Link
                 key={link.name}
                 href={link.href}
@@ -196,6 +208,9 @@ export default function Navbar() {
                     <div className="ml-3">
                       <div className="text-base font-medium">{user?.name || "User"}</div>
                       <div className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</div>
+                      {isAdmin && (
+                        <div className="text-xs text-purple-600 dark:text-purple-400 font-medium">Administrator</div>
+                      )}
                     </div>
                   </div>
                   <Link
@@ -225,12 +240,17 @@ export default function Navbar() {
                       <span>Log out</span>
                     </div>
                   </button>
+
+                  {/* Only show status indicators for admins in mobile view */}
+                  {isAdmin && (
+                    <div className="flex items-center px-3 space-x-2 mt-2">
+                      <AIStatusIndicator />
+                      <GroqStatusIndicator />
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="flex items-center px-3 space-x-2">
-                  <div className="flex items-center mb-2">
-                    <AIStatusIndicator />
-                  </div>
                   <Link href="/auth/sign-in" className="w-full">
                     <Button variant="outline" size="sm" className="w-full">
                       Sign In

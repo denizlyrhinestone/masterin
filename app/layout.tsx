@@ -6,7 +6,9 @@ import Footer from "@/components/footer"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { GlobalErrorBoundary } from "@/components/global-error-boundary"
+import { AnalyticsProvider } from "@/components/analytics-provider"
 import type { Metadata } from "next"
+import { Suspense } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -21,7 +23,7 @@ export const metadata: Metadata = {
   // Add security-related metadata
   other: {
     "Content-Security-Policy":
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;",
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://www.google-analytics.com;",
     "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "strict-origin-when-cross-origin",
@@ -41,11 +43,15 @@ export default function RootLayout({
         <GlobalErrorBoundary>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
             <AuthProvider>
-              <div className="flex flex-col min-h-screen">
-                <Navbar />
-                <main className="flex-grow">{children}</main>
-                <Footer />
-              </div>
+              <AnalyticsProvider>
+                <div className="flex flex-col min-h-screen">
+                  <Navbar />
+                  <Suspense>
+                    <main className="flex-grow">{children}</main>
+                  </Suspense>
+                  <Footer />
+                </div>
+              </AnalyticsProvider>
             </AuthProvider>
           </ThemeProvider>
         </GlobalErrorBoundary>
