@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, RefreshCw, AlertTriangle, CheckCircle } from "lucide-react"
-import { checkGroqAvailability } from "@/lib/groq-client"
+import { Loader2, RefreshCw, AlertTriangle, CheckCircle, ArrowLeft } from "lucide-react"
 import { GROQ_API_KEY } from "@/lib/env-config"
+import Link from "next/link"
 
-export default function AIStatusPage() {
+export default function ClientAIStatusPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [groqStatus, setGroqStatus] = useState<{ available: boolean; message: string }>({
     available: false,
@@ -23,15 +23,30 @@ export default function AIStatusPage() {
     checkGroqStatus()
   }, [])
 
-  const checkGroqStatus = () => {
+  const checkGroqStatus = async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const status = checkGroqAvailability()
-      setGroqStatus(status)
+      const response = await fetch("/api/check-groq", {
+        method: "GET",
+      })
+
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`)
+      }
+
+      const data = await response.json()
+      setGroqStatus({
+        available: data.status === "available",
+        message: data.message || (data.status === "available" ? "Groq API is available" : "Groq API is unavailable"),
+      })
     } catch (err) {
       setError("Error checking Groq availability: " + (err instanceof Error ? err.message : String(err)))
+      setGroqStatus({
+        available: false,
+        message: "Failed to check Groq API status",
+      })
     } finally {
       setIsLoading(false)
     }
@@ -62,7 +77,14 @@ export default function AIStatusPage() {
 
   return (
     <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-bold mb-6">AI Service Status</h1>
+      <div className="flex items-center mb-6">
+        <Link href="/admin/ai-status" className="mr-4">
+          <Button variant="outline" size="icon">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        </Link>
+        <h1 className="text-3xl font-bold">AI Service Status</h1>
+      </div>
 
       <Card className="mb-6">
         <CardHeader>

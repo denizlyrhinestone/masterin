@@ -51,7 +51,7 @@ const adminNavItems: AdminNavItem[] = [
       {
         title: "Media",
         href: "/admin/media",
-        icon: <Image className="h-5 w-5" />,
+        icon: <ImageIcon className="h-5 w-5" />,
       },
     ],
   },
@@ -95,11 +95,16 @@ const adminNavItems: AdminNavItem[] = [
         href: "/admin/settings",
         icon: <Settings className="h-5 w-5" />,
       },
+      {
+        title: "Groq Status",
+        href: "/admin/groq-status",
+        icon: <Server className="h-5 w-5" />,
+      },
     ],
   },
 ]
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({})
 

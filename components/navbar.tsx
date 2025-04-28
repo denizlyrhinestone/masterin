@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import AIStatusIndicator from "@/components/ai-status-indicator"
+import GroqStatusIndicator from "./groq-status-indicator"
 
 // Update the navigation links to include About page
 const navLinks = [
@@ -26,6 +27,7 @@ const navLinks = [
   { name: "AI Tutor", href: "/ai" },
   { name: "Resources", href: "/resources" },
   { name: "Community", href: "/contact" },
+  { label: "Groq Test", href: "/groq-test" },
 ]
 
 export default function Navbar() {
@@ -90,6 +92,7 @@ export default function Navbar() {
 
           <div className="hidden md:flex items-center space-x-4">
             <AIStatusIndicator />
+            <GroqStatusIndicator />
             {isLoading ? (
               <div className="h-9 w-20 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-md"></div>
             ) : isAuthenticated ? (

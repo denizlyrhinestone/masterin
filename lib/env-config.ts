@@ -48,3 +48,22 @@ export function validateOpenAIApiKey(): { valid: boolean; message: string } {
 
   return { valid: true, message: "OPENAI_API_KEY is valid" }
 }
+
+// IMPORTANT: Do not export the actual API keys to client components
+// Instead, create methods that can be called from API routes
+
+/**
+ * Safe method to check if Groq API is configured
+ * This is safe to use in client components as it doesn't expose the actual key
+ */
+export function isGroqConfigured(): boolean {
+  return !!GROQ_API_KEY && GROQ_API_KEY.startsWith("gsk_")
+}
+
+/**
+ * Safe method to check if OpenAI API is configured
+ * This is safe to use in client components as it doesn't expose the actual key
+ */
+export function isOpenAIConfigured(): boolean {
+  return !!OPENAI_API_KEY && OPENAI_API_KEY.startsWith("sk-")
+}

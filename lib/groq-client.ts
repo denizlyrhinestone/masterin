@@ -1,45 +1,58 @@
-import { groq } from "@ai-sdk/groq"
-import { GROQ_API_KEY, validateGroqApiKey } from "./env-config"
+import { GROQ_API_KEY } from "./env-config"
 
-// Check if Groq API key is available and valid
-const apiKeyValidation = validateGroqApiKey()
-const isGroqAvailable = apiKeyValidation.valid
-
-// Create Groq client with the API key only if it's valid
-export const groqClient = isGroqAvailable ? groq(GROQ_API_KEY) : null
-
-// Export a function to check if Groq is available
-export const checkGroqAvailability = () => {
-  return {
-    available: isGroqAvailable,
-    message: apiKeyValidation.message,
-  }
-}
-
-/**
- * Get a masked version of the API key for display purposes
- * @returns Masked API key or message if not available
- */
-export function getMaskedApiKey(): string {
+export function checkGroqAvailability() {
   if (!GROQ_API_KEY) {
-    return "Not configured"
+    return {
+      available: false,
+      message: "Groq API key is not configured. Please add GROQ_API_KEY to your environment variables.",
+    }
   }
 
-  // Show only first 4 and last 4 characters
-  const firstFour = GROQ_API_KEY.substring(0, 4)
-  const lastFour = GROQ_API_KEY.substring(GROQ_API_KEY.length - 4)
-  return `${firstFour}...${lastFour}`
+  return {
+    available: true,
+    message: "Groq API key is configured and ready to use.",
+  }
 }
 
-/**
- * Log API usage for monitoring and rate limiting
- * @param endpoint The API endpoint used
- * @param status The response status
- * @param duration The request duration in ms
- */
-export function logApiUsage(endpoint: string, status: number, duration: number): void {
-  console.log(`[GROQ API] ${endpoint} - Status: ${status} - Duration: ${duration}ms`)
+export async function testGroqConnection(prompt = "Hello, this is a test message.") {
+  try {
+    if (!GROQ_API_KEY) {
+      return {
+        success: false,
+        message: "Groq API key is not configured.",
+      }
+    }
 
-  // In a production app, you might want to store this in a database
-  // or send it to a monitoring service
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "llama3-8b-8192",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 100,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      return {
+        success: false,
+        message: `Groq API error: ${errorData.error?.message || response.statusText}`,
+      }
+    }
+
+    return {
+      success: true,
+      message: "Groq API connection successful.",
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: `Error connecting to Groq API: ${error instanceof Error ? error.message : String(error)}`,
+    }
+  }
 }
