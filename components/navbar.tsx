@@ -23,7 +23,7 @@ import GroqStatusIndicator from "./groq-status-indicator"
 const navLinks = [
   { name: "Home", href: "/" },
   { name: "About", href: "/about" },
-  { name: "Courses", href: "/courses" },
+  { name: "Courses", href: "/services" },
   { name: "AI Tutor", href: "/ai" },
   { name: "Resources", href: "/resources" },
   { name: "Community", href: "/contact" },
