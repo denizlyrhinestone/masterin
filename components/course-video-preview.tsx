@@ -15,6 +15,12 @@ interface CourseVideoPreviewProps {
     mp4?: string
     ogg?: string
   }
+  captions?: {
+    src: string
+    label: string
+    srcLang: string
+    default?: boolean
+  }[]
 }
 
 export default function CourseVideoPreview({
@@ -22,6 +28,7 @@ export default function CourseVideoPreview({
   videoUrl,
   thumbnailUrl,
   fallbackFormats,
+  captions,
 }: CourseVideoPreviewProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -29,6 +36,7 @@ export default function CourseVideoPreview({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const [captionsEnabled, setCaptionsEnabled] = useState(true)
 
   // Handle video events
   useEffect(() => {
@@ -74,6 +82,16 @@ export default function CourseVideoPreview({
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted
       setIsMuted(!isMuted)
+    }
+  }
+
+  const toggleCaptions = () => {
+    setCaptionsEnabled(!captionsEnabled)
+    if (videoRef.current) {
+      const tracks = videoRef.current.textTracks
+      for (let i = 0; i < tracks.length; i++) {
+        tracks[i].mode = captionsEnabled ? "hidden" : "showing"
+      }
     }
   }
 
@@ -160,6 +178,17 @@ export default function CourseVideoPreview({
               {fallbackFormats?.webm && <source src={fallbackFormats.webm} type="video/webm" />}
               {fallbackFormats?.mp4 && <source src={fallbackFormats.mp4} type="video/mp4" />}
               {fallbackFormats?.ogg && <source src={fallbackFormats.ogg} type="video/ogg" />}
+              {captions &&
+                captions.map((caption, index) => (
+                  <track
+                    key={index}
+                    src={caption.src}
+                    kind="subtitles"
+                    label={caption.label}
+                    srcLang={caption.srcLang}
+                    default={caption.default}
+                  />
+                ))}
               Your browser does not support the video tag. Please try a different browser or download the video.
             </video>
 
@@ -182,6 +211,15 @@ export default function CourseVideoPreview({
               >
                 {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                 <span className="sr-only">{isMuted ? "Unmute" : "Mute"}</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="bg-black bg-opacity-50 text-white hover:bg-opacity-70"
+                onClick={toggleCaptions}
+              >
+                {captionsEnabled ? <span className="h-4 w-4">CC</span> : <span className="h-4 w-4 opacity-50">CC</span>}
+                <span className="sr-only">{captionsEnabled ? "Disable Captions" : "Enable Captions"}</span>
               </Button>
             </div>
           </div>

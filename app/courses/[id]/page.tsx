@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useToast } from "@/components/ui/use-toast"
 import Image from "next/image"
 import { Clock, Users, Calendar, BookOpen, AlertTriangle } from "lucide-react"
-import CourseVideoPreview from "@/components/course-video-preview"
+import AdvancedVideoPlayer from "@/components/advanced-video-player"
 import { supportsVideoElement, getSupportedFormats } from "@/lib/video-playback"
 
 // Mock course data with video information
@@ -25,6 +25,51 @@ const getCourseData = (id: string) => {
       webm: "https://example.com/course-video.webm",
       ogg: "https://example.com/course-video.ogv",
     },
+    captions: [
+      {
+        src: "/captions/en.vtt",
+        label: "English",
+        srcLang: "en",
+        default: true,
+      },
+      {
+        src: "/captions/es.vtt",
+        label: "Spanish",
+        srcLang: "es",
+      },
+    ],
+    chapters: [
+      {
+        id: "intro",
+        title: "Introduction",
+        startTime: 0,
+        thumbnail: "/open-book-path.png",
+      },
+      {
+        id: "chapter1",
+        title: "Chapter 1: Getting Started",
+        startTime: 120,
+        thumbnail: "/open-road-adventure.png",
+      },
+      {
+        id: "chapter2",
+        title: "Chapter 2: Core Concepts",
+        startTime: 360,
+        thumbnail: "/foundational-ideas.png",
+      },
+      {
+        id: "chapter3",
+        title: "Chapter 3: Advanced Techniques",
+        startTime: 720,
+        thumbnail: "/interconnected-innovation.png",
+      },
+      {
+        id: "conclusion",
+        title: "Conclusion",
+        startTime: 1020,
+        thumbnail: "/final-piece.png",
+      },
+    ],
     instructor: "Dr. Jane Smith",
     duration: "10 weeks",
     students: 1250,
@@ -169,11 +214,13 @@ export default function CoursePage() {
                 />
 
                 {videoSupported && (
-                  <CourseVideoPreview
+                  <AdvancedVideoPlayer
                     title={course.title}
                     videoUrl={course.videoUrl}
                     thumbnailUrl={thumbnail}
                     fallbackFormats={course.videoFormats}
+                    captions={course.captions}
+                    chapters={course.chapters}
                   />
                 )}
 

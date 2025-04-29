@@ -77,12 +77,15 @@ export default function AIToolsSection() {
   const router = useRouter()
   const [usageCount, setUsageCount] = useState<Record<string, number>>({})
   const [hoveredTool, setHoveredTool] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("")
 
   // Load usage counts from localStorage on component mount
   useEffect(() => {
     try {
-      const storedUsage = JSON.parse(localStorage.getItem("tool_usage") || "{}")
-      setUsageCount(storedUsage)
+      const storedUsage = localStorage.getItem("tool_usage")
+      if (storedUsage) {
+        setUsageCount(JSON.parse(storedUsage))
+      }
     } catch (e) {
       console.error("Error loading usage data:", e)
     }
@@ -130,6 +133,15 @@ export default function AIToolsSection() {
     }
   }
 
+  // Filter tools based on search query - fixed to avoid undefined.includes error
+  const filteredTools = searchQuery
+    ? aiTools.filter(
+        (tool) =>
+          tool.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          tool.description.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    : aiTools
+
   return (
     <section className="py-16 md:py-24 bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -144,7 +156,7 @@ export default function AIToolsSection() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {aiTools.map((tool) => (
+          {filteredTools.map((tool) => (
             <Card
               key={tool.id}
               className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group"
@@ -191,7 +203,7 @@ export default function AIToolsSection() {
                   ) : (
                     <>
                       Try Free
-                      {usageCount[tool.id] >= 3 && <Lock className="ml-2 h-3 w-3" />}
+                      {(usageCount[tool.id] || 0) >= 3 && <Lock className="ml-2 h-3 w-3" />}
                     </>
                   )}
                 </Button>

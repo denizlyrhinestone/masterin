@@ -96,3 +96,95 @@ export async function detectOptimalQuality(): Promise<"low" | "medium" | "high">
   // Fallback to medium quality if Network Information API is not available
   return "medium"
 }
+
+// Add these new functions at the end of the file
+
+// Check if the browser supports WebVTT captions
+export function supportsCaptions(): boolean {
+  if (typeof window === "undefined") return true
+
+  const video = document.createElement("video")
+  const track = document.createElement("track")
+
+  // If TextTrack API is available, captions are likely supported
+  return typeof track.track !== "undefined"
+}
+
+// Get the default language for captions based on browser language
+export function getDefaultCaptionLanguage(): string {
+  if (typeof window === "undefined") return "en"
+
+  // Get browser language (e.g., "en-US" -> "en")
+  const browserLang = navigator.language.split("-")[0]
+  return browserLang || "en"
+}
+
+// Generate chapter data from video metadata or timestamps
+export function generateChaptersFromMetadata(
+  videoId: string,
+  chapterMarkers: Array<{ title: string; time: number }>,
+): Array<{ id: string; title: string; startTime: number; thumbnail?: string }> {
+  return chapterMarkers.map((marker, index) => ({
+    id: `chapter-${index}`,
+    title: marker.title,
+    startTime: marker.time,
+    thumbnail: `/api/video-thumbnail/${videoId}?timestamp=${marker.time}`,
+  }))
+}
+
+// Extract chapters from VTT chapter file
+export async function extractChaptersFromVTT(
+  vttUrl: string,
+): Promise<Array<{ id: string; title: string; startTime: number }>> {
+  try {
+    const response = await fetch(vttUrl)
+    const text = await response.text()
+
+    // Simple VTT parser for chapters
+    const lines = text.split("\n")
+    const chapters = []
+    let currentChapter: { id?: string; title?: string; startTime?: number } = {}
+
+    for (const line of lines) {
+      // Parse timestamp line (00:00:00.000 --> 00:00:10.000)
+      if (line.includes("-->")) {
+        const startTime = line.split("-->")[0].trim()
+        currentChapter.startTime = convertTimestampToSeconds(startTime)
+      }
+      // Parse chapter title (any non-empty line that's not a timestamp or WEBVTT)
+      else if (line.trim() && !line.includes("WEBVTT") && !currentChapter.title) {
+        currentChapter.title = line.trim()
+        currentChapter.id = `chapter-${chapters.length}`
+
+        // Save completed chapter and reset
+        if (currentChapter.title && currentChapter.startTime !== undefined) {
+          chapters.push({ ...currentChapter })
+          currentChapter = {}
+        }
+      }
+    }
+
+    return chapters
+  } catch (error) {
+    console.error("Error parsing chapters VTT:", error)
+    return []
+  }
+}
+
+// Helper to convert VTT timestamp to seconds
+function convertTimestampToSeconds(timestamp: string): number {
+  const parts = timestamp.split(":")
+  let seconds = 0
+
+  if (parts.length === 3) {
+    // Format: 00:00:00.000
+    const [hours, minutes, secondsPart] = parts
+    seconds = Number.parseInt(hours) * 3600 + Number.parseInt(minutes) * 60 + Number.parseFloat(secondsPart)
+  } else if (parts.length === 2) {
+    // Format: 00:00.000
+    const [minutes, secondsPart] = parts
+    seconds = Number.parseInt(minutes) * 60 + Number.parseFloat(secondsPart)
+  }
+
+  return seconds
+}
