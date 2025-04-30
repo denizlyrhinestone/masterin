@@ -1,13 +1,29 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { rateLimit } from "./lib/rate-limit" // Fixed: changed from rateLimiter to rateLimit
 
 // Paths that require admin authentication
 const ADMIN_PATHS = ["/admin", "/api/admin"]
 
+// Paths that should be rate limited
+const RATE_LIMITED_PATHS = [
+  "/auth/sign-in",
+  "/auth/sign-up",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/api/auth",
+]
+
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
 
-  // Only run this middleware for admin paths
+  // Apply rate limiting to sensitive paths
+  if (RATE_LIMITED_PATHS.some((prefix) => path.startsWith(prefix))) {
+    const rateLimited = await rateLimit(request) // Fixed: changed from rateLimiter to rateLimit
+    if (rateLimited) return rateLimited
+  }
+
+  // Only run admin middleware for admin paths
   if (!ADMIN_PATHS.some((prefix) => path.startsWith(prefix))) {
     return NextResponse.next()
   }
@@ -56,5 +72,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
+  matcher: ["/admin/:path*", "/api/admin/:path*", "/auth/:path*", "/api/auth/:path*"],
 }

@@ -1,17 +1,18 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
-import type { Session, AuthError, User } from "@supabase/supabase-js"
+import type { Session, User } from "@supabase/supabase-js"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import { type StandardError, standardizeSupabaseError, createError } from "@/lib/error-handling"
 
 interface UserProfile {
   id: string
   email: string
   name: string | null
   avatar_url: string | null
-  isAdmin?: boolean // Added isAdmin property
+  isAdmin?: boolean
 }
 
 interface AuthContextType {
@@ -19,15 +20,19 @@ interface AuthContextType {
   session: Session | null
   isAuthenticated: boolean
   isLoading: boolean
-  isAdmin: boolean // Added isAdmin flag
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
-  signInWithGoogle: () => Promise<{ error: AuthError | null }>
-  signUp: (email: string, password: string, name: string) => Promise<{ error: AuthError | null; userId: string | null }>
+  isAdmin: boolean
+  signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: StandardError | null }>
+  signInWithGoogle: () => Promise<{ error: StandardError | null }>
+  signUp: (
+    email: string,
+    password: string,
+    name: string,
+  ) => Promise<{ error: StandardError | null; userId: string | null }>
   signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ error: AuthError | null }>
-  updatePassword: (password: string) => Promise<{ error: AuthError | null }>
+  resetPassword: (email: string) => Promise<{ error: StandardError | null }>
+  updatePassword: (password: string) => Promise<{ error: StandardError | null }>
   updateProfile: (data: Partial<UserProfile>) => Promise<{ error: Error | null }>
-  checkAdminStatus: () => Promise<boolean> // Added admin check function
+  checkAdminStatus: () => Promise<boolean>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -35,7 +40,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   isAuthenticated: false,
   isLoading: true,
-  isAdmin: false, // Added default value
+  isAdmin: false,
   signIn: async () => ({ error: null }),
   signInWithGoogle: async () => ({ error: null }),
   signUp: async () => ({ error: null, userId: null }),
@@ -43,7 +48,7 @@ const AuthContext = createContext<AuthContextType>({
   resetPassword: async () => ({ error: null }),
   updatePassword: async () => ({ error: null }),
   updateProfile: async () => ({ error: null }),
-  checkAdminStatus: async () => false, // Added default implementation
+  checkAdminStatus: async () => false,
 })
 
 interface AuthProviderProps {
@@ -55,7 +60,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [isAdmin, setIsAdmin] = useState(false) // Added admin state
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [announcement, setAnnouncement] = useState("")
   const { toast } = useToast()
   const router = useRouter()
 
@@ -195,9 +201,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setUser(null)
           setIsAuthenticated(false)
           setIsAdmin(false)
+          setAnnouncement("You have been signed out.")
           router.push("/auth/sign-in")
         } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
           await updateUserState(currentSession)
+          if (event === "SIGNED_IN") {
+            setAnnouncement("You have been signed in successfully.")
+          }
         }
 
         setIsLoading(false)
@@ -253,35 +263,35 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, [router, updateUserState])
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string, rememberMe = false) => {
     try {
       // Validate inputs
       if (!email || !password) {
         return {
-          error: new Error("Email and password are required") as unknown as AuthError,
+          error: createError("invalid_input", "Email and password are required"),
         }
       }
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: {
+          // Set session duration based on rememberMe
+          expiresIn: rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60, // 30 days or 1 day
+        },
       })
 
       if (error) {
         console.error("Sign in error:", error.message)
-        // Categorize common auth errors for better user feedback
-        if (error.message.includes("Invalid login credentials")) {
-          return { error: { ...error, code: "invalid_credentials" } as AuthError }
-        } else if (error.message.includes("Email not confirmed")) {
-          return { error: { ...error, code: "email_not_confirmed" } as AuthError }
-        }
-        return { error }
+        return { error: standardizeSupabaseError(error) }
       }
 
+      setAnnouncement("Signed in successfully. Welcome back!")
       return { error: null }
     } catch (error) {
       console.error("Unexpected error during sign in:", error)
-      return { error: new Error("An unexpected error occurred") as unknown as AuthError }
+      setAnnouncement("An unexpected error occurred during sign in.")
+      return { error: createError("unknown_error") }
     }
   }
 
@@ -304,13 +314,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (error) {
         console.error("Google sign in error:", error.message)
-        return { error }
+        return { error: standardizeSupabaseError(error) }
       }
 
       return { error: null }
     } catch (error) {
       console.error("Unexpected error during Google sign in:", error)
-      return { error: new Error("An unexpected error occurred during Google sign in") as unknown as AuthError }
+      return { error: createError("unknown_error", "An unexpected error occurred during Google sign in") }
     }
   }
 
@@ -319,7 +329,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Validate inputs
       if (!email || !password || !name) {
         return {
-          error: new Error("Email, password, and name are required") as unknown as AuthError,
+          error: createError("invalid_input", "Email, password, and name are required"),
           userId: null,
         }
       }
@@ -327,7 +337,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       // Password strength validation
       if (password.length < 8) {
         return {
-          error: new Error("Password must be at least 8 characters long") as unknown as AuthError,
+          error: createError("weak_password", "Password must be at least 8 characters long"),
           userId: null,
         }
       }
@@ -344,11 +354,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (error) {
         console.error("Sign up error:", error.message)
-        // Categorize common signup errors
-        if (error.message.includes("already registered")) {
-          return { error: { ...error, code: "email_in_use" } as AuthError, userId: null }
-        }
-        return { error, userId: null }
+        return { error: standardizeSupabaseError(error), userId: null }
       }
 
       // Create a profile record
@@ -369,18 +375,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           title: "Verification email sent",
           description: "Please check your email to verify your account.",
         })
+
+        setAnnouncement("Account created successfully. Please check your email to verify your account.")
       }
 
       return { error: null, userId: data.user?.id || null }
     } catch (error) {
       console.error("Unexpected error during sign up:", error)
-      return { error: new Error("An unexpected error occurred") as unknown as AuthError, userId: null }
+      return { error: createError("unknown_error"), userId: null }
     }
   }
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
+      setAnnouncement("You have been signed out successfully.")
       // Router navigation is handled by auth state change listener
     } catch (error) {
       console.error("Error signing out:", error)
@@ -395,7 +404,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const resetPassword = async (email: string) => {
     try {
       if (!email) {
-        return { error: new Error("Email is required") as unknown as AuthError }
+        return { error: createError("invalid_input", "Email is required") }
       }
 
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -404,26 +413,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (error) {
         console.error("Reset password error:", error.message)
-        return { error }
+        return { error: standardizeSupabaseError(error) }
       }
 
+      setAnnouncement("Password reset email sent. Please check your inbox.")
       return { error: null }
     } catch (error) {
       console.error("Unexpected error during password reset:", error)
-      return { error: new Error("An unexpected error occurred") as unknown as AuthError }
+      return { error: createError("unknown_error") }
     }
   }
 
   const updatePassword = async (password: string) => {
     try {
       if (!password) {
-        return { error: new Error("Password is required") as unknown as AuthError }
+        return { error: createError("invalid_input", "Password is required") }
       }
 
       // Password strength validation
       if (password.length < 8) {
         return {
-          error: new Error("Password must be at least 8 characters long") as unknown as AuthError,
+          error: createError("weak_password", "Password must be at least 8 characters long"),
         }
       }
 
@@ -433,13 +443,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (error) {
         console.error("Update password error:", error.message)
-        return { error }
+        return { error: standardizeSupabaseError(error) }
       }
 
+      setAnnouncement("Your password has been updated successfully.")
       return { error: null }
     } catch (error) {
       console.error("Unexpected error during password update:", error)
-      return { error: new Error("An unexpected error occurred") as unknown as AuthError }
+      return { error: createError("unknown_error") }
     }
   }
 
@@ -475,6 +486,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       // Update local state
       setUser((prev) => (prev ? { ...prev, ...data } : null))
+      setAnnouncement("Your profile has been updated successfully.")
 
       return { error: null }
     } catch (error) {
@@ -483,23 +495,30 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }
 
-  const value: AuthContextType = {
-    user,
-    session,
-    isAuthenticated,
-    isLoading,
-    isAdmin, // Expose isAdmin to consumers
-    signIn,
-    signInWithGoogle,
-    signUp,
-    signOut,
-    resetPassword,
-    updatePassword,
-    updateProfile,
-    checkAdminStatus, // Expose the admin check function
-  }
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(
+    () => ({
+      user,
+      session,
+      isAuthenticated,
+      isLoading,
+      isAdmin,
+      updatePassword,
+      updateProfile,
+      checkAdminStatus,
+    }),
+    [user, session, isAuthenticated, isLoading, isAdmin, updatePassword, updateProfile, checkAdminStatus],
+  )
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {/* Accessibility: Screen reader announcements */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        {announcement}
+      </div>
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export const useAuth = () => {
