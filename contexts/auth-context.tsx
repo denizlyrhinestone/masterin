@@ -3,9 +3,13 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react"
 import { supabase } from "@/lib/supabase"
 import type { Session, User } from "@supabase/supabase-js"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
 import { type StandardError, standardizeSupabaseError, createError } from "@/lib/error-handling"
+
+// Constants for token refresh
+const TOKEN_REFRESH_MARGIN = 5 * 60 * 1000 // 5 minutes before expiry
+const MAX_REFRESH_INTERVAL = 60 * 60 * 1000 // 1 hour maximum interval
 
 interface UserProfile {
   id: string
@@ -184,10 +188,47 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     [fetchUserProfile, createUserProfile, checkAdminStatus],
   )
 
+  // Improved token refresh function that calculates optimal refresh time
+  const scheduleTokenRefresh = useCallback(async (currentSession: Session | null) => {
+    if (!currentSession) return null
+
+    try {
+      // Calculate when the token expires
+      const expiresAt = currentSession.expires_at ? currentSession.expires_at * 1000 : null
+      const now = Date.now()
+
+      // If we don't have an expiration time, use default refresh interval
+      if (!expiresAt) return setTimeout(() => supabase.auth.refreshSession(), MAX_REFRESH_INTERVAL)
+
+      // Calculate time until expiry with a safety margin
+      const timeUntilExpiry = Math.max(0, expiresAt - now - TOKEN_REFRESH_MARGIN)
+
+      // Cap the refresh interval to avoid very long timeouts
+      const refreshInterval = Math.min(timeUntilExpiry, MAX_REFRESH_INTERVAL)
+
+      // If token is already expired or about to expire, refresh immediately
+      if (timeUntilExpiry <= 1000) {
+        await supabase.auth.refreshSession()
+        return null
+      }
+
+      // Schedule the refresh
+      return setTimeout(async () => {
+        try {
+          await supabase.auth.refreshSession()
+        } catch (error) {
+          console.error("Error refreshing token:", error)
+        }
+      }, refreshInterval)
+    } catch (error) {
+      console.error("Error in scheduleTokenRefresh:", error)
+      return null
+    }
+  }, [])
+
   useEffect(() => {
     let mounted = true
-    let refreshTimer: NodeJS.Timeout | null = null
-    let subscription: { unsubscribe: () => void } | null = null
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
     // Set up auth state listener
     const setupAuthListener = async () => {
@@ -202,7 +243,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setIsAuthenticated(false)
           setIsAdmin(false)
           setAnnouncement("You have been signed out.")
-          router.push("/auth/sign-in")
+
+          // Add a small delay before redirecting to allow the announcement to be read
+          setTimeout(() => {
+            router.push("/auth/sign-in")
+          }, 1500)
         } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
           await updateUserState(currentSession)
           if (event === "SIGNED_IN") {
@@ -213,7 +258,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsLoading(false)
       })
 
-      subscription = data.subscription
+      return data.subscription
     }
 
     // Initial session check
@@ -228,21 +273,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setSession(initialSession)
         await updateUserState(initialSession)
 
-        // Set up refresh timer to prevent session expiration
-        refreshTimer = setInterval(
-          async () => {
-            if (!mounted) return
-            try {
-              const { data } = await supabase.auth.refreshSession()
-              if (mounted) {
-                setSession(data.session)
-              }
-            } catch (error) {
-              console.error("Error refreshing session:", error)
-            }
-          },
-          4 * 60 * 60 * 1000, // Refresh every 4 hours
-        )
+        // Set up token refresh
+        if (initialSession) {
+          refreshTimer = await scheduleTokenRefresh(initialSession)
+        }
       } catch (error) {
         console.error("Error initializing auth:", error)
       } finally {
@@ -252,16 +286,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     }
 
-    setupAuthListener()
+    const subscription = setupAuthListener()
     initializeAuth()
 
     // Clean up on unmount
     return () => {
       mounted = false
-      if (refreshTimer) clearInterval(refreshTimer)
-      if (subscription) subscription.unsubscribe()
+      if (refreshTimer) clearTimeout(refreshTimer)
+      subscription.then((sub) => sub.unsubscribe())
     }
-  }, [router, updateUserState])
+  }, [router, updateUserState, scheduleTokenRefresh])
 
   const signIn = async (email: string, password: string, rememberMe = false) => {
     try {
@@ -503,11 +537,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       isAuthenticated,
       isLoading,
       isAdmin,
+      signIn,
+      signInWithGoogle,
+      signUp,
+      signOut,
+      resetPassword,
       updatePassword,
       updateProfile,
       checkAdminStatus,
     }),
-    [user, session, isAuthenticated, isLoading, isAdmin, updatePassword, updateProfile, checkAdminStatus],
+    [user, session, isAuthenticated, isLoading, isAdmin, checkAdminStatus],
   )
 
   return (

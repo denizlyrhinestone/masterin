@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Play, X, Volume2, VolumeX } from "lucide-react"
@@ -38,36 +38,41 @@ export default function CourseVideoPreview({
   const videoRef = useRef<HTMLVideoElement>(null)
   const [captionsEnabled, setCaptionsEnabled] = useState(true)
 
+  // Memoize event handlers to prevent recreating them on each render
+  const handlePlay = useCallback(() => setIsPlaying(true), [])
+  const handlePause = useCallback(() => setIsPlaying(false), [])
+  const handleError = useCallback((e: Event) => {
+    console.error("Video error:", e)
+    setError("Failed to load video. Please try again later.")
+    toast({
+      title: "Video Error",
+      description: "There was a problem playing this video. Please try again later.",
+      variant: "destructive",
+    })
+  }, [])
+  const handleCanPlay = useCallback(() => setIsLoading(false), [])
+
   // Handle video events
   useEffect(() => {
     const videoElement = videoRef.current
     if (!videoElement) return
-
-    const handlePlay = () => setIsPlaying(true)
-    const handlePause = () => setIsPlaying(false)
-    const handleError = (e: Event) => {
-      console.error("Video error:", e)
-      setError("Failed to load video. Please try again later.")
-      toast({
-        title: "Video Error",
-        description: "There was a problem playing this video. Please try again later.",
-        variant: "destructive",
-      })
-    }
-    const handleCanPlay = () => setIsLoading(false)
 
     videoElement.addEventListener("play", handlePlay)
     videoElement.addEventListener("pause", handlePause)
     videoElement.addEventListener("error", handleError)
     videoElement.addEventListener("canplay", handleCanPlay)
 
+    // Store the current reference to ensure proper cleanup
+    const currentVideoElement = videoElement
+
     return () => {
-      videoElement.removeEventListener("play", handlePlay)
-      videoElement.removeEventListener("pause", handlePause)
-      videoElement.removeEventListener("error", handleError)
-      videoElement.removeEventListener("canplay", handleCanPlay)
+      // Use the stored reference for cleanup
+      currentVideoElement.removeEventListener("play", handlePlay)
+      currentVideoElement.removeEventListener("pause", handlePause)
+      currentVideoElement.removeEventListener("error", handleError)
+      currentVideoElement.removeEventListener("canplay", handleCanPlay)
     }
-  }, [isOpen])
+  }, [handlePlay, handlePause, handleError, handleCanPlay])
 
   // Pause video when dialog closes
   useEffect(() => {
@@ -78,24 +83,24 @@ export default function CourseVideoPreview({
     }
   }, [isOpen])
 
-  const toggleMute = () => {
+  const toggleMute = useCallback(() => {
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted
       setIsMuted(!isMuted)
     }
-  }
+  }, [isMuted])
 
-  const toggleCaptions = () => {
-    setCaptionsEnabled(!captionsEnabled)
+  const toggleCaptions = useCallback(() => {
+    setCaptionsEnabled((prev) => !prev)
     if (videoRef.current) {
       const tracks = videoRef.current.textTracks
       for (let i = 0; i < tracks.length; i++) {
         tracks[i].mode = captionsEnabled ? "hidden" : "showing"
       }
     }
-  }
+  }, [captionsEnabled])
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause()
@@ -111,7 +116,7 @@ export default function CourseVideoPreview({
         })
       }
     }
-  }
+  }, [isPlaying])
 
   return (
     <>
@@ -171,6 +176,7 @@ export default function CourseVideoPreview({
               poster={thumbnailUrl}
               preload="metadata"
               playsInline
+              crossOrigin="anonymous" // Add crossOrigin for security
             >
               {/* Primary source */}
               <source src={videoUrl} type={videoUrl.endsWith(".mp4") ? "video/mp4" : "video/webm"} />

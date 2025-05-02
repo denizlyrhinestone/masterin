@@ -2,389 +2,149 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import Image from "next/image"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useToast } from "@/components/ui/use-toast"
-import Image from "next/image"
-import { Clock, Users, Calendar, BookOpen, AlertTriangle } from "lucide-react"
-import AdvancedVideoPlayer from "@/components/advanced-video-player"
-import { supportsVideoElement, getSupportedFormats } from "@/lib/video-playback"
+import { AlertTriangle, ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { useCourseDetails } from "@/hooks/use-course-details"
+import { CourseCurriculum } from "@/components/course-curriculum"
+import { CourseReviews } from "@/components/course-reviews"
+import { InstructorProfile } from "@/components/instructor-profile"
+import { CourseEnrollment } from "@/components/course-enrollment"
+import { CourseObjectives } from "@/components/course-objectives"
+import { RelatedCourses } from "@/components/related-courses"
 
-// Mock course data with video information
-const getCourseData = (id: string) => {
-  return {
-    id,
-    title: `Course ${id}`,
-    description: "This is a comprehensive course that covers all the essential topics.",
-    thumbnail: `/placeholder.svg?height=720&width=1280&query=course ${id} thumbnail`,
-    videoUrl: "https://example.com/course-video.mp4", // Primary video URL
-    videoFormats: {
-      mp4: "https://example.com/course-video.mp4",
-      webm: "https://example.com/course-video.webm",
-      ogg: "https://example.com/course-video.ogv",
-    },
-    captions: [
-      {
-        src: "/captions/en.vtt",
-        label: "English",
-        srcLang: "en",
-        default: true,
-      },
-      {
-        src: "/captions/es.vtt",
-        label: "Spanish",
-        srcLang: "es",
-      },
-    ],
-    chapters: [
-      {
-        id: "intro",
-        title: "Introduction",
-        startTime: 0,
-        thumbnail: "/open-book-path.png",
-      },
-      {
-        id: "chapter1",
-        title: "Chapter 1: Getting Started",
-        startTime: 120,
-        thumbnail: "/open-road-adventure.png",
-      },
-      {
-        id: "chapter2",
-        title: "Chapter 2: Core Concepts",
-        startTime: 360,
-        thumbnail: "/foundational-ideas.png",
-      },
-      {
-        id: "chapter3",
-        title: "Chapter 3: Advanced Techniques",
-        startTime: 720,
-        thumbnail: "/interconnected-innovation.png",
-      },
-      {
-        id: "conclusion",
-        title: "Conclusion",
-        startTime: 1020,
-        thumbnail: "/final-piece.png",
-      },
-    ],
-    instructor: "Dr. Jane Smith",
-    duration: "10 weeks",
-    students: 1250,
-    lastUpdated: "2023-09-15",
-    modules: 12,
-  }
-}
-
-export default function CoursePage() {
+export default function CourseDetailPage() {
   const params = useParams()
   const courseId = params.id as string
-  const [course, setCourse] = useState<any>(null)
-  const [thumbnail, setThumbnail] = useState<string>("")
-  const [isLoading, setIsLoading] = useState(true)
-  const [videoSupported, setVideoSupported] = useState(true)
-  const [supportedFormats, setSupportedFormats] = useState<{
-    mp4: boolean
-    webm: boolean
-    ogg: boolean
-    hls: boolean
-  }>({ mp4: true, webm: true, ogg: false, hls: false })
-  const { toast } = useToast()
+  const { course, isLoading, error } = useCourseDetails(courseId)
+  const [activeTab, setActiveTab] = useState("overview")
 
+  // Scroll to top when course changes
   useEffect(() => {
-    // Check video support
-    const hasVideoSupport = supportsVideoElement()
-    setVideoSupported(hasVideoSupport)
-
-    if (!hasVideoSupport) {
-      toast({
-        title: "Video Playback Not Supported",
-        description: "Your browser doesn't support HTML5 video playback. Please upgrade your browser.",
-        variant: "destructive",
-      })
-    }
-
-    // Get supported formats
-    const formats = getSupportedFormats()
-    setSupportedFormats(formats)
-
-    // Fetch course data
-    setIsLoading(true)
-    try {
-      const data = getCourseData(courseId)
-      setCourse(data)
-      setThumbnail(data.thumbnail)
-      setIsLoading(false)
-    } catch (error) {
-      console.error("Error fetching course:", error)
-      toast({
-        title: "Error Loading Course",
-        description: "There was a problem loading the course. Please try again later.",
-        variant: "destructive",
-      })
-      setIsLoading(false)
-    }
-  }, [courseId, toast])
-
-  const handleThumbnailUpdate = (newThumbnailUrl: string) => {
-    setThumbnail(newThumbnailUrl)
-    // In a real app, you would save this to your database
-  }
+    window.scrollTo(0, 0)
+  }, [courseId])
 
   if (isLoading) {
     return (
-      <div className="container mx-auto py-10">
+      <div className="container mx-auto py-8 px-4">
+        <div className="mb-6">
+          <Skeleton className="h-8 w-40" />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <Skeleton className="h-8 w-3/4" />
-                <Skeleton className="h-4 w-1/2 mt-2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="aspect-video w-full rounded-md" />
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                  {Array(4)
-                    .fill(0)
-                    .map((_, i) => (
-                      <Skeleton key={i} className="h-6 w-full" />
-                    ))}
-                </div>
-              </CardContent>
-            </Card>
+          <div className="lg:col-span-2 space-y-8">
+            <Skeleton className="aspect-video w-full rounded-md" />
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-32 w-full" />
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-64 w-full" />
           </div>
-          <div>
-            <Card>
-              <CardHeader>
-                <Skeleton className="h-6 w-1/2" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-4 w-3/4 mt-4" />
-              </CardContent>
-            </Card>
+          <div className="lg:col-span-1">
+            <Skeleton className="h-96 w-full rounded-md" />
           </div>
         </div>
       </div>
     )
   }
 
-  if (!course) {
+  if (error || !course) {
     return (
-      <div className="container mx-auto py-10">
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center p-6">
-            <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Course Not Found</h2>
-            <p className="text-gray-500 text-center mb-4">
-              We couldn't find the course you're looking for. It may have been removed or the URL might be incorrect.
-            </p>
-            <Button asChild>
-              <a href="/services">Browse All Courses</a>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="container mx-auto py-16 px-4">
+        <div className="max-w-md mx-auto text-center">
+          <AlertTriangle className="h-16 w-16 text-amber-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-4">Course Not Found</h1>
+          <p className="text-muted-foreground mb-6">
+            {error || "The course you're looking for doesn't exist or has been removed."}
+          </p>
+          <Button asChild>
+            <Link href="/courses">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Courses
+            </Link>
+          </Button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="container mx-auto py-10">
+    <div className="container mx-auto py-8 px-4">
+      <div className="mb-6">
+        <Link href="/courses" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Courses
+        </Link>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div>
-                  <CardTitle className="text-2xl">{course.title}</CardTitle>
-                  <CardDescription className="mt-2">{course.description}</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="aspect-video relative rounded-md overflow-hidden mb-6">
-                <Image
-                  src={thumbnail || "/placeholder.svg"}
-                  alt={course.title}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 50vw"
-                />
+        <div className="lg:col-span-2 space-y-8">
+          <div>
+            <h1 className="text-3xl font-bold mb-4">{course.title}</h1>
+            <p className="text-lg text-muted-foreground mb-6">{course.description}</p>
 
-                {videoSupported && (
-                  <AdvancedVideoPlayer
-                    title={course.title}
-                    videoUrl={course.videoUrl}
-                    thumbnailUrl={thumbnail}
-                    fallbackFormats={course.videoFormats}
-                    captions={course.captions}
-                    chapters={course.chapters}
-                  />
-                )}
+            <div className="aspect-video relative rounded-md overflow-hidden mb-6">
+              <Image
+                src={course.thumbnailUrl || "/placeholder.svg"}
+                alt={course.title}
+                fill
+                className="object-cover"
+                priority
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 50vw"
+              />
+            </div>
+          </div>
 
-                {!videoSupported && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-70 text-white p-4">
-                    <AlertTriangle className="h-12 w-12 text-yellow-400 mb-2" />
-                    <p className="text-center">
-                      Your browser doesn't support video playback. Please upgrade your browser or download the video.
-                    </p>
-                  </div>
-                )}
-              </div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
+              <TabsTrigger value="reviews">Reviews</TabsTrigger>
+            </TabsList>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="flex items-center">
-                  <Clock className="h-5 w-5 mr-2 text-gray-500" />
-                  <span>{course.duration}</span>
-                </div>
-                <div className="flex items-center">
-                  <Users className="h-5 w-5 mr-2 text-gray-500" />
-                  <span>{course.students} students</span>
-                </div>
-                <div className="flex items-center">
-                  <Calendar className="h-5 w-5 mr-2 text-gray-500" />
-                  <span>Updated {course.lastUpdated}</span>
-                </div>
-                <div className="flex items-center">
-                  <BookOpen className="h-5 w-5 mr-2 text-gray-500" />
-                  <span>{course.modules} modules</span>
+            <TabsContent value="overview" className="space-y-8 pt-6">
+              <div>
+                <h3 className="text-xl font-semibold mb-4">About This Course</h3>
+                <div className="prose max-w-none">
+                  <p>{course.longDescription}</p>
                 </div>
               </div>
 
-              {!supportedFormats.mp4 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-6">
-                  <div className="flex items-start">
-                    <AlertTriangle className="h-5 w-5 text-amber-500 mr-2 mt-0.5" />
-                    <div>
-                      <h4 className="font-medium text-amber-800">Limited Video Support</h4>
-                      <p className="text-sm text-amber-700">
-                        Your browser has limited support for video formats. For the best experience, we recommend using
-                        Chrome, Firefox, or Safari.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              <CourseObjectives objectives={course.objectives || []} requirements={course.requirements} />
 
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle>Course Content</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="modules">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="modules">Modules</TabsTrigger>
-                  <TabsTrigger value="resources">Resources</TabsTrigger>
-                  <TabsTrigger value="discussions">Discussions</TabsTrigger>
-                </TabsList>
-                <TabsContent value="modules" className="space-y-4 mt-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div key={i} className="border rounded-md p-4">
-                      <h3 className="font-medium">
-                        Module {i + 1}: Introduction to Topic {i + 1}
-                      </h3>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Learn the fundamentals of this topic through video lectures and exercises.
-                      </p>
-                    </div>
-                  ))}
-                </TabsContent>
-                <TabsContent value="resources" className="mt-4">
-                  <p>Course resources will be displayed here.</p>
-                </TabsContent>
-                <TabsContent value="discussions" className="mt-4">
-                  <p>Course discussions will be displayed here.</p>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
+              <InstructorProfile instructor={course.instructorDetails!} />
+            </TabsContent>
+
+            <TabsContent value="curriculum" className="pt-6">
+              <CourseCurriculum curriculum={course.curriculum!} isPurchased={false} />
+            </TabsContent>
+
+            <TabsContent value="reviews" className="pt-6">
+              <CourseReviews courseId={course.id} />
+            </TabsContent>
+          </Tabs>
+
+          {course.relatedCourseIds && course.relatedCourseIds.length > 0 && (
+            <div className="pt-8 border-t">
+              <RelatedCourses courseIds={course.relatedCourseIds} currentCourseId={course.id} />
+            </div>
+          )}
         </div>
 
-        <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Instructor</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-4">
-                <div className="relative w-16 h-16 rounded-full overflow-hidden">
-                  <Image src="/thoughtful-instructor.png" alt={course.instructor} fill className="object-cover" />
-                </div>
-                <div>
-                  <h3 className="font-medium">{course.instructor}</h3>
-                  <p className="text-sm text-gray-500">Professor of Computer Science</p>
-                </div>
-              </div>
-              <p className="text-sm mt-4">
-                An experienced educator with over 10 years of teaching experience in this field.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>What You'll Learn</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <li key={i} className="flex items-start">
-                    <span className="mr-2">•</span>
-                    <span>Key learning outcome {i + 1} from this comprehensive course</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full">Enroll in Course</Button>
-            </CardFooter>
-          </Card>
-
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle>Video Playback Requirements</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <h4 className="font-medium mb-2">Supported Formats</h4>
-              <ul className="space-y-1 mb-4">
-                <li className="flex items-center">
-                  <span className={supportedFormats.mp4 ? "text-green-500 mr-2" : "text-red-500 mr-2"}>
-                    {supportedFormats.mp4 ? "✓" : "✗"}
-                  </span>
-                  MP4 (H.264)
-                </li>
-                <li className="flex items-center">
-                  <span className={supportedFormats.webm ? "text-green-500 mr-2" : "text-red-500 mr-2"}>
-                    {supportedFormats.webm ? "✓" : "✗"}
-                  </span>
-                  WebM (VP8/VP9)
-                </li>
-                <li className="flex items-center">
-                  <span className={supportedFormats.ogg ? "text-green-500 mr-2" : "text-red-500 mr-2"}>
-                    {supportedFormats.ogg ? "✓" : "✗"}
-                  </span>
-                  Ogg Theora
-                </li>
-              </ul>
-
-              <h4 className="font-medium mb-2">Recommended Browsers</h4>
-              <p className="text-sm text-gray-600 mb-4">
-                For the best experience, we recommend using Chrome, Firefox, or Safari.
-              </p>
-
-              <h4 className="font-medium mb-2">Troubleshooting</h4>
-              <ul className="text-sm space-y-1">
-                <li>• Enable JavaScript in your browser</li>
-                <li>• Update your browser to the latest version</li>
-                <li>• Check your internet connection</li>
-                <li>• Try a different browser if videos won't play</li>
-              </ul>
-            </CardContent>
-          </Card>
+        <div className="lg:col-span-1">
+          <CourseEnrollment
+            id={course.id}
+            title={course.title}
+            price={course.price}
+            duration={course.duration}
+            level={course.level}
+            enrolledCount={course.enrolledCount}
+            lastUpdated={course.lastUpdated || course.updatedAt}
+            certificateIncluded={course.certificateIncluded}
+            isPurchased={false}
+          />
         </div>
       </div>
     </div>
