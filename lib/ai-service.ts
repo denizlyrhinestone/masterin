@@ -1,12 +1,28 @@
-import { v4 as uuidv4 } from "uuid"
-import { logError } from "./utils/log"
-import { createClient } from "@supabase/supabase-js"
+/**
+ * AI Service module for interacting with AI models
+ * @module ai-service
+ */
 
-// Create Supabase client
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-)
+import { v4 as uuidv4 } from "uuid"
+import { createClient } from "@supabase/supabase-js"
+import { logError } from "./error-logger"
+
+// Initialize Supabase client for storing conversation history
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+
+// Create a singleton instance
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+// Define the AI tool types
+export type AIToolType = "language-tutor" | "study-notes" | "code-mentor" | "math-solver" | "essay-assistant"
+
+// Interface for conversation history
+export interface ConversationMessage {
+  role: "system" | "user" | "assistant"
+  content: string
+  timestamp?: number
+}
 
 /**
  * Sends a message to the AI chat service
@@ -36,25 +52,14 @@ export async function sendChatMessage(
       throw new Error("Invalid messages: Messages must be a non-empty array")
     }
 
-    // Prepare request body - don't include sensitive data in logs
+    // Prepare request body
     const requestBody = {
-      messages: messages.map((msg) => ({
-        role: msg.role,
-        // Don't log full content for privacy
-        content: msg.content.length > 50 ? `${msg.content.substring(0, 50)}...` : msg.content,
-      })),
+      messages,
       conversationId,
       toolType,
       temperature,
       maxTokens,
     }
-
-    // Log sanitized request for debugging
-    console.log("Sending chat request:", {
-      messageCount: messages.length,
-      conversationId,
-      toolType,
-    })
 
     // Send request to API
     const response = await fetch("/api/chat", {
@@ -62,13 +67,7 @@ export async function sendChatMessage(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        messages,
-        conversationId,
-        toolType,
-        temperature,
-        maxTokens,
-      }), // Send full data to API
+      body: JSON.stringify(requestBody),
     })
 
     // Handle non-OK responses
@@ -95,15 +94,11 @@ export async function sendChatMessage(
       conversationId: data.conversationId || conversationId,
     }
   } catch (error) {
-    // Log error without exposing sensitive information
+    // Log error
     logError(error instanceof Error ? error : new Error(String(error)), {
       severity: "medium",
       tags: ["ai", "chat"],
-      context: {
-        toolType,
-        conversationId,
-        messageCount: messages?.length || 0,
-      },
+      context: { toolType, conversationId },
     })
 
     // Return error in response
@@ -116,47 +111,144 @@ export async function sendChatMessage(
 }
 
 /**
- * Saves a chat conversation to the database
- * @param userId User ID
- * @param conversationId Conversation ID
- * @param messages Chat messages
- * @returns Promise resolving to success status
+ * Store conversation history in Supabase
  */
-export async function saveChatConversation(
+export async function storeConversation(
   userId: string,
   conversationId: string,
-  messages: Array<{ role: string; content: string }>,
-): Promise<{ success: boolean; error?: Error }> {
+  toolType: AIToolType,
+  messages: ConversationMessage[],
+) {
   try {
-    const { error } = await supabase.from("chat_conversations").upsert(
-      {
+    // Check if conversation exists
+    const { data: existingConversation } = await supabase
+      .from("ai_conversations")
+      .select("id")
+      .eq("id", conversationId)
+      .single()
+
+    // If conversation doesn't exist, create it
+    if (!existingConversation) {
+      await supabase.from("ai_conversations").insert({
         id: conversationId,
         user_id: userId,
-        messages: JSON.stringify(messages),
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "id",
-      },
-    )
+        tool_type: toolType,
+        created_at: new Date().toISOString(),
+      })
+    }
+
+    // Store messages
+    const messagesToInsert = messages.map((message) => ({
+      conversation_id: conversationId,
+      role: message.role,
+      content: message.content,
+      created_at: new Date().toISOString(),
+    }))
+
+    await supabase.from("ai_conversation_messages").insert(messagesToInsert)
+  } catch (error) {
+    console.error("Error storing conversation:", error)
+    // Don't throw here to prevent blocking the main functionality
+  }
+}
+
+/**
+ * Get conversation history from Supabase
+ */
+export async function getConversationHistory(conversationId: string): Promise<ConversationMessage[]> {
+  try {
+    const { data, error } = await supabase
+      .from("ai_conversation_messages")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: true })
 
     if (error) throw error
 
-    return { success: true }
+    return (
+      data?.map((message) => ({
+        role: message.role as "system" | "user" | "assistant",
+        content: message.content,
+        timestamp: new Date(message.created_at).getTime(),
+      })) || []
+    )
   } catch (error) {
-    logError(error instanceof Error ? error : new Error(String(error)), {
-      severity: "medium",
-      tags: ["ai", "chat", "database"],
-      context: {
-        conversationId,
-        userId,
-        messageCount: messages?.length || 0,
-      },
-    })
+    console.error("Error fetching conversation history:", error)
+    return []
+  }
+}
 
-    return {
-      success: false,
-      error: error instanceof Error ? error : new Error(String(error)),
+/**
+ * Get user's recent conversations
+ */
+export async function getUserConversations(userId: string, toolType?: AIToolType) {
+  try {
+    let query = supabase
+      .from("ai_conversations")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+
+    if (toolType) {
+      query = query.eq("tool_type", toolType)
     }
+
+    const { data, error } = await query
+
+    if (error) throw error
+    return data || []
+  } catch (error) {
+    console.error("Error fetching user conversations:", error)
+    return []
+  }
+}
+
+/**
+ * Tool types for AI tools
+ * @enum {string}
+ */
+export const ToolType = {
+  /** General AI tutor */
+  TUTOR: "tutor",
+  /** Math problem solver */
+  MATH: "math",
+  /** Code mentor */
+  CODE: "code",
+  /** Language tutor */
+  LANGUAGE: "language",
+  /** Essay assistant */
+  ESSAY: "essay",
+} as const
+
+/**
+ * Type for tool types
+ * @typedef {typeof ToolType[keyof typeof ToolType]} ToolTypeValue
+ */
+export type ToolTypeValue = (typeof ToolType)[keyof typeof ToolType]
+
+/**
+ * Gets the system prompt for a specific tool type
+ * @param {ToolTypeValue} toolType - The tool type
+ * @returns {string} The system prompt
+ */
+export function getSystemPrompt(toolType: ToolTypeValue): string {
+  switch (toolType) {
+    case ToolType.TUTOR:
+      return "You are an AI tutor from Masterin, designed to help students learn and understand various subjects. Provide clear, concise explanations and ask questions to guide the student's learning."
+
+    case ToolType.MATH:
+      return "You are a math problem solver from Masterin. Your goal is to help students solve math problems by providing step-by-step solutions and explanations. Break down complex problems into manageable steps."
+
+    case ToolType.CODE:
+      return "You are a code mentor from Masterin. Your goal is to help students learn programming by explaining code, debugging issues, and providing guidance on best practices. Use code examples to illustrate concepts."
+
+    case ToolType.LANGUAGE:
+      return "You are a language tutor from Masterin. Your goal is to help students learn and practice languages. Correct grammar and vocabulary errors, provide translations, and engage in conversations to improve fluency."
+
+    case ToolType.ESSAY:
+      return "You are an essay assistant from Masterin. Your goal is to help students plan, write, and edit essays. Provide feedback on structure, clarity, and argumentation. Help with brainstorming ideas and improving writing style."
+
+    default:
+      return "You are an AI assistant from Masterin, designed to help students with their educational needs. Provide helpful, accurate, and educational responses."
   }
 }

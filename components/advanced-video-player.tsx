@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Play, X, Volume2, VolumeX, ChevronRight } from "lucide-react"
@@ -45,36 +45,26 @@ export default function AdvancedVideoPlayer({
   const [showChapters, setShowChapters] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
 
-  // Memoize event handlers with useCallback to prevent recreating them on each render
-  const handlePlay = useCallback(() => setIsPlaying(true), [])
-  const handlePause = useCallback(() => setIsPlaying(false), [])
-  const handleError = useCallback((e: Event) => {
-    console.error("Video error:", e)
-    setError("Failed to load video. Please try again later.")
-    toast({
-      title: "Video Error",
-      description: "There was a problem playing this video. Please try again later.",
-      variant: "destructive",
-    })
-  }, [])
-  const handleCanPlay = useCallback(() => setIsLoading(false), [])
-  const handleTimeUpdate = useCallback(() => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime)
-    }
-  }, [])
-  const handleDurationChange = useCallback(() => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration)
-    }
-  }, [])
-
   // Handle video events
   useEffect(() => {
     const videoElement = videoRef.current
     if (!videoElement) return
 
-    // Add event listeners
+    const handlePlay = () => setIsPlaying(true)
+    const handlePause = () => setIsPlaying(false)
+    const handleError = (e: Event) => {
+      console.error("Video error:", e)
+      setError("Failed to load video. Please try again later.")
+      toast({
+        title: "Video Error",
+        description: "There was a problem playing this video. Please try again later.",
+        variant: "destructive",
+      })
+    }
+    const handleCanPlay = () => setIsLoading(false)
+    const handleTimeUpdate = () => setCurrentTime(videoElement.currentTime)
+    const handleDurationChange = () => setDuration(videoElement.duration)
+
     videoElement.addEventListener("play", handlePlay)
     videoElement.addEventListener("pause", handlePause)
     videoElement.addEventListener("error", handleError)
@@ -82,8 +72,6 @@ export default function AdvancedVideoPlayer({
     videoElement.addEventListener("timeupdate", handleTimeUpdate)
     videoElement.addEventListener("durationchange", handleDurationChange)
 
-    // Cleanup function - store the current videoElement reference
-    // to ensure we remove listeners from the correct element
     return () => {
       videoElement.removeEventListener("play", handlePlay)
       videoElement.removeEventListener("pause", handlePause)
@@ -92,7 +80,7 @@ export default function AdvancedVideoPlayer({
       videoElement.removeEventListener("timeupdate", handleTimeUpdate)
       videoElement.removeEventListener("durationchange", handleDurationChange)
     }
-  }, [handlePlay, handlePause, handleError, handleCanPlay, handleTimeUpdate, handleDurationChange])
+  }, [isOpen])
 
   // Pause video when dialog closes
   useEffect(() => {
@@ -103,24 +91,24 @@ export default function AdvancedVideoPlayer({
     }
   }, [isOpen])
 
-  const toggleMute = useCallback(() => {
+  const toggleMute = () => {
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted
       setIsMuted(!isMuted)
     }
-  }, [isMuted])
+  }
 
-  const toggleCaptions = useCallback(() => {
-    setCaptionsEnabled((prev) => !prev)
+  const toggleCaptions = () => {
+    setCaptionsEnabled(!captionsEnabled)
     if (videoRef.current) {
       const tracks = videoRef.current.textTracks
       for (let i = 0; i < tracks.length; i++) {
         tracks[i].mode = captionsEnabled ? "hidden" : "showing"
       }
     }
-  }, [captionsEnabled])
+  }
 
-  const handlePlayPause = useCallback(() => {
+  const handlePlayPause = () => {
     if (videoRef.current) {
       if (isPlaying) {
         videoRef.current.pause()
@@ -136,33 +124,23 @@ export default function AdvancedVideoPlayer({
         })
       }
     }
-  }, [isPlaying])
+  }
 
-  const seekToTime = useCallback(
-    (time: number) => {
-      if (videoRef.current) {
-        videoRef.current.currentTime = time
-        if (!isPlaying) {
-          videoRef.current.play().catch((err) => {
-            console.error("Play error when seeking:", err)
-            toast({
-              title: "Playback Error",
-              description: "There was an error when trying to play the video. Please try again.",
-              variant: "destructive",
-            })
-          })
-        }
+  const seekToTime = (time: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = time
+      if (!isPlaying) {
+        videoRef.current.play().catch((err) => console.error(err))
       }
-    },
-    [isPlaying],
-  )
+    }
+  }
 
   // Format time for display (MM:SS)
-  const formatDisplayTime = useCallback((seconds: number) => {
+  const formatDisplayTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60)
     const remainingSeconds = Math.floor(seconds % 60)
     return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
-  }, [])
+  }
 
   return (
     <>
@@ -225,7 +203,6 @@ export default function AdvancedVideoPlayer({
                   poster={thumbnailUrl}
                   preload="metadata"
                   playsInline
-                  crossOrigin="anonymous" // Add crossOrigin for CORS compliance
                 >
                   {/* Primary source */}
                   <source src={videoUrl} type={videoUrl.endsWith(".mp4") ? "video/mp4" : "video/webm"} />

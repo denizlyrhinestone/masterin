@@ -1,143 +1,59 @@
 import { Redis } from "@upstash/redis"
-import { type NextRequest, NextResponse } from "next/server"
 
-// Initialize Redis client using environment variables
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL || "",
-  token: process.env.KV_REST_API_TOKEN || "",
-})
+// Initialize Redis client
+let redis: Redis | null = null
 
-// Rate limit configuration for different endpoints
-const RATE_LIMITS = {
-  // Authentication endpoints
-  "/auth/sign-in": { points: 5, duration: 60 * 15 }, // 5 attempts per 15 minutes
-  "/auth/sign-up": { points: 3, duration: 60 * 60 }, // 3 attempts per hour
-  "/auth/forgot-password": { points: 3, duration: 60 * 60 }, // 3 attempts per hour
-  "/auth/reset-password": { points: 3, duration: 60 * 60 }, // 3 attempts per hour
-
-  // Default rate limit for other endpoints
-  default: { points: 10, duration: 60 * 5 }, // 10 attempts per 5 minutes
+try {
+  redis = Redis.fromEnv()
+} catch (error) {
+  console.warn("Failed to initialize Redis client:", error)
+  redis = null
 }
 
-// Interface for rate limit configuration
-interface RateLimitConfig {
-  points: number // Number of requests allowed
-  duration: number // Time window in seconds
-}
+export const rateLimit = {
+  async check(req: Request, limit: number, window: string): Promise<{ success: boolean; remaining: number }> {
+    try {
+      if (!redis) {
+        throw new Error("Redis client not initialized")
+      }
 
-/**
- * Rate limiting middleware function
- *
- * @param request - The incoming request
- * @param path - The path to apply rate limiting to (defaults to request path)
- * @returns Response if rate limited, null if not limited
- */
-export async function rateLimit(request: NextRequest, path?: string): Promise<NextResponse | null> {
-  // Skip rate limiting if Redis is not configured
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-    console.warn("Rate limiting is not configured. Set UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.")
-    return null
-  }
+      // Extract IP address from request
+      const ip = req.headers.get("x-forwarded-for") || "anonymous"
 
-  try {
-    // Get client IP
-    const ip = getClientIp(request)
+      // Extract user ID from authorization header if available
+      const authHeader = req.headers.get("authorization")
+      let userId = "anonymous"
 
-    // Get the path to rate limit
-    const limitPath = path || request.nextUrl.pathname
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        // In a real implementation, you would validate the token
+        // and extract the user ID
+        userId = authHeader.substring(7)
+      }
 
-    // Find the most specific rate limit configuration
-    const config = findRateLimitConfig(limitPath)
+      // Create a unique key for this rate limit
+      const key = `ratelimit:${window}:${userId || ip}`
 
-    // Create a unique key for this IP and endpoint
-    const key = `ratelimit:${limitPath}:${ip}`
+      // Get current count
+      const current = (await redis.get<number>(key)) || 0
 
-    // Check if the request should be rate limited
-    const limited = await isRateLimited(key, config)
+      // Check if limit is exceeded
+      if (current >= limit) {
+        return { success: false, remaining: 0 }
+      }
 
-    if (limited) {
-      // Return rate limit response
-      return createRateLimitResponse(config.duration)
+      // Increment count
+      await redis.incr(key)
+
+      // Set expiration if this is the first request
+      if (current === 0) {
+        await redis.expire(key, Number.parseInt(window.replace(/[^0-9]/g, "")) * 60)
+      }
+
+      return { success: true, remaining: limit - current - 1 }
+    } catch (error) {
+      console.error("Rate limit error:", error)
+      // Fail open - allow the request if there's an error with rate limiting
+      return { success: true, remaining: 0 }
     }
-
-    // Not rate limited
-    return null
-  } catch (error) {
-    // Log the error but don't block the request (fail open)
-    console.error("Rate limiting error:", error)
-    return null
-  }
-}
-
-/**
- * Get the client IP address from the request
- */
-export function getClientIp(request: NextRequest): string {
-  return request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "127.0.0.1"
-}
-
-/**
- * Find the most specific rate limit configuration for a path
- */
-function findRateLimitConfig(path: string): RateLimitConfig {
-  // Check for exact match
-  if (path in RATE_LIMITS) {
-    return RATE_LIMITS[path as keyof typeof RATE_LIMITS]
-  }
-
-  // Check for parent paths
-  const pathParts = path.split("/").filter(Boolean)
-  while (pathParts.length > 0) {
-    pathParts.pop()
-    const parentPath = `/${pathParts.join("/")}`
-    if (parentPath in RATE_LIMITS) {
-      return RATE_LIMITS[parentPath as keyof typeof RATE_LIMITS]
-    }
-  }
-
-  // Use default rate limit
-  return RATE_LIMITS.default
-}
-
-/**
- * Check if a request should be rate limited
- */
-async function isRateLimited(key: string, config: RateLimitConfig): Promise<boolean> {
-  // Get current count
-  const current = (await redis.get<number>(key)) || 0
-
-  // Check if limit exceeded
-  if (current >= config.points) {
-    return true
-  }
-
-  // Increment count
-  await redis.incr(key)
-
-  // Set expiration if this is the first request
-  if (current === 0) {
-    await redis.expire(key, config.duration)
-  }
-
-  return false
-}
-
-/**
- * Create a rate limit response
- */
-function createRateLimitResponse(retryAfter: number): NextResponse {
-  return new NextResponse(
-    JSON.stringify({
-      error: "too_many_requests",
-      message: "Too many requests. Please try again later.",
-      retryAfter,
-    }),
-    {
-      status: 429,
-      headers: {
-        "Content-Type": "application/json",
-        "Retry-After": String(retryAfter),
-      },
-    },
-  )
+  },
 }
