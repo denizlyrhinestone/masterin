@@ -1,30 +1,26 @@
 "use client"
 
-import type React from "react"
+import { createContext, useContext, type ReactNode } from "react"
 
-import { useEffect, useState } from "react"
-import { usePathname } from "next/navigation"
-import { trackPageView, initializeAnalytics } from "@/lib/analytics"
+interface AnalyticsContextType {
+  track: (event: string, properties?: Record<string, any>) => void
+}
 
-export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const [isInitialized, setIsInitialized] = useState(false)
+const AnalyticsContext = createContext<AnalyticsContextType | undefined>(undefined)
 
-  // Initialize analytics only once on client-side
-  useEffect(() => {
-    if (!isInitialized) {
-      initializeAnalytics()
-      setIsInitialized(true)
-    }
-  }, [isInitialized])
+export function AnalyticsProvider({ children }: { children: ReactNode }) {
+  const track = (event: string, properties?: Record<string, any>) => {
+    // In a real app, this would send to your analytics service
+    console.log("Analytics event:", event, properties)
+  }
 
-  // Track page views when the pathname changes
-  useEffect(() => {
-    if (isInitialized && pathname) {
-      // Track page view without search params
-      trackPageView(pathname)
-    }
-  }, [pathname, isInitialized])
+  return <AnalyticsContext.Provider value={{ track }}>{children}</AnalyticsContext.Provider>
+}
 
-  return <>{children}</>
+export function useAnalytics() {
+  const context = useContext(AnalyticsContext)
+  if (context === undefined) {
+    throw new Error("useAnalytics must be used within an AnalyticsProvider")
+  }
+  return context
 }

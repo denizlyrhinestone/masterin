@@ -26,5 +26,5 @@ export function ThemeToggle() {
   )
 }
 
-// Add the ModeToggle export that aliases ThemeToggle
+// Add the missing named export as an alias to ThemeToggle
 export const ModeToggle = ThemeToggle

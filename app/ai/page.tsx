@@ -1,115 +1,171 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { ArrowRight, Brain, Zap, MessageSquare, BookOpen, LineChart, GraduationCap } from "lucide-react"
-import AIChatWidget from "@/components/ai-chat-widget"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  ArrowRight,
+  Brain,
+  Zap,
+  MessageSquare,
+  BookOpen,
+  LineChart,
+  GraduationCap,
+  Lightbulb,
+  Code,
+  FileText,
+  Languages,
+  Calculator,
+} from "lucide-react"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "AI Tools - Masterin",
+  description: "Explore our comprehensive suite of AI-powered learning tools.",
+}
 
 export default function AIPage() {
+  const tools = [
+    {
+      id: "chat",
+      title: "AI Chat",
+      description: "Chat with our AI assistant to get answers to your questions",
+      icon: MessageSquare,
+      href: "/ai/chat",
+      color: "bg-blue-500",
+    },
+    {
+      id: "code",
+      title: "Code Assistant",
+      description: "Get help with coding problems and learn programming concepts",
+      icon: Code,
+      href: "/ai/code",
+      color: "bg-green-500",
+    },
+    {
+      id: "essay",
+      title: "Essay Helper",
+      description: "Get assistance with writing and structuring essays",
+      icon: FileText,
+      href: "/ai/essay",
+      color: "bg-purple-500",
+    },
+    {
+      id: "language",
+      title: "Language Tutor",
+      description: "Practice and learn new languages with AI assistance",
+      icon: Languages,
+      href: "/ai/language",
+      color: "bg-yellow-500",
+    },
+    {
+      id: "math",
+      title: "Math Solver",
+      description: "Solve math problems and understand the solutions",
+      icon: Calculator,
+      href: "/ai/math",
+      color: "bg-red-500",
+    },
+    {
+      id: "notes",
+      title: "Study Notes",
+      description: "Generate and organize study notes from your learning materials",
+      icon: BookOpen,
+      href: "/ai/notes",
+      color: "bg-indigo-500",
+    },
+  ]
+
   return (
-    <div className="flex flex-col w-full">
+    <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="pt-24 pb-12 md:pt-32 md:pb-20 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900/20">
+      <section className="py-16 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/20 dark:to-indigo-950/20">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-4xl md:text-5xl font-bold mb-6">
+            AI-Powered <span className="animate-gradient-text">Learning Tools</span>
+          </h1>
+          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
+            Discover our comprehensive suite of AI tools designed to enhance your learning experience across all
+            subjects and skill levels.
+          </p>
+        </div>
+      </section>
+
+      {/* AI Tools Grid */}
+      <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center">
-            <div className="lg:w-1/2 lg:pr-12 mb-10 lg:mb-0">
-              <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6">
-                Your Personal{" "}
-                <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  AI Tutor
-                </span>{" "}
-                Available 24/7
-              </h1>
-              <p className="text-lg text-gray-600 dark:text-gray-300 mb-8">
-                Get instant help with any subject, personalized explanations, and practice problems tailored to your
-                learning style and pace.
-              </p>
-              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                <Link href="/ai/chat">
-                  <Button size="lg" className="px-8">
-                    Try AI Tutor Now
-                  </Button>
-                </Link>
-                <Button size="lg" variant="outline" className="px-8">
-                  How It Works
-                </Button>
-              </div>
-            </div>
-            <div className="lg:w-1/2 relative">
-              <div className="relative rounded-lg overflow-hidden shadow-xl">
-                <Image
-                  src="/ai-tutor-purple-ui.png"
-                  alt="AI Tutor Visualization"
-                  width={800}
-                  height={600}
-                  className="w-full h-auto"
-                />
-                <div className="absolute inset-0 bg-gradient-to-tr from-purple-600/20 to-transparent"></div>
-              </div>
-            </div>
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">AI Learning Tools</h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              Enhance your learning experience with our suite of AI-powered tools designed to help you master new
+              skills.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {tools.map((tool) => (
+              <Card key={tool.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className={`w-12 h-12 rounded-lg ${tool.color} flex items-center justify-center mb-4`}>
+                    <tool.icon className="h-6 w-6 text-white" />
+                  </div>
+                  <CardTitle>{tool.title}</CardTitle>
+                  <CardDescription>{tool.description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href={tool.href}>
+                    <Button className="w-full">Try Now</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Chat Widget Section */}
-      <section className="py-16 bg-white dark:bg-gray-900">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col lg:flex-row items-center gap-12">
-            <div className="lg:w-1/2">
-              <h2 className="text-3xl font-bold mb-6">Try Our AI Tutor Right Now</h2>
-              <p className="text-gray-600 dark:text-gray-300 mb-6">
-                Get a taste of how our AI tutor can help you learn. Ask a question in the chat widget or open the full
-                chat experience for more features.
-              </p>
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
-                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span>Ask questions in natural language</span>
-                </li>
-                <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
-                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span>Get instant, personalized explanations</span>
-                </li>
-                <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
-                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span>Upload images or documents for help (in full chat)</span>
-                </li>
-                <li className="flex items-start">
-                  <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mr-2 mt-0.5">
-                    <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <span>Practice with interactive exercises</span>
-                </li>
-              </ul>
-              <Link href="/ai/chat">
-                <Button className="group">
-                  Open Full Chat Experience
-                  <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
-            </div>
-            <div className="lg:w-1/2">
-              <AIChatWidget />
-            </div>
+      {/* Features Overview */}
+      <section className="py-16 bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-12">Why Choose Our AI Tools?</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <Card>
+              <CardHeader>
+                <Brain className="h-8 w-8 text-purple-600 mb-2" />
+                <CardTitle>Intelligent Adaptation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>
+                  Our AI learns from your interactions and adapts to your learning style for personalized assistance.
+                </CardDescription>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <Zap className="h-8 w-8 text-purple-600 mb-2" />
+                <CardTitle>Lightning Fast</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>
+                  Get instant responses and solutions powered by cutting-edge AI technology.
+                </CardDescription>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <Lightbulb className="h-8 w-8 text-purple-600 mb-2" />
+                <CardTitle>Creative Solutions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>
+                  Generate creative content, solve complex problems, and explore new ideas with AI assistance.
+                </CardDescription>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
 
-      {/* Rest of the AI page content remains the same */}
       {/* AI Tutor Features Section */}
       <section className="py-16 md:py-24">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">

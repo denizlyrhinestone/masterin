@@ -23,7 +23,7 @@ export function Logo({ className = "", size = "md", showText = true }: LogoProps
   return (
     <Link href="/" className={`flex items-center space-x-2 ${className}`}>
       <div className={`${sizeClasses[size]} relative`}>
-        <Image src="/masterinFavicon.svg" alt="Masterin Logo" fill className="object-contain" priority />
+        <Image src="/masterinFavicon.png" alt="Masterin Logo" fill className="object-contain" priority />
       </div>
       {showText && <span className={`font-bold text-gray-900 dark:text-white ${textSizeClasses[size]}`}>Masterin</span>}
     </Link>

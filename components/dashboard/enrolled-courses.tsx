@@ -1,36 +1,43 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
+import Image from "next/image"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowRight } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
 
-interface EnrolledCourse {
-  id: string
-  slug: string
-  title: string
-  imageUrl: string
-  progress: number
-  lastAccessed: string
-  nextLessonSlug?: string
-}
+// Sample enrolled courses data
+const enrolledCourses = [
+  {
+    id: "course-1",
+    title: "Introduction to AI",
+    image: "/course-ai-fundamentals.png",
+    progress: 65,
+    lastAccessed: "2023-09-15T14:30:00Z",
+  },
+  {
+    id: "course-2",
+    title: "Data Science Fundamentals",
+    image: "/course-data-science.png",
+    progress: 30,
+    lastAccessed: "2023-09-10T09:15:00Z",
+  },
+]
 
-interface EnrolledCoursesProps {
-  courses: EnrolledCourse[]
-}
+export default function EnrolledCourses() {
+  const [courses] = useState(enrolledCourses)
 
-export default function EnrolledCourses({ courses }: EnrolledCoursesProps) {
   if (courses.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>My Courses</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-6">
-            <p className="text-muted-foreground mb-4">You haven't enrolled in any courses yet</p>
-            <Button asChild>
-              <Link href="/courses">Browse Courses</Link>
-            </Button>
+        <CardContent className="p-6">
+          <div className="text-center py-8">
+            <h3 className="text-lg font-medium mb-2">No Enrolled Courses</h3>
+            <p className="text-gray-500 dark:text-gray-400 mb-4">You haven't enrolled in any courses yet.</p>
+            <Link href="/courses">
+              <Button>Browse Courses</Button>
+            </Link>
           </div>
         </CardContent>
       </Card>
@@ -38,47 +45,40 @@ export default function EnrolledCourses({ courses }: EnrolledCoursesProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>My Courses</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {courses.map((course) => (
-            <div
-              key={course.id}
-              className="flex flex-col md:flex-row gap-4 items-start border-b pb-4 last:border-0 last:pb-0"
-            >
-              <div className="w-full md:w-24 h-16 rounded-md overflow-hidden flex-shrink-0">
-                <img
-                  src={course.imageUrl || "/placeholder.svg"}
-                  alt={course.title}
-                  className="w-full h-full object-cover"
-                />
+    <div className="space-y-4">
+      {courses.map((course) => (
+        <Card key={course.id} className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="flex flex-col sm:flex-row">
+              <div className="relative w-full sm:w-48 h-32">
+                <Image src={course.image || "/placeholder.svg"} alt={course.title} fill className="object-cover" />
               </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium truncate">{course.title}</h3>
-                <p className="text-sm text-muted-foreground">Last accessed: {course.lastAccessed}</p>
-                <div className="mt-2 flex items-center gap-2">
+              <div className="p-4 flex-1">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+                  <h3 className="font-medium">{course.title}</h3>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {new Date(course.lastAccessed).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="mb-4">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Progress</span>
+                    <span>{course.progress}%</span>
+                  </div>
                   <Progress value={course.progress} className="h-2" />
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">{course.progress}%</span>
+                </div>
+                <div className="flex justify-end">
+                  <Link href="/courses/details">
+                    <Button variant="outline" size="sm">
+                      Continue
+                    </Button>
+                  </Link>
                 </div>
               </div>
-              <Button variant="outline" size="sm" asChild className="mt-2 md:mt-0">
-                <Link
-                  href={
-                    course.nextLessonSlug
-                      ? `/courses/${course.slug}/lessons/${course.nextLessonSlug}`
-                      : `/courses/${course.slug}`
-                  }
-                >
-                  Continue <ArrowRight className="ml-1 h-3 w-3" />
-                </Link>
-              </Button>
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   )
 }

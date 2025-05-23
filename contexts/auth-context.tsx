@@ -1,56 +1,50 @@
 "use client"
 
-import type React from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 
-import { createContext, useContext, useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-
-interface User {
+type User = {
   id: string
   email: string
   name?: string
-  avatar?: string
 }
 
-interface AuthContextType {
-  user: User | null
+type AuthContextType = {
   isAuthenticated: boolean
-  isLoading: boolean
+  user: User | null
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, name: string) => Promise<void>
   signOut: () => void
+  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null,
   isAuthenticated: false,
-  isLoading: true,
+  user: null,
   signIn: async () => {},
   signUp: async () => {},
   signOut: () => {},
+  loading: true,
 })
 
 export const useAuth = () => useContext(AuthContext)
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
+  const [loading, setLoading] = useState(true)
 
-  // Check if user is logged in on mount
   useEffect(() => {
+    // Check if user is logged in
     const checkAuth = async () => {
       try {
-        // Simulate checking auth from localStorage or cookies
-        const storedUser = localStorage.getItem("masterin_user")
+        // Simulate auth check
+        const storedUser = localStorage.getItem("user")
         if (storedUser) {
           setUser(JSON.parse(storedUser))
         }
       } catch (error) {
-        console.error("Auth error:", error)
-        setUser(null)
+        console.error("Auth check failed:", error)
       } finally {
-        setIsLoading(false)
+        setLoading(false)
       }
     }
 
@@ -58,70 +52,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    setIsLoading(true)
+    setLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // For demo purposes, we'll just create a mock user
-      const mockUser = {
-        id: "user_" + Math.random().toString(36).substr(2, 9),
-        email,
-        name: email.split("@")[0],
-      }
-
-      // Store in localStorage for persistence
-      localStorage.setItem("masterin_user", JSON.stringify(mockUser))
-      setUser(mockUser)
-      router.push("/dashboard")
+      // Simulate sign in
+      const user = { id: "1", email }
+      localStorage.setItem("user", JSON.stringify(user))
+      setUser(user)
     } catch (error) {
-      console.error("Sign in error:", error)
+      console.error("Sign in failed:", error)
       throw error
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   const signUp = async (email: string, password: string, name: string) => {
-    setIsLoading(true)
+    setLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // For demo purposes, we'll just create a mock user
-      const mockUser = {
-        id: "user_" + Math.random().toString(36).substr(2, 9),
-        email,
-        name,
-      }
-
-      // Store in localStorage for persistence
-      localStorage.setItem("masterin_user", JSON.stringify(mockUser))
-      setUser(mockUser)
-      router.push("/dashboard")
+      // Simulate sign up
+      const user = { id: "1", email, name }
+      localStorage.setItem("user", JSON.stringify(user))
+      setUser(user)
     } catch (error) {
-      console.error("Sign up error:", error)
+      console.error("Sign up failed:", error)
       throw error
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   const signOut = () => {
-    localStorage.removeItem("masterin_user")
+    // Simulate sign out
+    localStorage.removeItem("user")
     setUser(null)
-    router.push("/")
   }
 
   return (
     <AuthContext.Provider
       value={{
-        user,
         isAuthenticated: !!user,
-        isLoading,
+        user,
         signIn,
         signUp,
         signOut,
+        loading,
       }}
     >
       {children}

@@ -1,99 +1,77 @@
-"use client"
-
-import Link from "next/link"
-import Image from "next/image"
-import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { MessageSquare, Code, FileText, Languages } from "lucide-react"
+import Link from "next/link"
 
-const aiTools = [
-  {
-    title: "AI Chat",
-    description: "Get instant answers to your questions on any subject",
-    icon: "/ai-tutor-chat.png",
-    link: "/ai/chat",
-  },
-  {
-    title: "Math Assistant",
-    description: "Solve complex math problems with step-by-step explanations",
-    icon: "/digital-equation-solver.png",
-    link: "/ai/math",
-  },
-  {
-    title: "Essay Assistant",
-    description: "Improve your writing with AI-powered feedback and suggestions",
-    icon: "/digital-essay-workspace.png",
-    link: "/ai/essay",
-  },
-  {
-    title: "Code Assistant",
-    description: "Learn programming concepts and get help with coding challenges",
-    icon: "/interactive-code-lesson.png",
-    link: "/ai/code",
-  },
-  {
-    title: "Language Tutor",
-    description: "Practice and improve your language skills through conversation",
-    icon: "/multilingual-chat.png",
-    link: "/ai/language",
-  },
-  {
-    title: "Study Notes",
-    description: "Generate comprehensive study notes from any text or lecture",
-    icon: "/study-notes-generator-interface.png",
-    link: "/ai/notes",
-  },
-  {
-    title: "Lesson Plan Generator",
-    description: "Create detailed lesson plans tailored to any subject and grade level",
-    icon: "/focused-instructor.png",
-    link: "/ai/lesson-plan",
-  },
-  {
-    title: "Curriculum Generator",
-    description: "Design comprehensive curriculum frameworks for entire courses",
-    icon: "/personalized-learning-dashboard.png",
-    link: "/ai/curriculum",
-  },
-  {
-    title: "Image Generator",
-    description: "Create custom educational images and visual aids for learning materials",
-    icon: "/colorful-art-palette.png",
-    link: "/ai/image",
-  },
-  {
-    title: "Flashcard Generator",
-    description: "Generate study flashcards from your notes or any educational content",
-    icon: "/open-book-path.png",
-    link: "/ai/flashcards",
-  },
-]
+export function AiToolsSection() {
+  const tools = [
+    {
+      id: "chat",
+      title: "AI Chat",
+      description: "Chat with our AI assistant to get answers to your questions",
+      icon: MessageSquare,
+      href: "/ai/chat",
+      color: "bg-blue-500",
+    },
+    {
+      id: "code",
+      title: "Code Assistant",
+      description: "Get help with coding problems and learn programming concepts",
+      icon: Code,
+      href: "/ai",
+      color: "bg-green-500",
+    },
+    {
+      id: "essay",
+      title: "Essay Helper",
+      description: "Get assistance with writing and structuring essays",
+      icon: FileText,
+      href: "/ai",
+      color: "bg-purple-500",
+    },
+    {
+      id: "language",
+      title: "Language Tutor",
+      description: "Practice and learn new languages with AI assistance",
+      icon: Languages,
+      href: "/ai",
+      color: "bg-yellow-500",
+    },
+  ]
 
-export default function AIToolsSection() {
   return (
-    <section className="py-16 bg-background" id="ai-tools">
+    <section className="py-16 bg-white dark:bg-gray-900">
       <div className="container mx-auto px-4">
-        <h2 className="text-3xl font-bold text-center mb-4">AI Learning Tools</h2>
-        <p className="text-xl text-center text-muted-foreground mb-12 max-w-3xl mx-auto">
-          Explore our suite of specialized AI tools designed to enhance your learning experience
-        </p>
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">AI Learning Tools</h2>
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+            Enhance your learning experience with our suite of AI-powered tools.
+          </p>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {aiTools.map((tool, index) => (
-            <Card key={index} className="overflow-hidden border-0 shadow-md hover:shadow-lg transition-all">
-              <div className="h-48 relative">
-                <Image src={tool.icon || "/placeholder.svg"} alt={tool.title} fill className="object-cover" />
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {tools.map((tool) => (
+            <Card key={tool.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
+                <div className={`w-12 h-12 rounded-lg ${tool.color} flex items-center justify-center mb-4`}>
+                  <tool.icon className="h-6 w-6 text-white" />
+                </div>
                 <CardTitle>{tool.title}</CardTitle>
                 <CardDescription>{tool.description}</CardDescription>
               </CardHeader>
-              <CardFooter>
-                <Button asChild className="w-full">
-                  <Link href={tool.link}>Try Now</Link>
-                </Button>
-              </CardFooter>
+              <CardContent>
+                <Link href={tool.href}>
+                  <Button className="w-full">Try Now</Button>
+                </Link>
+              </CardContent>
             </Card>
           ))}
+        </div>
+
+        <div className="text-center mt-8">
+          <Link href="/ai">
+            <Button variant="outline">View All AI Tools</Button>
+          </Link>
         </div>
       </div>
     </section>

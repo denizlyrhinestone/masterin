@@ -1,127 +1,122 @@
-import { createClient } from "@/lib/supabase"
-import { cookies } from "next/headers"
+// Remove any dynamic route references
+import { createClient } from "@supabase/supabase-js"
 
-export type User = {
-  id: string
-  email: string
-  name?: string
-  avatar_url?: string
-  role?: "user" | "admin"
-}
+// Create a single supabase client for interacting with your database
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
 
-export type Session = {
-  user: User | null
-  expires: string
-}
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+// Add the missing named export
 export const auth = {
-  getSession: async (): Promise<Session | null> => {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
+  signIn,
+  signUp,
+  signOut,
+  resetPassword,
+  updatePassword,
+  getCurrentUser,
+  isAdmin,
+}
 
-    try {
-      const {
-        data: { session },
-        error,
-      } = await supabase.auth.getSession()
-
-      if (error || !session) {
-        return null
-      }
-
-      const user: User = {
-        id: session.user.id,
-        email: session.user.email || "",
-        name: session.user.user_metadata?.name,
-        avatar_url: session.user.user_metadata?.avatar_url,
-        role: session.user.user_metadata?.role || "user",
-      }
-
-      return {
-        user,
-        expires: session.expires_at.toString(),
-      }
-    } catch (error) {
-      console.error("Error getting session:", error)
-      return null
-    }
-  },
-
-  signIn: async (email: string, password: string) => {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
+export async function signIn(email: string, password: string) {
+  try {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
     if (error) {
-      throw new Error(error.message)
+      throw error
     }
 
-    return data
-  },
+    return { user: data.user, session: data.session }
+  } catch (error) {
+    console.error("Error signing in:", error)
+    throw error
+  }
+}
 
-  signUp: async (email: string, password: string, metadata?: { name?: string }) => {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
+export async function signUp(email: string, password: string) {
+  try {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: metadata,
-      },
     })
 
     if (error) {
-      throw new Error(error.message)
+      throw error
     }
 
-    return data
-  },
+    return { user: data.user, session: data.session }
+  } catch (error) {
+    console.error("Error signing up:", error)
+    throw error
+  }
+}
 
-  signOut: async () => {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
+export async function signOut() {
+  try {
     const { error } = await supabase.auth.signOut()
 
     if (error) {
-      throw new Error(error.message)
+      throw error
     }
+  } catch (error) {
+    console.error("Error signing out:", error)
+    throw error
+  }
+}
 
-    return true
-  },
-
-  resetPassword: async (email: string) => {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
+export async function resetPassword(email: string) {
+  try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_BASE_URL}/auth/reset-password`,
+      redirectTo: `${window.location.origin}/auth/reset-password`,
     })
 
     if (error) {
-      throw new Error(error.message)
+      throw error
     }
+  } catch (error) {
+    console.error("Error resetting password:", error)
+    throw error
+  }
+}
 
-    return true
-  },
-
-  updatePassword: async (password: string) => {
-    const cookieStore = cookies()
-    const supabase = createClient(cookieStore)
-
+export async function updatePassword(password: string) {
+  try {
     const { error } = await supabase.auth.updateUser({
       password,
     })
 
     if (error) {
-      throw new Error(error.message)
+      throw error
+    }
+  } catch (error) {
+    console.error("Error updating password:", error)
+    throw error
+  }
+}
+
+export async function getCurrentUser() {
+  try {
+    const { data, error } = await supabase.auth.getUser()
+
+    if (error) {
+      throw error
     }
 
-    return true
-  },
+    return data.user
+  } catch (error) {
+    console.error("Error getting current user:", error)
+    return null
+  }
+}
+
+export async function isAdmin(user: any) {
+  if (!user) return false
+
+  const adminEmail = process.env.ADMIN_EMAIL
+  if (!adminEmail) return false
+
+  return user.email === adminEmail
 }

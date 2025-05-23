@@ -38,8 +38,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(redirectUrl)
     }
 
-    // We can't do a full admin check in middleware without next/headers
-    // So we'll just check for authentication and let the page/API handle admin check
+    // We'll just check for authentication and let the page/API handle admin check
     return NextResponse.next()
   } catch (error) {
     console.error("Error in admin middleware:", error)

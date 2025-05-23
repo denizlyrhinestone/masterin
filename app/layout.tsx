@@ -1,18 +1,20 @@
 import type React from "react"
+import "@/app/globals.css"
 import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { ThemeProvider } from "@/components/theme-provider"
-import "./globals.css"
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Masterin - AI-Powered Learning Platform",
-  description: "Enhance your learning with AI-powered tools and personalized assistance",
-  generator: "v0.dev",
+  description: "Enhance your learning experience with AI-powered tools and courses",
   icons: {
-    icon: "/masterinFavicon.svg",
-    apple: "/icon-192.png",
+    icon: "/favicon.ico",
   },
+    generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -22,12 +24,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head />
-      <body>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+      <body className={inter.className}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <div className="flex flex-col min-h-screen">
             <Navbar />
-            <div className="pt-16">{children}</div>
+            <main className="flex-1">{children}</main>
             <Footer />
           </div>
         </ThemeProvider>

@@ -1,97 +1,62 @@
 "use client"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
+
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Clock, Users, Award, CheckCircle } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { CheckCircle } from "lucide-react"
+import Link from "next/link"
 
-interface EnrollmentSectionProps {
-  price?: number
-  isFree?: boolean
-  discount?: {
-    originalPrice: number
-    discountPercentage: number
-    endsAt?: string
+export function EnrollmentSection() {
+  const [isEnrolled, setIsEnrolled] = useState(false)
+
+  const handleEnroll = () => {
+    setIsEnrolled(true)
   }
-  duration: string
-  enrollmentCount: number
-  certificateIncluded: boolean
-  isEnrolled?: boolean
-  onEnroll?: () => void
-  features?: string[]
-}
 
-export default function EnrollmentSection({
-  price,
-  isFree = false,
-  discount,
-  duration,
-  enrollmentCount,
-  certificateIncluded,
-  isEnrolled = false,
-  onEnroll,
-  features = [],
-}: EnrollmentSectionProps) {
   return (
-    <Card className="sticky top-6">
-      <CardContent className="pt-6">
-        <div className="mb-4">
-          {isFree ? (
-            <div className="text-2xl font-bold">Free</div>
-          ) : (
-            <div className="flex items-end gap-2">
-              <div className="text-2xl font-bold">${price?.toFixed(2)}</div>
-              {discount && (
-                <>
-                  <div className="text-lg text-muted-foreground line-through">${discount.originalPrice.toFixed(2)}</div>
-                  <div className="text-sm text-green-600 font-medium">{discount.discountPercentage}% off</div>
-                </>
-              )}
+    <Card>
+      <CardContent className="p-6">
+        {isEnrolled ? (
+          <div className="text-center">
+            <div className="flex justify-center mb-4">
+              <CheckCircle className="h-12 w-12 text-green-500" />
             </div>
-          )}
-          {discount?.endsAt && <div className="text-sm text-red-500 mt-1">Offer ends in {discount.endsAt}</div>}
-        </div>
-
-        <div className="space-y-3 mb-6">
-          <div className="flex items-center gap-3">
-            <Clock className="h-5 w-5 text-primary" />
-            <span>{duration}</span>
+            <h3 className="text-xl font-bold mb-2">You're Enrolled!</h3>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">You now have access to all course materials.</p>
+            <Link href="/courses/course-detail/lesson">
+              <Button className="w-full">Start Learning</Button>
+            </Link>
           </div>
-          <div className="flex items-center gap-3">
-            <Users className="h-5 w-5 text-primary" />
-            <span>{enrollmentCount} students enrolled</span>
-          </div>
-          {certificateIncluded && (
-            <div className="flex items-center gap-3">
-              <Award className="h-5 w-5 text-primary" />
-              <span>Certificate of completion</span>
+        ) : (
+          <div>
+            <div className="mb-6">
+              <div className="flex justify-between mb-2">
+                <span className="text-lg font-bold">Price</span>
+                <span className="text-lg font-bold">$49.99</span>
+              </div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">One-time payment, lifetime access</div>
             </div>
-          )}
-        </div>
-
-        {features.length > 0 && (
-          <div className="space-y-2 mb-6">
-            <h3 className="font-medium">This course includes:</h3>
-            <ul className="space-y-2">
-              {features.map((feature, index) => (
-                <li key={index} className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
-                  <span className="text-sm">{feature}</span>
-                </li>
-              ))}
-            </ul>
+            <Button className="w-full mb-4" onClick={handleEnroll}>
+              Enroll Now
+            </Button>
+            <div className="text-center text-sm text-gray-500 dark:text-gray-400">30-day money-back guarantee</div>
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                <span>Full lifetime access</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                <span>Access on mobile and desktop</span>
+              </div>
+              <div className="flex items-center">
+                <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                <span>Certificate of completion</span>
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
-      <CardFooter>
-        {isEnrolled ? (
-          <Button className="w-full" variant="secondary">
-            Continue Learning
-          </Button>
-        ) : (
-          <Button className="w-full" onClick={onEnroll}>
-            {isFree ? "Enroll Now" : "Buy Now"}
-          </Button>
-        )}
-      </CardFooter>
     </Card>
   )
 }

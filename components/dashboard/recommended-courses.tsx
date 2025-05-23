@@ -1,67 +1,70 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import Image from "next/image"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Star } from "lucide-react"
 
-interface RecommendedCourse {
-  id: string
-  slug: string
-  title: string
-  description: string
-  imageUrl: string
-  rating: number
-  instructor: string
-}
+// Sample recommended courses data
+const recommendedCourses = [
+  {
+    id: "rec-course-1",
+    title: "Machine Learning Basics",
+    image: "/course-machine-learning.png",
+    rating: 4.8,
+    reviewCount: 245,
+    price: 49.99,
+  },
+  {
+    id: "rec-course-2",
+    title: "Web Development Masterclass",
+    image: "/course-web-development.png",
+    rating: 4.7,
+    reviewCount: 189,
+    price: 59.99,
+  },
+  {
+    id: "rec-course-3",
+    title: "Digital Marketing Essentials",
+    image: "/course-digital-marketing.png",
+    rating: 4.6,
+    reviewCount: 156,
+    price: 39.99,
+  },
+]
 
-interface RecommendedCoursesProps {
-  courses: RecommendedCourse[]
-}
-
-export default function RecommendedCourses({ courses }: RecommendedCoursesProps) {
-  if (courses.length === 0) {
-    return null
-  }
+export default function RecommendedCourses() {
+  const [courses] = useState(recommendedCourses)
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recommended For You</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {courses.map((course) => (
-            <div key={course.id} className="flex gap-4 border-b pb-4 last:border-0 last:pb-0">
-              <div className="w-24 h-16 rounded-md overflow-hidden flex-shrink-0">
-                <img
-                  src={course.imageUrl || "/placeholder.svg"}
-                  alt={course.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium truncate">{course.title}</h3>
-                <p className="text-sm text-muted-foreground truncate">{course.instructor}</p>
-                <div className="flex items-center mt-1">
-                  <div className="flex">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-3 w-3 ${
-                          i < Math.floor(course.rating) ? "text-yellow-400 fill-yellow-400" : "text-gray-300"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-xs text-muted-foreground ml-1">{course.rating.toFixed(1)}</span>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" asChild className="flex-shrink-0">
-                <Link href={`/courses/${course.slug}`}>View</Link>
-              </Button>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {courses.map((course) => (
+        <Card key={course.id} className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="relative w-full h-40">
+              <Image src={course.image || "/placeholder.svg"} alt={course.title} fill className="object-cover" />
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+            <div className="p-4">
+              <h3 className="font-medium mb-2">{course.title}</h3>
+              <div className="flex items-center mb-2">
+                <div className="flex items-center text-yellow-500 mr-2">
+                  <Star className="h-4 w-4 fill-current" />
+                  <span className="ml-1 text-sm">{course.rating}</span>
+                </div>
+                <span className="text-xs text-gray-500 dark:text-gray-400">({course.reviewCount} reviews)</span>
+              </div>
+              <div className="flex items-center justify-between mt-4">
+                <span className="font-medium">${course.price}</span>
+                <Link href="/courses/details">
+                  <Button size="sm">View Course</Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
   )
 }
