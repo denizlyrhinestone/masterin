@@ -4,10 +4,6 @@ import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { initializeAnalytics, trackPageView } from "@/lib/analytics"
 
-/**
- * Client component that initializes analytics and tracks page views
- * This component should be included in the app layout
- */
 export function AnalyticsInitializer() {
   const pathname = usePathname()
   const [initialized, setInitialized] = useState(false)

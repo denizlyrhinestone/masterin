@@ -6,7 +6,6 @@ import { useEffect, useState } from "react"
 import { usePathname } from "next/navigation"
 import { trackPageView, initializeAnalytics } from "@/lib/analytics"
 
-// Remove useSearchParams from this component to avoid the Suspense requirement
 export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [isInitialized, setIsInitialized] = useState(false)
@@ -28,21 +27,4 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
   }, [pathname, isInitialized])
 
   return <>{children}</>
-}
-
-// Separate component for tracking events
-export function AnalyticsEventTracker({
-  eventName,
-  eventParams,
-  onTrack,
-}: {
-  eventName: string
-  eventParams?: Record<string, string>
-  onTrack?: (success: boolean) => void
-}) {
-  useEffect(() => {
-    // Implementation remains the same
-  }, [eventName, eventParams, onTrack])
-
-  return null
 }

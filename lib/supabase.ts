@@ -1,56 +1,49 @@
 import { createClient } from "@supabase/supabase-js"
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { logError } from "@/lib/error-logger"
+import type { Database } from "@/types/database"
 
-// Create a single supabase client for the entire client-side application
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ""
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ""
+// Check if we're in development mode
+const isDevelopment =
+  process.env.NODE_ENV === "development" ||
+  (typeof window !== "undefined" && window.location.hostname.includes("vusercontent.net"))
 
-// Validate environment variables
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn("Supabase environment variables are missing. Some functionality may not work correctly.", {
-    url: supabaseUrl ? "✓" : "✗",
-    key: supabaseAnonKey ? "✓" : "✗",
-  })
-
-  // Log this as a critical error
-  if (typeof window !== "undefined") {
-    logError(new Error("Supabase environment variables are missing"), {
-      severity: "critical",
-      context: {
-        url: !!supabaseUrl,
-        key: !!supabaseAnonKey,
-      },
-    })
-  }
+// Create a mock Supabase client for development
+const createMockClient = () => {
+  return {
+    auth: {
+      getSession: async () => ({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithPassword: async () => ({ data: {}, error: null }),
+      signInWithOAuth: async () => ({ data: {}, error: null }),
+      signUp: async () => ({ data: { user: { id: "mock-id" } }, error: null }),
+      signOut: async () => ({ error: null }),
+      resetPasswordForEmail: async () => ({ error: null }),
+      updateUser: async () => ({ error: null }),
+      refreshSession: async () => ({ data: { session: null }, error: null }),
+    },
+    from: (table: string) => ({
+      select: () => ({
+        eq: () => ({
+          single: async () => ({ data: null, error: null }),
+        }),
+      }),
+      insert: async () => ({ error: null }),
+      update: async () => ({ error: null }),
+    }),
+  } as any
 }
 
-// Create client with error handling and fallback mechanism
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-  global: {
-    fetch: (...args) => {
-      return fetch(...args).catch((err) => {
-        console.error("Supabase fetch error:", err)
-        logError(err instanceof Error ? err : new Error(String(err)), {
-          severity: "high",
-          context: { operation: "supabase-fetch" },
-        })
-        throw err
-      })
-    },
-  },
-})
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+// Use real Supabase client in production, mock in development
+export const supabase = isDevelopment ? createMockClient() : createClient<Database>(supabaseUrl, supabaseAnonKey)
 
 // Service role client for admin operations (use with caution)
 export const supabaseAdmin = (() => {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ""
-
-  if (!serviceRoleKey && process.env.NODE_ENV === "production") {
+  if (!supabaseServiceRoleKey && process.env.NODE_ENV === "production") {
     console.error("SUPABASE_SERVICE_ROLE_KEY is missing. Admin operations will not work.")
     logError(new Error("SUPABASE_SERVICE_ROLE_KEY is missing"), {
       severity: "critical",
@@ -58,7 +51,7 @@ export const supabaseAdmin = (() => {
     })
   }
 
-  return createClient(supabaseUrl, serviceRoleKey || supabaseAnonKey, {
+  return createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -87,23 +80,19 @@ export async function getServerSupabaseClient(requestOrResponse?: Request | Resp
 
     const cookieStore = cookies()
 
-    return createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || "",
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value
-          },
-          set(name: string, value: string, options: CookieOptions) {
-            cookieStore.set({ name, value, ...options })
-          },
-          remove(name: string, options: CookieOptions) {
-            cookieStore.set({ name, value: "", ...options })
-          },
+    return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
+        },
+        set(name: string, value: string, options: CookieOptions) {
+          cookieStore.set({ name, value, ...options })
+        },
+        remove(name: string, options: CookieOptions) {
+          cookieStore.set({ name, value: "", ...options })
         },
       },
-    )
+    })
   } catch (error) {
     console.error("Error creating server Supabase client:", error)
     logError(error instanceof Error ? error : new Error(String(error)), {
@@ -112,7 +101,7 @@ export async function getServerSupabaseClient(requestOrResponse?: Request | Resp
     })
 
     // Return a fallback client that will work but with limited functionality
-    return createClient(supabaseUrl, supabaseAnonKey, {
+    return createClient<Database>(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -136,7 +125,7 @@ export function createServerSupabaseClient() {
     })
 
     // Return a fallback client that will work but with limited functionality
-    return createClient(supabaseUrl, supabaseAnonKey, {
+    return createClient<Database>(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -207,4 +196,10 @@ export const supabaseFallbacks = {
       return { error: new Error("Database service is currently unavailable") }
     },
   },
+}
+
+// Helper function to handle Supabase errors
+export function handleSupabaseError(error: any): never {
+  console.error("Supabase error:", error)
+  throw new Error(error.message || "An error occurred while accessing the database")
 }

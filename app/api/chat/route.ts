@@ -24,20 +24,47 @@ export async function POST(req: Request) {
       body = await req.json()
     } catch (error) {
       console.error("Error parsing request body:", error)
-      return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "Invalid request body",
+          details: "Could not parse JSON request body",
+        },
+        { status: 400 },
+      )
     }
 
-    if (!body || !body.messages || !Array.isArray(body.messages)) {
-      return NextResponse.json({ error: "Invalid request format" }, { status: 400 })
+    // Handle both formats: { messages: [...] } and { message: "...", history: [...] }
+    let messages = []
+    let conversationId = null
+
+    if (body.messages && Array.isArray(body.messages)) {
+      messages = body.messages
+      conversationId = body.conversationId
+    } else if (body.message && body.history && Array.isArray(body.history)) {
+      messages = [...body.history, { role: "user", content: body.message }]
+    } else {
+      return NextResponse.json(
+        {
+          error: "Invalid request format",
+          details: "Request must include either 'messages' array or 'message' and 'history'",
+        },
+        { status: 400 },
+      )
     }
 
-    const { messages, conversationId: existingConversationId } = body
-    const conversationId = existingConversationId || `conv-${uuidv4()}`
+    // Generate a conversation ID if not provided
+    conversationId = conversationId || `conv-${uuidv4()}`
 
     // Get the latest user message
     const latestUserMessage = messages.filter((m) => m.role === "user").pop()
     if (!latestUserMessage) {
-      return NextResponse.json({ error: "No user message found" }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: "No user message found",
+          details: "At least one message with role 'user' is required",
+        },
+        { status: 400 },
+      )
     }
 
     // Check if Groq API key is available
@@ -103,7 +130,16 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error("Chat API error:", error)
-    return NextResponse.json({ error: "An unexpected error occurred", details: String(error) }, { status: 500 })
+
+    // Provide a more detailed error response
+    return NextResponse.json(
+      {
+        error: "An unexpected error occurred",
+        details: error instanceof Error ? error.message : String(error),
+        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined,
+      },
+      { status: 500 },
+    )
   }
 }
 
@@ -114,7 +150,8 @@ function generateFallbackResponse(userMessage, conversationId) {
   // Generate a simple response based on the user's message
   let responseContent = "I'm here to help with your questions about our platform. What would you like to know?"
 
-  const lowerMessage = userMessage.toLowerCase()
+  // Make sure userMessage is a string before calling toLowerCase()
+  const lowerMessage = typeof userMessage === "string" ? userMessage.toLowerCase() : ""
 
   if (lowerMessage.includes("pricing") || lowerMessage.includes("cost")) {
     responseContent =

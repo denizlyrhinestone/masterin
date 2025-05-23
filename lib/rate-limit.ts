@@ -1,59 +1,50 @@
-import { Redis } from "@upstash/redis"
+import { headers } from "next/headers"
 
-// Initialize Redis client
-let redis: Redis | null = null
-
-try {
-  redis = Redis.fromEnv()
-} catch (error) {
-  console.warn("Failed to initialize Redis client:", error)
-  redis = null
-}
+// Simple in-memory rate limiter
+// In production, you'd want to use a distributed solution like Redis
+const ipRequests = new Map<string, { count: number; resetTime: number }>()
 
 export const rateLimit = {
-  async check(req: Request, limit: number, window: string): Promise<{ success: boolean; remaining: number }> {
-    try {
-      if (!redis) {
-        throw new Error("Redis client not initialized")
-      }
+  check: async (
+    req: Request,
+    limit: number,
+    window: string,
+  ): Promise<{ success: boolean; limit: number; remaining: number }> => {
+    // Get client IP
+    const headersList = headers()
+    const forwardedFor = headersList.get("x-forwarded-for")
+    const ip = forwardedFor ? forwardedFor.split(",")[0] : "unknown"
 
-      // Extract IP address from request
-      const ip = req.headers.get("x-forwarded-for") || "anonymous"
+    // Parse window (e.g., "1m", "5s", "1h")
+    const unit = window.slice(-1)
+    const value = Number.parseInt(window.slice(0, -1))
 
-      // Extract user ID from authorization header if available
-      const authHeader = req.headers.get("authorization")
-      let userId = "anonymous"
+    let windowMs = 60 * 1000 // Default to 1 minute
 
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        // In a real implementation, you would validate the token
-        // and extract the user ID
-        userId = authHeader.substring(7)
-      }
+    if (unit === "s") windowMs = value * 1000
+    else if (unit === "m") windowMs = value * 60 * 1000
+    else if (unit === "h") windowMs = value * 60 * 60 * 1000
 
-      // Create a unique key for this rate limit
-      const key = `ratelimit:${window}:${userId || ip}`
+    const now = Date.now()
+    const ipData = ipRequests.get(ip)
 
-      // Get current count
-      const current = (await redis.get<number>(key)) || 0
-
-      // Check if limit is exceeded
-      if (current >= limit) {
-        return { success: false, remaining: 0 }
-      }
-
-      // Increment count
-      await redis.incr(key)
-
-      // Set expiration if this is the first request
-      if (current === 0) {
-        await redis.expire(key, Number.parseInt(window.replace(/[^0-9]/g, "")) * 60)
-      }
-
-      return { success: true, remaining: limit - current - 1 }
-    } catch (error) {
-      console.error("Rate limit error:", error)
-      // Fail open - allow the request if there's an error with rate limiting
-      return { success: true, remaining: 0 }
+    // If no previous requests or window expired, reset
+    if (!ipData || now > ipData.resetTime) {
+      ipRequests.set(ip, {
+        count: 1,
+        resetTime: now + windowMs,
+      })
+      return { success: true, limit, remaining: limit - 1 }
     }
+
+    // Increment request count
+    ipData.count++
+
+    // Check if over limit
+    if (ipData.count > limit) {
+      return { success: false, limit, remaining: 0 }
+    }
+
+    return { success: true, limit, remaining: limit - ipData.count }
   },
 }

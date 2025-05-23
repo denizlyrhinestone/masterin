@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { Button } from "@/components/ui/button"
 
 export default function Error({
   error,
@@ -11,18 +12,23 @@ export default function Error({
 }) {
   useEffect(() => {
     // Log the error to an error reporting service
-    console.error(error)
+    console.error("Error:", error)
   }, [error])
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
-      <h2 className="text-2xl font-semibold text-gray-600 mb-6">Something went wrong!</h2>
-      <button
-        onClick={reset}
-        className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-      >
-        Try again
-      </button>
+    <div className="min-h-[50vh] flex items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg max-w-md w-full text-center">
+        <h2 className="text-2xl font-bold mb-4">Something went wrong</h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">
+          We're sorry, but there was an error loading this page. Please try again.
+        </p>
+        <div className="flex justify-center space-x-4">
+          <Button onClick={() => (window.location.href = "/")} variant="outline">
+            Go Home
+          </Button>
+          <Button onClick={() => reset()}>Try Again</Button>
+        </div>
+      </div>
     </div>
   )
 }
