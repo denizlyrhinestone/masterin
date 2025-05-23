@@ -9,13 +9,13 @@ import { auth } from "@/lib/auth"
 
 interface LessonPageProps {
   params: {
-    courseSlug: string
+    slug: string
     lessonSlug: string
   }
 }
 
 export async function generateMetadata({ params }: LessonPageProps): Promise<Metadata> {
-  const result = await getLessonBySlug(params.courseSlug, params.lessonSlug)
+  const result = await getLessonBySlug(params.slug, params.lessonSlug)
 
   if (!result || !result.lesson) {
     return {
@@ -33,7 +33,7 @@ export default async function LessonPage({ params }: LessonPageProps) {
   const session = await auth()
   const userId = session?.user?.id
 
-  const result = await getLessonBySlug(params.courseSlug, params.lessonSlug, userId)
+  const result = await getLessonBySlug(params.slug, params.lessonSlug, userId)
 
   if (!result || !result.lesson) {
     notFound()

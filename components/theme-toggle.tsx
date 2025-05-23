@@ -25,3 +25,6 @@ export function ThemeToggle() {
     </DropdownMenu>
   )
 }
+
+// Add the ModeToggle export that aliases ThemeToggle
+export const ModeToggle = ThemeToggle

@@ -1,6 +1,9 @@
 // Check if speech recognition is supported
 export function isSpeechRecognitionSupported(): boolean {
-  return typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition || false)
+  return (
+    typeof window !== "undefined" &&
+    (window.SpeechRecognition !== undefined || window.webkitSpeechRecognition !== undefined)
+  )
 }
 
 // Check if speech synthesis is supported
@@ -25,8 +28,11 @@ export function initSpeechRecognition({
   }
 
   // Get the SpeechRecognition constructor
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-  const recognition = new SpeechRecognition()
+  // Fix: Use a type assertion to ensure TypeScript understands this is a constructor
+  const SpeechRecognitionConstructor = (window.SpeechRecognition || window.webkitSpeechRecognition) as any
+
+  // Create a new instance with the constructor
+  const recognition = new SpeechRecognitionConstructor()
 
   // Configure recognition
   recognition.continuous = false
@@ -79,7 +85,7 @@ export function initSpeechRecognition({
 }
 
 // Get preferred voice
-export async function getPreferredVoice(): Promise<SpeechSynthesisVoice | null> {
+export async function getPreferredVoice(): Promise<any | null> {
   if (!isSpeechSynthesisSupported()) {
     return null
   }
@@ -127,7 +133,7 @@ export async function speakText(
   options: {
     rate?: number
     pitch?: number
-    voice?: SpeechSynthesisVoice | null
+    voice?: any | null
     onStart?: () => void
     onEnd?: () => void
     onError?: (error: any) => void
@@ -142,7 +148,7 @@ export async function speakText(
 
   return new Promise((resolve, reject) => {
     try {
-      const utterance = new SpeechSynthesisUtterance(text)
+      const utterance = new window.SpeechSynthesisUtterance(text)
 
       // Set options
       utterance.rate = options.rate || 1

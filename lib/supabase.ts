@@ -1,7 +1,10 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { createServerClient, type CookieOptions } from "@supabase/ssr"
 import { logError } from "@/lib/error-logger"
 import type { Database } from "@/types/database"
+
+// Re-export createClient from @supabase/supabase-js
+export { createClient } from "@supabase/supabase-js"
 
 // Check if we're in development mode
 const isDevelopment =
@@ -39,7 +42,9 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 // Use real Supabase client in production, mock in development
-export const supabase = isDevelopment ? createMockClient() : createClient<Database>(supabaseUrl, supabaseAnonKey)
+export const supabase = isDevelopment
+  ? createMockClient()
+  : createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey)
 
 // Service role client for admin operations (use with caution)
 export const supabaseAdmin = (() => {
@@ -51,7 +56,7 @@ export const supabaseAdmin = (() => {
     })
   }
 
-  return createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
+  return createSupabaseClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -101,7 +106,7 @@ export async function getServerSupabaseClient(requestOrResponse?: Request | Resp
     })
 
     // Return a fallback client that will work but with limited functionality
-    return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    return createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -125,7 +130,7 @@ export function createServerSupabaseClient() {
     })
 
     // Return a fallback client that will work but with limited functionality
-    return createClient<Database>(supabaseUrl, supabaseAnonKey, {
+    return createSupabaseClient<Database>(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,

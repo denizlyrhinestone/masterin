@@ -42,11 +42,35 @@ const aiTools = [
     icon: "/study-notes-generator-interface.png",
     link: "/ai/notes",
   },
+  {
+    title: "Lesson Plan Generator",
+    description: "Create detailed lesson plans tailored to any subject and grade level",
+    icon: "/focused-instructor.png",
+    link: "/ai/lesson-plan",
+  },
+  {
+    title: "Curriculum Generator",
+    description: "Design comprehensive curriculum frameworks for entire courses",
+    icon: "/personalized-learning-dashboard.png",
+    link: "/ai/curriculum",
+  },
+  {
+    title: "Image Generator",
+    description: "Create custom educational images and visual aids for learning materials",
+    icon: "/colorful-art-palette.png",
+    link: "/ai/image",
+  },
+  {
+    title: "Flashcard Generator",
+    description: "Generate study flashcards from your notes or any educational content",
+    icon: "/open-book-path.png",
+    link: "/ai/flashcards",
+  },
 ]
 
 export default function AIToolsSection() {
   return (
-    <section className="py-16 bg-background">
+    <section className="py-16 bg-background" id="ai-tools">
       <div className="container mx-auto px-4">
         <h2 className="text-3xl font-bold text-center mb-4">AI Learning Tools</h2>
         <p className="text-xl text-center text-muted-foreground mb-12 max-w-3xl mx-auto">
