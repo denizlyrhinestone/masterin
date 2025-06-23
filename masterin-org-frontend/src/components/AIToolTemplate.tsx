@@ -34,8 +34,8 @@ const AIToolTemplate: React.FC<AIToolTemplateProps> = ({
           <button
             onClick={onSubmit}
             disabled={isGenerating}
-            className={`w-full mt-6 py-3 px-4 font-semibold rounded-md text-white transition-colors duration-150 ease-in-out
-              ${isGenerating ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}
+            className={`w-full mt-6 py-3 px-4 font-semibold rounded-md text-white transition-colors duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2
+              ${isGenerating ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'}
             `}
           >
             {isGenerating ? 'Generating...' : 'Generate'}
@@ -50,22 +50,25 @@ const AIToolTemplate: React.FC<AIToolTemplateProps> = ({
           </div>
           <div className="mt-6 flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
             <button
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-150"
-              onClick={() => alert('Save action clicked (not implemented)')}
+              className="flex-1 bg-gray-300 text-gray-500 font-semibold py-2 px-4 rounded-md cursor-not-allowed text-sm"
+              disabled
+              title="Feature coming soon"
             >
-              Save
+              Save (Coming Soon)
             </button>
             <button
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-150"
-              onClick={() => alert('Export action clicked (not implemented)')}
+              className="flex-1 bg-gray-300 text-gray-500 font-semibold py-2 px-4 rounded-md cursor-not-allowed text-sm"
+              disabled
+              title="Feature coming soon"
             >
-              Export
+              Export (Coming Soon)
             </button>
             <button
-              className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-md transition-colors duration-150"
-              onClick={() => alert('Attach to Learning Path clicked (not implemented)')}
+              className="flex-1 bg-gray-300 text-gray-500 font-semibold py-2 px-4 rounded-md cursor-not-allowed text-sm"
+              disabled
+              title="Feature coming soon"
             >
-              Attach to Learning Path
+              Attach to Learning Path (Coming Soon)
             </button>
           </div>
         </section>

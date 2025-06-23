@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const { verifyToken } = require('../middleware/authMiddleware');
+const { body, validationResult } = require('express-validator');
 
 // GET /api/career-paths - Fetch all available career paths
+// No user input to sanitize here, it's a simple GET all.
 router.get('/', async (req, res) => { // No token needed to browse career paths initially
   try {
     const { rows: careerPaths } = await db.query('SELECT id, name, description, related_skills FROM career_paths ORDER BY name');
@@ -19,15 +21,28 @@ router.get('/', async (req, res) => { // No token needed to browse career paths 
 });
 
 // POST /api/career-paths/select - Allow a student to select/update their career path
-router.post('/select', verifyToken, async (req, res) => {
-  const { career_path_id } = req.body;
-  const studentId = req.user.id; // From verifyToken middleware
+router.post(
+  '/select',
+  verifyToken,
+  [
+    body('career_path_id').isInt({ gt: 0 }).withMessage('Career path ID must be a positive integer.'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-  if (!career_path_id) {
-    return res.status(400).json({ message: 'Career path ID is required.' });
-  }
+    // career_path_id is now validated
+    const { career_path_id } = req.body;
+    const studentId = req.user.id; // From verifyToken middleware
 
-  try {
+    // Manual check for career_path_id is no longer needed due to express-validator
+    // if (!career_path_id) {
+    //   return res.status(400).json({ message: 'Career path ID is required.' });
+    // }
+
+    try {
     // Check if the career path exists
     const careerPathExists = await db.query('SELECT id FROM career_paths WHERE id = $1', [career_path_id]);
     if (careerPathExists.rows.length === 0) {

@@ -12,17 +12,23 @@ const FeaturedCourseCard: React.FC<{ title: string; description: string; link: s
     <h3 className="text-xl font-semibold text-gray-800 mb-2">{title}</h3>
     <p className="text-gray-600 text-sm mb-4">{description}</p>
     <Link href={link} legacyBehavior>
-      <a className="text-blue-600 hover:text-blue-700 font-medium">Learn More &rarr;</a>
+      <a className="text-indigo-600 hover:text-indigo-800 font-medium group inline-flex items-center focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-indigo-500 rounded-sm p-0.5">
+        Learn More <span aria-hidden="true" className="transition-transform duration-150 ease-in-out group-hover:translate-x-1 ml-1">&rarr;</span>
+      </a>
     </Link>
   </div>
 );
 
-const HowItWorksStep: React.FC<{ stepNumber: number; title: string; description: string }> = ({ stepNumber, title, description }) => (
-  <div className="text-center">
-    <div className="w-16 h-16 mx-auto bg-blue-500 text-white flex items-center justify-center rounded-full text-2xl font-bold mb-3">
-      {stepNumber}
-    </div>
-    <h3 className="text-lg font-semibold text-gray-800 mb-1">{title}</h3>
+const HowItWorksStep: React.FC<{ stepNumber: number; title: string; description: string; icon?: React.ElementType }> = ({ stepNumber, title, description, icon: Icon }) => (
+  <div className="text-center p-4">
+    {Icon ? (
+      <Icon className="w-12 h-12 text-indigo-600 mx-auto mb-4" /> // Placeholder for actual icons
+    ) : (
+      <div className="w-12 h-12 mx-auto bg-indigo-600 text-white flex items-center justify-center rounded-full text-xl font-bold mb-4">
+        {stepNumber}
+      </div>
+    )}
+    <h3 className="text-lg font-semibold text-gray-800 mb-2">{title}</h3>
     <p className="text-gray-600 text-sm">{description}</p>
   </div>
 );
@@ -45,9 +51,9 @@ const HomePage = () => {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-10">Featured Courses</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            <FeaturedCourseCard title="Advanced JavaScript" description="Master modern JavaScript concepts and techniques." link="/courses/js-advanced" />
-            <FeaturedCourseCard title="Introduction to AI" description="Explore the fundamentals of Artificial Intelligence." link="/courses/ai-intro" />
-            <FeaturedCourseCard title="Digital Marketing Essentials" description="Learn key strategies for online marketing." link="/courses/digital-marketing" />
+            <FeaturedCourseCard title="Advanced JavaScript" description="Master modern JavaScript concepts and techniques." link="/courses/placeholder-1" />
+            <FeaturedCourseCard title="Introduction to AI" description="Explore the fundamentals of Artificial Intelligence." link="/courses/placeholder-2" />
+            <FeaturedCourseCard title="Digital Marketing Essentials" description="Learn key strategies for online marketing." link="/courses/placeholder-3" />
           </div>
         </div>
       </section>
@@ -56,21 +62,24 @@ const HomePage = () => {
       <section className="py-12 md:py-20 bg-slate-50">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold text-center text-gray-800 mb-12">How MasterIn.org Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-10">
             <HowItWorksStep
               stepNumber={1}
-              title="Discover Your Path"
-              description="Take our AI diagnostic quiz to find personalized learning or career paths."
+              title="Discover & Personalize"
+              description="Take our AI diagnostic quiz or explore career paths to tailor your learning journey."
+              // icon={AcademicCapIcon} // Example, replace with actual or suitable icons
             />
             <HowItWorksStep
               stepNumber={2}
-              title="Learn & Create"
-              description="Engage with courses, utilize AI tools, and build your knowledge."
+              title="Learn, Create & Teach"
+              description="Engage with courses, utilize AI tools to build content, or share your expertise on our marketplace."
+              // icon={SparklesIcon}
             />
             <HowItWorksStep
               stepNumber={3}
-              title="Grow & Share"
-              description="Track progress, access the marketplace, and contribute to the community."
+              title="Achieve & Grow"
+              description="Track progress, earn credentials (future), and continuously develop your skills and knowledge."
+              // icon={ChartBarIcon}
             />
           </div>
         </div>

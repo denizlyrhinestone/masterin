@@ -14,24 +14,27 @@ interface AIToolShowcaseItemProps {
   name: string;
   description: string;
   iconBgColor: string;
+  slug: string; // For linking
 }
 
-const AIToolShowcaseItem: React.FC<AIToolShowcaseItemProps> = ({ name, description, iconBgColor }) => (
-  <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 ease-in-out">
-    <div className="flex items-center mb-3">
-      <PlaceholderIcon className={iconBgColor} />
-      <h4 className="ml-3 text-md font-semibold text-gray-700">{name}</h4>
-    </div>
-    <p className="text-xs text-gray-500">{description}</p>
-  </div>
+const AIToolShowcaseItem: React.FC<AIToolShowcaseItemProps> = ({ name, description, iconBgColor, slug }) => (
+  <Link href={`/tools/${slug}`} legacyBehavior>
+    <a className="block bg-white p-4 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 ease-in-out group focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+      <div className="flex items-center mb-3">
+        <PlaceholderIcon className={iconBgColor} />
+        <h4 className="ml-3 text-md font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors">{name}</h4>
+      </div>
+      <p className="text-xs text-gray-500">{description}</p>
+    </a>
+  </Link>
 );
 
 const HeroSection: React.FC = () => {
-  const aiTools = [
-    { name: 'Lesson Plan Generator', description: 'Craft tailored lesson plans in minutes.', iconBgColor: 'bg-purple-500' },
-    { name: 'Lab Designer', description: 'Design engaging lab experiments with AI.', iconBgColor: 'bg-green-500' },
-    { name: 'Assessment Generator', description: 'Create diverse tests and quizzes effortlessly.', iconBgColor: 'bg-yellow-500' },
-    { name: 'Math Problem Creator', description: 'Generate varied math problems for all levels.', iconBgColor: 'bg-blue-500' },
+  const aiTools: AIToolShowcaseItemProps[] = [
+    { name: 'Lesson Plan Generator', slug: 'lesson-plan-generator', description: 'Craft tailored lesson plans in minutes.', iconBgColor: 'bg-purple-500' },
+    { name: 'Lab Designer', slug: 'lab-designer', description: 'Design engaging lab experiments with AI.', iconBgColor: 'bg-green-500' },
+    { name: 'Assessment Generator', slug: 'assessment-generator', description: 'Create diverse tests and quizzes effortlessly.', iconBgColor: 'bg-yellow-500' },
+    { name: 'Math Problem Creator', slug: 'math-problem-creator', description: 'Generate varied math problems for all levels.', iconBgColor: 'bg-blue-500' },
   ];
 
   return (
@@ -47,7 +50,7 @@ const HeroSection: React.FC = () => {
               Empowering educators and students with AI-driven tools for enhanced learning, teaching, and marketplace collaboration.
             </p>
             <Link href="/learning-path" legacyBehavior>
-              <a className="inline-block bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 px-8 rounded-lg text-lg shadow-md hover:shadow-lg transition-transform duration-150 ease-in-out transform hover:scale-105">
+              <a className="inline-block bg-rose-500 hover:bg-rose-600 text-white font-semibold py-3 px-8 rounded-lg text-lg shadow-md hover:shadow-lg transition-transform duration-150 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-400">
                 Start Your Learning Path
               </a>
             </Link>
@@ -60,13 +63,14 @@ const HeroSection: React.FC = () => {
               {/* Future Animation Note: This section is intended to be an animated slider/carousel in a future iteration. */}
               Streamline your educational tasks with our suite of intelligent tools.
             </p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"> {/* Adjusted grid for responsiveness */}
               {aiTools.map(tool => (
                 <AIToolShowcaseItem
                   key={tool.name}
                   name={tool.name}
                   description={tool.description}
                   iconBgColor={tool.iconBgColor}
+                  slug={tool.slug}
                 />
               ))}
             </div>

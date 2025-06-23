@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const { verifyToken } = require('../middleware/authMiddleware');
+const { body, validationResult } = require('express-validator');
 
 // GET /api/learning-paths/my-path - Fetch the current student's active learning path
+// No user-provided input to sanitize for this GET request, beyond what verifyToken handles.
 router.get('/my-path', verifyToken, async (req, res) => {
   const studentId = req.user.id;
 
@@ -55,24 +57,38 @@ router.get('/my-path', verifyToken, async (req, res) => {
 });
 
 // POST /api/learning-paths/update-progress - Update progress on a course in the learning path
-router.post('/update-progress', verifyToken, async (req, res) => {
-  const studentId = req.user.id;
-  const { learning_pathway_id, course_id, status, progress_percentage } = req.body;
+router.post(
+  '/update-progress',
+  verifyToken,
+  [
+    body('learning_pathway_id').isInt({ gt: 0 }).withMessage('Learning pathway ID must be a positive integer.'),
+    body('course_id').isInt({ gt: 0 }).withMessage('Course ID must be a positive integer.'),
+    body('status').isIn(['not-started', 'in-progress', 'completed', 'skipped']).trim().escape().withMessage('Invalid status provided.'),
+    body('progress_percentage').optional().isInt({ min: 0, max: 100 }).withMessage('Progress percentage must be between 0 and 100.'),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
 
-  if (!learning_pathway_id || !course_id || !status) {
-    return res.status(400).json({ message: 'Learning pathway ID, course ID, and status are required.' });
-  }
+    const studentId = req.user.id;
+    // Values from req.body are now validated and potentially sanitized
+    const { learning_pathway_id, course_id, status, progress_percentage } = req.body;
 
-  const validStatuses = ['not-started', 'in-progress', 'completed', 'skipped'];
-  if (!validStatuses.includes(status)) {
-    return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
-  }
+    // Manual validation for requirements already handled by express-validator .isInt and .isIn
+    // if (!learning_pathway_id || !course_id || !status) {
+    //   return res.status(400).json({ message: 'Learning pathway ID, course ID, and status are required.' });
+    // }
+    // const validStatuses = ['not-started', 'in-progress', 'completed', 'skipped'];
+    // if (!validStatuses.includes(status)) {
+    //   return res.status(400).json({ message: `Invalid status. Must be one of: ${validStatuses.join(', ')}` });
+    // }
+    // if (progress_percentage !== undefined && (typeof progress_percentage !== 'number' || progress_percentage < 0 || progress_percentage > 100)) {
+    //   return res.status(400).json({ message: 'Progress percentage must be a number between 0 and 100.' });
+    // }
 
-  if (progress_percentage !== undefined && (typeof progress_percentage !== 'number' || progress_percentage < 0 || progress_percentage > 100)) {
-    return res.status(400).json({ message: 'Progress percentage must be a number between 0 and 100.' });
-  }
-
-  try {
+    try {
     // First, verify that the learning_pathway_id belongs to the authenticated student to prevent unauthorized updates.
     const pathwayCheck = await db.query(
       'SELECT id FROM learning_pathways WHERE id = $1 AND student_id = $2',
