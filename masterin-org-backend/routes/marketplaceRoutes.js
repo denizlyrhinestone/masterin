@@ -3,12 +3,14 @@ const router = express.Router();
 const db = require('../db/database');
 const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 const { body, query, param, validationResult } = require('express-validator');
-const path = require('path'); // For file downloads
+// const path = require('path'); // No longer needed for local path joining for S3 downloads in this route
+// const UPLOAD_DIR_ROOT = path.join(__dirname, '..', 'uploads'); // No longer needed for S3 downloads
 
-// Define UPLOAD_DIR_ROOT - this should ideally be from a centralized config
-// Assuming this routes file is in masterin-org-backend/routes/
-// And uploads are in masterin-org-backend/uploads/
-const UPLOAD_DIR_ROOT = path.join(__dirname, '..', 'uploads');
+// Import S3 utilities from s3Service.js
+const { s3Client, S3_BUCKET_NAME, generatePresignedGetUrl, getPublicS3Url } = require('../lib/s3Service');
+// Note: generatePresignedGetUrl was added to s3Service.js in a previous conceptual step.
+// If direct SDK usage is preferred here, import GetObjectCommand and getSignedUrl directly.
+// For this refactor, we'll assume generatePresignedGetUrl exists and uses s3Client & S3_BUCKET_NAME from s3Service.
 
 const productValidationRules = [
   body('title').notEmpty().trim().escape().withMessage('Title is required.'),
@@ -188,19 +190,28 @@ router.get('/:productId', [
     }
 
     // Fetch associated file metadata
-    const content_files = await fetchFileMetadata(product.content_file_ids);
-    const preview_files = await fetchFileMetadata(product.preview_file_ids);
+    const content_files_metadata = await fetchFileMetadata(product.content_file_ids);
+    let preview_files_metadata = await fetchFileMetadata(product.preview_file_ids);
+
+    // Add publicUrl to each preview file if it's an S3 key (file_path)
+    if (preview_files_metadata && preview_files_metadata.length > 0) {
+      preview_files_metadata = preview_files_metadata.map(file => ({
+        ...file,
+        publicUrl: getPublicS3Url(file.file_path) // file_path is the S3 key
+      }));
+    }
+
+    // Assuming product.thumbnail_url is a direct URL or relative public path, not an S3 key from uploaded_files.
+    // If it were an S3 key (e.g., from a thumbnail_file_id), it would be:
+    // product.thumbnail_url = product.thumbnail_s3_key ? getPublicS3Url(product.thumbnail_s3_key) : null;
 
     // Construct the response object
     const responseProduct = {
       ...product,
-      content_files,
-      preview_files
+      content_files: content_files_metadata, // Renamed for clarity from previous step
+      preview_files: preview_files_metadata  // Renamed for clarity
     };
-    // Remove individual ID arrays from top level if desired, as they are now expanded
-    // delete responseProduct.content_file_ids;
-    // delete responseProduct.preview_file_ids;
-    // Decided to keep them for now, client can ignore if they use the _files arrays.
+    // content_file_ids and preview_file_ids are still part of 'product' spread
 
     res.json(responseProduct);
   } catch (error) {
@@ -404,10 +415,13 @@ router.get('/:productId/download/:fileId', verifyToken, [
 
     const { productId, fileId } = req.params;
     const userId = req.user.id;
+    let dbClient;
 
     try {
+      dbClient = await db.pool.connect(); // Get a client for potential multiple queries
+
       // 1. Check if user acquired the product
-      const purchaseCheck = await db.query(
+      const purchaseCheck = await dbClient.query(
         'SELECT id FROM user_product_purchases WHERE user_id = $1 AND product_id = $2',
         [userId, productId]
       );

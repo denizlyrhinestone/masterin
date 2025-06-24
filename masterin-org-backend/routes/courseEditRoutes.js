@@ -3,6 +3,16 @@ const router = express.Router();
 const db = require('../db/database');
 const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 const { body, param, validationResult } = require('express-validator');
+const { v4: uuidv4 } = require('uuid'); // For generating unique S3 keys
+const { generatePresignedPutUrl, S3_BUCKET, getS3ObjectMetadata } = require('../lib/s3Service'); // Import S3 utility
+// Note: Multer, fs, path, UPLOAD_DIR_ROOT, and upload related to local disk storage will be removed or commented out.
+// const multer = require('multer');
+// const fs = require('fs');
+// const path = require('path');
+// const UPLOAD_DIR_ROOT = path.join(__dirname, '..', 'uploads');
+// if (!fs.existsSync(UPLOAD_DIR_ROOT)) { /* ... */ }
+// const upload = multer({ storage: multer.memoryStorage(), ... });
+
 
 // Middleware to check course ownership or admin role
 const checkCourseOwnershipOrAdmin = async (req, res, next) => {
@@ -267,51 +277,57 @@ router.post('/:courseId/modules/:moduleId/lessons/:lessonId/blocks/reorder', ver
 
 // POST /api/files/initiate-upload (Initiate File Upload)
 router.post(
-  '/files/initiate-upload', // Note: This is not nested under courses, it's a general utility
-  verifyToken, // Any authenticated user can initiate an upload for their own use
+  '/files/initiate-upload',
+  verifyToken,
   [
-    body('file_name').notEmpty().trim().escape().withMessage('File name is required.'),
-    body('mime_type').notEmpty().trim().escape().withMessage('MIME type is required.'),
+    body('file_name').notEmpty().trim().withMessage('File name is required.'),
+    body('mime_type').notEmpty().trim().withMessage('MIME type is required.'),
     body('size_bytes').optional().isInt({ min: 0 }).withMessage('Size must be a non-negative integer.'),
-    // 'context' could be used to tag where the file is intended (e.g. course_material, profile_pic)
-    // body('context').optional().trim().escape(),
+    body('context').optional().trim().escape().withMessage('Context for upload must be a valid string.') // e.g., 'course_materials', 'profile_pictures'
   ],
   async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
-    const { file_name, mime_type, size_bytes /*, context */ } = req.body;
+    const { file_name, mime_type, size_bytes } = req.body;
+    const context = req.body.context || 'general'; // Default context if not provided
     const uploader_user_id = req.user.id;
 
-    // Generate a unique file_path or structure. This is highly dependent on storage strategy.
-    // For now, a placeholder. In a real system, this could involve UUIDs, user IDs, dates etc.
-    // Example: user_<userId>/<timestamp>_<fileName>
-    const generated_file_path = `user_${uploader_user_id}/${Date.now()}_${file_name.replace(/\s+/g, '_')}`;
-    const storage_details = { service: "local_placeholder", path_prefix: "uploads/" }; // Example
+    const sanitizeFilename = (filename) => filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const s3Key = `uploads/${context}/user_${uploader_user_id}/${uuidv4()}-${sanitizeFilename(file_name)}`;
 
+    let client;
     try {
-      const query = `
-        INSERT INTO uploaded_files (uploader_user_id, file_name, file_path, mime_type, size_bytes, upload_status, storage_details)
-        VALUES ($1, $2, $3, $4, $5, 'pending', $6)
-        RETURNING id, file_path, upload_status;
-        -- Return ID and path; frontend might need path/presigned URL for actual upload
-      `;
-      const values = [uploader_user_id, file_name, generated_file_path, mime_type, size_bytes || null, JSON.stringify(storage_details)];
-      const { rows: [newFileRecord] } = await db.query(query, values);
+      const preSignedUploadUrl = await generatePresignedPutUrl(s3Key, mime_type);
 
-      // In a real scenario with cloud storage, generate and return a pre-signed URL here
-      // For local, the `file_path` might be used by a subsequent streaming upload endpoint.
+      client = await db.pool.connect();
+      await client.query('BEGIN');
+      const result = await client.query(
+        `INSERT INTO uploaded_files
+           (uploader_user_id, file_name, file_path, mime_type, size_bytes, status, storage_details)
+         VALUES ($1, $2, $3, $4, $5, 'pending_s3_upload', $6) RETURNING id`,
+        [uploader_user_id, file_name, s3Key, mime_type, size_bytes || null, { type: 's3', bucket: S3_BUCKET, key: s3Key }]
+      );
+      const fileId = result.rows[0].id;
+      await client.query('COMMIT');
+
       res.status(201).json({
-        message: "File upload initiated. Record created.",
-        file_id: newFileRecord.id,
-        // For client-side uploads to S3 etc., you'd return a preSignedUrl: presignedUrl
-        // For server-side streaming, you might just return the file_id and expect a stream to an endpoint like /api/files/:fileId/stream
-        upload_path_info: newFileRecord.file_path, // Example, depends on strategy
-        current_status: newFileRecord.upload_status
+        success: true,
+        message: "File upload initiated. Use pre-signed URL to upload to S3.",
+        fileId,
+        preSignedUploadUrl,
+        s3Key
       });
+
     } catch (error) {
-      console.error('Error initiating file upload:', error.stack);
-      res.status(500).json({ message: 'Server error initiating file upload.' });
+      if (client) await client.query('ROLLBACK');
+      console.error('Error initiating S3 file upload:', error.stack);
+      if (error.message.includes("S3 client is not configured") || error.message.includes("S3_BUCKET_NAME environment variable is not set")) {
+        return res.status(503).json({ success: false, message: "File upload service is currently unavailable or misconfigured." });
+      }
+      res.status(500).json({ success: false, message: 'Server error initiating file upload.' });
+    } finally {
+      if (client) client.release();
     }
   }
 );
@@ -423,46 +439,102 @@ router.post(
   '/files/:fileId/complete-upload',
   verifyToken,
   [
-    param('fileId').isInt({ gt: 0 }).withMessage('File ID must be a positive integer.'),
-    body('upload_status').isIn(['completed', 'error']).withMessage("Status must be 'completed' or 'error'.")
+    param('fileId').isInt({ gt: 0 }).withMessage('File ID must be a positive integer.'), // Corrected from isInt() to isInt({ gt:0 })
+    body('upload_status').isIn(['completed', 'error']).withMessage("Status must be 'completed' or 'error'."),
+    // size_bytes and mime_type from client are optional; will prefer S3 metadata if 'completed'
+    body('size_bytes').optional().isInt({ min: 0 }).withMessage('Size must be a non-negative integer.'),
+    body('mime_type').optional().trim().escape(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
     const { fileId } = req.params;
-    const { upload_status, storage_details_update } = req.body; // Optional: new storage details if they changed
+    const { upload_status } = req.body;
+    let { size_bytes, mime_type } = req.body; // Optional from client
     const uploader_user_id = req.user.id;
 
+    let client;
     try {
-      // Verify user owns the file record or is admin
-      const fileCheck = await db.query('SELECT id, storage_details FROM uploaded_files WHERE id = $1 AND uploader_user_id = $2', [fileId, uploader_user_id]);
-      if (fileCheck.rows.length === 0) {
-        return res.status(404).json({ message: 'File record not found or not owned by user.' });
+      client = await db.pool.connect();
+      await client.query('BEGIN');
+
+      const fileRecordResult = await client.query(
+        "SELECT id, uploader_user_id, status, file_path, storage_details FROM uploaded_files WHERE id = $1 AND uploader_user_id = $2 FOR UPDATE",
+        [fileId, uploader_user_id]
+      );
+
+      if (fileRecordResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ success: false, message: 'File record not found or unauthorized.' });
+      }
+      const fileRecord = fileRecordResult.rows[0];
+
+      // if (fileRecord.status === 'completed' && upload_status === 'completed') {
+      //   await client.query('ROLLBACK');
+      //   return res.status(200).json({ success: true, message: 'File already marked as completed.', file: fileRecord });
+      // }
+      // if (fileRecord.status !== 'pending_s3_upload' && upload_status === 'completed') {
+      //   await client.query('ROLLBACK');
+      //   return res.status(400).json({ success: false, message: `Cannot mark file as completed. Current status: ${fileRecord.status}` });
+      // }
+
+      let final_size_bytes = size_bytes;
+      let final_mime_type = mime_type;
+
+      if (upload_status === 'completed') {
+          // Optionally, verify with S3 that the file exists and get its metadata
+          // This is a good practice to prevent client spoofing size/type or completing without actual upload.
+          const s3Metadata = await getS3ObjectMetadata(fileRecord.file_path); // file_path is s3Key
+          if (!s3Metadata) {
+              await client.query('ROLLBACK');
+              // Update status to 'error' or a specific 's3_verification_failed' status?
+              await client.query("UPDATE uploaded_files SET status = 'error', updated_at = NOW() WHERE id = $1", [fileId]);
+              return res.status(400).json({ success: false, message: 'File not found on S3 or S3 metadata retrieval failed. Marking as error.' });
+          }
+          final_size_bytes = s3Metadata.contentLength !== undefined ? s3Metadata.contentLength : size_bytes;
+          final_mime_type = s3Metadata.contentType || mime_type; // Prefer S3 metadata
       }
 
-      const currentStorageDetails = fileCheck.rows[0].storage_details;
-      const finalStorageDetails = storage_details_update ? JSON.stringify(storage_details_update) : JSON.stringify(currentStorageDetails);
+      let updateQuery = 'UPDATE uploaded_files SET status = $1, updated_at = NOW()';
+      const queryParams = [upload_status];
+      let paramIndex = 2;
 
-      const query = `
-        UPDATE uploaded_files
-        SET upload_status = $1, storage_details = $2, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $3 AND uploader_user_id = $4
-        RETURNING *;
-      `;
-      const { rows: [updatedFileRecord] } = await db.query(query, [upload_status, finalStorageDetails, fileId, uploader_user_id]);
-
-      if (!updatedFileRecord) { // Should not happen if previous check passed, but defensive
-          return res.status(404).json({ message: "Failed to update file record, or record not found."});
+      if (final_size_bytes !== undefined) {
+        updateQuery += `, size_bytes = $${paramIndex++}`;
+        queryParams.push(final_size_bytes);
       }
-      res.status(200).json({ message: `File upload status updated to ${upload_status}.`, file: updatedFileRecord });
+      if (final_mime_type !== undefined) {
+        updateQuery += `, mime_type = $${paramIndex++}`;
+        queryParams.push(final_mime_type);
+      }
+
+      updateQuery += ` WHERE id = $${paramIndex++} AND uploader_user_id = $${paramIndex++} RETURNING *`;
+      queryParams.push(fileId, uploader_user_id);
+
+      const result = await client.query(updateQuery, queryParams);
+
+      if (result.rows.length === 0) {
+        // This should ideally not happen due to the FOR UPDATE lock and prior checks
+        await client.query('ROLLBACK');
+        return res.status(404).json({ success: false, message: 'Failed to update file record (e.g., record not found or ownership issue during update).' });
+      }
+
+      await client.query('COMMIT');
+      res.json({ success: true, message: `File status updated to ${upload_status}.`, file: result.rows[0] });
+
     } catch (error) {
-      console.error('Error completing file upload:', error.stack);
-      res.status(500).json({ message: 'Server error completing file upload.' });
+      if (client) await client.query('ROLLBACK');
+      console.error('Error completing S3 file upload:', error.stack);
+      if (error.message.includes("S3 client is not configured")) {
+        return res.status(503).json({ success: false, message: "File service is currently unavailable or misconfigured." });
+      }
+      res.status(500).json({ success: false, message: 'Server error completing file upload.' });
+    } finally {
+      if (client) client.release();
     }
   }
 );
-
 
 // --- Course Quizzes (Metadata) ---
 router.post(
@@ -734,5 +806,7 @@ router.post(
     }
   }
 );
+
+// The POST /api/courses/files/upload-actual/:fileId route is now removed as S3 uploads are client-side via pre-signed URLs.
 
 module.exports = router;

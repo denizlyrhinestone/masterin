@@ -57,94 +57,134 @@ const FileUploadComponent: React.FC<FileUploadComponentProps> = ({
   const handleUpload = useCallback(async () => {
     if (!selectedFile) { setError("No file selected."); return; }
 
-    setIsUploading(true); setError(null); setStatusMessage("Preparing upload..."); setUploadProgress(0);
-    let initiatedFileId: string | number | null = null;
+    if (!selectedFile) { setError("No file selected."); return; }
+
+    setIsUploading(true);
+    setError(null);
+    setStatusMessage("Preparing upload...");
+    setUploadProgress(0);
+
+    let fileIdForCompletion: string | number | null = null;
+    // Store s3Key in case needed for error reporting on complete-upload
+    let s3KeyForErrorNotification: string | undefined = undefined;
 
     try {
-      // Step 1: Initiate Upload
-      setStatusMessage('Initiating upload...');
-      const initiateResponse = await apiClient.post<{
-        message: string, file_id: string | number, upload_path_info: string, current_status: string
-      }>('/courses/files/initiate-upload', {
+      // Step 1: Initiate Upload to MasterIn backend to get pre-signed URL
+      setStatusMessage('Initiating secure upload session...');
+      const initiatePayload = {
         file_name: selectedFile.name,
         mime_type: selectedFile.type,
         size_bytes: selectedFile.size,
-        // context: uploadContext, // Backend doesn't use context currently, but could be added
-      });
+        context: uploadContext,
+      };
+      // Assuming initiateResponse.data contains fileId, preSignedUploadUrl, s3Key
+      const initiateResponse = await apiClient.post<{
+        success: boolean,
+        fileId: string | number,
+        preSignedUploadUrl: string,
+        s3Key: string,
+        message?: string
+      }>('/courses/files/initiate-upload', initiatePayload);
 
-      // apiClient throws for non-ok responses, so we assume success if no throw
-      initiatedFileId = initiateResponse.file_id;
-      // const serverRelativePath = initiateResponse.upload_path_info; // May not be needed for direct FormData post
-
-      setStatusMessage("Uploading file...");
-
-      // Step 2: Actual File Upload
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-
-      // Using fetch directly for progress, as apiClient doesn't support it easily.
-      // Alternatively, enhance apiClient or use axios if it's the base for apiClient.
-      const token = typeof window !== 'undefined' ? localStorage.getItem('jwt_token') : null;
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', `/api/courses/files/upload-actual/${initiatedFileId}`, true);
-      if (token) {
-        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      if (!initiateResponse.success || !initiateResponse.preSignedUploadUrl || !initiateResponse.fileId) {
+        throw new Error(initiateResponse.message || 'Failed to initiate secure upload session.');
       }
-      // No Content-Type header for FormData, browser sets it with boundary
 
+      const { preSignedUploadUrl, fileId, s3Key } = initiateResponse;
+      fileIdForCompletion = fileId; // Store for Step 3
+      s3KeyForErrorNotification = s3Key;
+
+
+      // Step 2: Actual File Upload (Directly to S3 via pre-signed URL)
+      setStatusMessage('Uploading to secure storage...');
       await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', preSignedUploadUrl, true);
+        xhr.setRequestHeader('Content-Type', selectedFile.type);
+        // DO NOT set 'Authorization' header for S3 pre-signed PUT URLs.
+        // Authentication is handled by the pre-signed URL's query parameters.
+
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
             const percentCompleted = Math.round((event.loaded * 100) / event.total);
             setUploadProgress(percentCompleted);
           }
         };
+
         xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
+          if (xhr.status >= 200 && xhr.status < 300) { // S3 PUT success is typically 200 OK
             resolve();
           } else {
-            let errorMsg = `File upload failed: ${xhr.statusText}`;
-            try { const errResp = JSON.parse(xhr.responseText); errorMsg = errResp.message || errorMsg; } catch(e){}
-            reject(new Error(errorMsg));
+            // Try to get error message from S3 response (often XML)
+            let s3ErrorMessage = `S3 Upload Failed: ${xhr.status} ${xhr.statusText || 'Unknown S3 error'}`;
+            if (xhr.responseText) {
+                // Simple parsing attempt for XML error (very basic)
+                const match = xhr.responseText.match(/<Message>(.*?)<\/Message>/i);
+                if (match && match[1]) {
+                    s3ErrorMessage = `S3 Upload Error: ${match[1]}`;
+                }
+            }
+            reject(new Error(s3ErrorMessage));
           }
         };
+
         xhr.onerror = () => {
-          reject(new Error('File upload failed due to network error.'));
+          reject(new Error('S3 Upload Failed: Network error or CORS issue. Check S3 bucket CORS configuration.'));
         };
-        xhr.send(formData);
+
+        xhr.send(selectedFile); // Send the actual file object
       });
 
-      setStatusMessage("Finalizing upload...");
-      // Step 3: Complete Upload
-      const completeResponse = await apiClient.post< { message: string, file: UploadedFileMetadata } >(
-        `/courses/files/${initiatedFileId}/complete-upload`,
-        { upload_status: 'completed' }
+      // Step 3: Complete Upload (Notify MasterIn backend)
+      setStatusMessage('Finalizing upload...');
+      setUploadProgress(100); // Visually show 100% before final confirmation
+
+      const completePayload = {
+        upload_status: 'completed',
+        size_bytes: selectedFile.size, // Send actual size and type for backend verification
+        mime_type: selectedFile.type,
+        s3_key: s3Key // Send s3Key for backend to potentially verify against its record
+      };
+      const completeResponse = await apiClient.post<{ success: boolean, file: UploadedFileMetadata, message?: string }>(
+        `/courses/files/${fileId}/complete-upload`,
+        completePayload
       );
 
-      setStatusMessage("Upload successful!");
-      if (onUploadSuccess) onUploadSuccess(completeResponse.file);
-      setSelectedFile(null);
+      if (!completeResponse.success || !completeResponse.file) {
+         throw new Error(completeResponse.message || 'Failed to finalize upload with server.');
+      }
+
+      setStatusMessage('Upload successful!');
+      if (onUploadSuccess) onUploadSuccess(completeResponse.file); // Pass final file metadata from our backend
+      setSelectedFile(null); // Clear selection on success
+      setUploadProgress(0); // Reset progress for next upload
 
     } catch (err: any) {
-      console.error("Upload process error:", err);
-      setError(err.message || "An unknown upload error occurred.");
+      console.error("Upload process error:", err.message);
+      setError(err.message || 'File upload process failed.');
       setStatusMessage("Upload failed.");
-      if (onUploadError) onUploadError(err.message || "An unknown upload error occurred.");
+      if (onUploadError) onUploadError(err.message || 'File upload process failed.');
 
-      if (initiatedFileId && !(err.message && err.message.includes('finalize'))) { // Avoid double notification if finalize failed
+      // If initiate was successful but S3 upload or completion failed, notify backend to mark as 'error'
+      if (fileIdForCompletion && (err.message.includes('S3 Upload Failed') || err.message.includes('Failed to finalize'))) {
         try {
-          await apiClient.post(`/courses/files/${initiatedFileId}/complete-upload`, { upload_status: 'error' });
-          console.log("Backend notified of failed upload for file ID:", initiatedFileId);
-        } catch (notificationError) {
-          console.error("Failed to notify backend of upload error:", notificationError);
+          await apiClient.post(`/courses/files/${fileIdForCompletion}/complete-upload`, {
+            upload_status: 'error',
+            s3_key: s3KeyForErrorNotification // Send s3Key if available
+          });
+          console.log("Backend notified of failed upload for file ID:", fileIdForCompletion);
+        } catch (notificationError: any) {
+          console.error("Failed to notify backend of upload error:", notificationError.message);
         }
       }
     } finally {
       setIsUploading(false);
-      // Keep progress at 100 or reset based on success/failure for UX
-      if (error) setUploadProgress(0); else setUploadProgress(100);
+      // Reset progress if there was an error and not successful
+      if (statusMessage !== "Upload successful!") {
+        setUploadProgress(0);
+      }
     }
-  }, [selectedFile, uploadContext, onUploadSuccess, onUploadError, error]); // Added error to dependency array
+  }, [selectedFile, uploadContext, onUploadSuccess, onUploadError]); // Removed 'error' from dep array to avoid re-triggering on error set
 
   return (
     <div className="p-4 border border-gray-300 rounded-lg bg-white shadow-sm w-full">

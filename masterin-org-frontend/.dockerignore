@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# Node.js
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.lcov
+coverage/
+.nyc_output/
+
+# Next.js build outputs (these are handled by multi-stage build)
+.next
+out
+
+# Environment files
+# Local environment configurations should not be part of the Docker image.
+# These are typically injected at runtime or via Docker build ARGs for specific builds.
+.env
+.env*.local
+# Keep .env.example for reference if it's part of the repo, but it shouldn't be copied.
+# The Dockerfile itself doesn't copy .env files, this just ensures they aren't part of the context.
+# !.env.local.example # No need to un-ignore for Docker build context if not copied by Dockerfile
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# TypeScript cache
+*.tsbuildinfo
+
+# ESLint cache
+.eslintcache
+
+# Editor-specific folders
+.vscode/
+.idea/

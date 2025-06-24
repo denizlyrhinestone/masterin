@@ -1,7 +1,8 @@
 // src/lib/apiClient.ts
 import { getAuthToken } from './auth';
 
-const BASE_URL = '/api'; // Adjust if your backend API is hosted elsewhere or has a different prefix
+// Use environment variable for API base URL, fallback for local dev if not set
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api';
 
 interface RequestOptions extends RequestInit {
   // You can add custom options here if needed

@@ -4,6 +4,7 @@ const db = require('../db/database');
 const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 const { query, param, body, validationResult } = require('express-validator');
 const { checkAndAwardCourseCompletionBadge } = require('../lib/gamificationService'); // Import badge service
+const { getPublicS3Url, generatePresignedGetUrl, S3_BUCKET_NAME, s3Client } = require('../lib/s3Service'); // Import S3 utilities
 
 // Helper function to update course aggregate review/like data
 const updateCourseAggregates = async (courseId) => {
@@ -130,22 +131,87 @@ router.get( '/:courseId/lessons/:lessonId/content-block/:blockId/details', verif
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
     const { courseId, lessonId, blockId } = req.params; const studentId = req.user.id;
+    let dbClient;
     try {
-      const courseAccess = await db.query(`SELECT 1 FROM courses WHERE id = $1 AND review_status = 'published' AND (is_publicly_browsable = TRUE OR EXISTS (SELECT 1 FROM student_progress sp JOIN learning_pathways lp ON sp.learning_pathway_id = lp.id WHERE sp.course_id = $1 AND lp.student_id = $2))`, [courseId, studentId]);
-      if (courseAccess.rows.length === 0) return res.status(403).json({ message: "Access denied." });
-      const blockRes = await db.query(`SELECT lcb.content_type, lcb.content_data FROM lesson_content_blocks lcb JOIN lessons l ON lcb.lesson_id = l.id JOIN course_modules cm ON l.module_id = cm.id WHERE lcb.id = $1 AND lcb.lesson_id = $2 AND cm.course_id = $3;`, [blockId, lessonId, courseId]);
-      if (blockRes.rows.length === 0) return res.status(404).json({ message: 'Block not found.' });
-      const block = blockRes.rows[0]; let details = {};
+      dbClient = await db.pool.connect(); // Use explicit client
+
+      // Updated courseAccess query to use student_progress directly
+      const courseAccessQuery = `
+        SELECT 1 FROM courses
+        WHERE id = $1 AND review_status = 'published' AND
+              (is_publicly_browsable = TRUE OR EXISTS (
+                  SELECT 1 FROM student_progress sp
+                  WHERE sp.course_id = $1 AND sp.student_id = $2
+                    AND (sp.status = 'in-progress' OR sp.status = 'completed')
+              ));`;
+      const courseAccess = await dbClient.query(courseAccessQuery, [courseId, studentId]);
+
+      if (courseAccess.rows.length === 0) return res.status(403).json({ message: "Access denied to this course content." });
+
+      const blockRes = await dbClient.query(`SELECT lcb.content_type, lcb.content_data FROM lesson_content_blocks lcb JOIN lessons l ON lcb.lesson_id = l.id JOIN course_modules cm ON l.module_id = cm.id WHERE lcb.id = $1 AND lcb.lesson_id = $2 AND cm.course_id = $3;`, [blockId, lessonId, courseId]);
+      if (blockRes.rows.length === 0) return res.status(404).json({ message: 'Content block not found.' });
+
+      const block = blockRes.rows[0];
+      let details = {};
+
+      if (!s3Client || !S3_BUCKET_NAME) { // Check S3 configuration
+        console.warn("S3 client not configured. File-based content blocks will not have URLs.");
+      }
+
       switch (block.content_type) {
-        case 'text': case 'ai_generated_text': details = { text: block.content_data.text }; break;
-        case 'video_embed': details = { url: block.content_data.url, caption: block.content_data.caption }; break;
-        case 'quiz_ref': const quizRes = await db.query(`SELECT cq.id, cq.title, cq.description, COALESCE(json_agg(json_build_object('id', q.id, 'question_text', q.question_text, 'question_type', q.question_type, 'options', (SELECT COALESCE(json_agg(json_build_object('id', qo.id, 'option_text', qo.option_text)), '[]') FROM question_options qo WHERE qo.question_id = q.id))) FILTER (WHERE q.id IS NOT NULL), '[]') as questions FROM course_quizzes cq LEFT JOIN questions q ON q.course_quiz_id = cq.id WHERE cq.id = $1 GROUP BY cq.id;`, [block.content_data.quiz_id]); if (quizRes.rows.length === 0) return res.status(404).json({ message: 'Quiz not found.' }); details = quizRes.rows[0]; break;
-        case 'video_upload': case 'slide_deck_upload': case 'downloadable_ref': const fileRes = await db.query('SELECT file_name, file_path, mime_type, size_bytes FROM uploaded_files WHERE id = $1 AND upload_status = \'completed\';', [block.content_data.file_id]); if (fileRes.rows.length === 0) return res.status(404).json({ message: 'File not found.' }); details = { ...fileRes.rows[0], temporary_access_url: `/placeholder/secure_download/${fileRes.rows[0].file_path}` }; break;
-        case 'lab_ref': const labRes = await db.query('SELECT * FROM labs_simulations WHERE id = $1;', [block.content_data.lab_id]); if (labRes.rows.length === 0) return res.status(404).json({ message: 'Lab not found.' }); details = labRes.rows[0]; break;
+        case 'text':
+        case 'ai_generated_text':
+          details = { text: block.content_data.text };
+          break;
+        case 'video_embed':
+          details = { url: block.content_data.url, caption: block.content_data.caption };
+          break;
+        case 'quiz_ref':
+          const quizRes = await dbClient.query(`SELECT cq.id, cq.title, cq.description, COALESCE(json_agg(json_build_object('id', q.id, 'question_text', q.question_text, 'question_type', q.question_type, 'options', (SELECT COALESCE(json_agg(json_build_object('id', qo.id, 'option_text', qo.option_text)), '[]') FROM question_options qo WHERE qo.question_id = q.id))) FILTER (WHERE q.id IS NOT NULL), '[]') as questions FROM course_quizzes cq LEFT JOIN questions q ON q.course_quiz_id = cq.id WHERE cq.id = $1 GROUP BY cq.id;`, [block.content_data.quiz_id]);
+          if (quizRes.rows.length === 0) return res.status(404).json({ message: 'Quiz not found.' });
+          details = quizRes.rows[0];
+          break;
+        case 'video_upload':
+        case 'slide_deck_upload': // Assuming PDFs or viewable formats for slides
+          if (s3Client && S3_BUCKET_NAME && block.content_data.file_id) {
+            const fileRes = await dbClient.query('SELECT file_name, file_path, mime_type FROM uploaded_files WHERE id = $1 AND upload_status = \'completed\';', [block.content_data.file_id]);
+            if (fileRes.rows.length === 0) return res.status(404).json({ message: 'Uploaded file not found or not completed.' });
+            const fileInfo = fileRes.rows[0];
+            details = {
+              ...fileInfo,
+              view_url: await generatePresignedGetUrl(fileInfo.file_path, fileInfo.file_name, fileInfo.mime_type, 3600, true) // 1 hour, inline
+            };
+          } else {
+            details = { error: "File content not available due to server configuration or missing file ID." };
+          }
+          break;
+        case 'downloadable_ref':
+          if (s3Client && S3_BUCKET_NAME && block.content_data.file_id) {
+            const fileRes = await dbClient.query('SELECT file_name, file_path, mime_type FROM uploaded_files WHERE id = $1 AND upload_status = \'completed\';', [block.content_data.file_id]);
+            if (fileRes.rows.length === 0) return res.status(404).json({ message: 'Downloadable file not found or not completed.' });
+            const fileInfo = fileRes.rows[0];
+            details = {
+              ...fileInfo,
+              download_url: await generatePresignedGetUrl(fileInfo.file_path, fileInfo.file_name, fileInfo.mime_type, 300, false) // 5 mins, attachment
+            };
+          } else {
+             details = { error: "File content not available due to server configuration or missing file ID." };
+          }
+          break;
+        case 'lab_ref':
+          const labRes = await dbClient.query('SELECT * FROM labs_simulations WHERE id = $1;', [block.content_data.lab_id]);
+          if (labRes.rows.length === 0) return res.status(404).json({ message: 'Lab not found.' });
+          details = labRes.rows[0];
+          break;
         default: return res.status(400).json({ message: 'Unsupported content type.' });
       }
       res.json({ content_type: block.content_type, details });
-    } catch (error) { console.error(error.stack); res.status(500).json({ message: 'Server error.' }); }
+    } catch (error) {
+      console.error('Error fetching content block details:', error.stack);
+      res.status(500).json({ message: 'Server error fetching content block details.' });
+    } finally {
+      if (dbClient) dbClient.release();
+    }
 });
 
 const { checkAndAwardCourseCompletionBadge } = require('../lib/gamificationService');
@@ -161,24 +227,28 @@ router.post('/:courseId/lessons/:lessonId/complete', verifyToken, checkRole(['st
     const client = await db.pool.connect();
     try {
       await client.query('BEGIN');
+      // Fetch student_progress directly using student_id and course_id
       const progressEntryResult = await client.query(
-        `SELECT sp.id as student_progress_id, sp.status as current_status, sp.completed_lessons_count, sp.total_lessons_count
-         FROM student_progress sp
-         JOIN learning_pathways lp ON sp.learning_pathway_id = lp.id
-         WHERE lp.student_id = $1 AND sp.course_id = $2`,
+        `SELECT id as student_progress_id, status as current_status, completed_lessons_count, total_lessons_count, completed_lesson_ids
+         FROM student_progress
+         WHERE student_id = $1 AND course_id = $2`,
         [studentId, courseId]
       );
 
       if (progressEntryResult.rows.length === 0) {
         await client.query('ROLLBACK');
-        return res.status(404).json({ message: 'Not enrolled in this course or progress entry not found.' });
+        // If no progress record, it implies the student hasn't started the course in a way that creates this record.
+        // Depending on desired flow, could call ensureStudentProgressRecord here, or error out.
+        // For now, error out, assuming ensureStudentProgressRecord is called on course enrollment/first view.
+        return res.status(404).json({ message: 'Progress record not found for this course. Please start the course first.' });
       }
 
       const progressEntry = progressEntryResult.rows[0];
       const student_progress_id = progressEntry.student_progress_id;
       const initialProgressStatus = progressEntry.current_status;
-      let completed_lessons_count = progressEntry.completed_lessons_count || 0;
-      let total_lessons_count = progressEntry.total_lessons_count || 0;
+      let completed_lessons_count = progressEntry.completed_lessons_count || 0; // This count is from student_progress
+      let total_lessons_count = progressEntry.total_lessons_count || 0; // This is from student_progress
+      let completed_lesson_ids = progressEntry.completed_lesson_ids || []; // Array of completed lesson IDs
 
       const lessonCheck = await client.query(
         `SELECT l.id FROM lessons l JOIN course_modules cm ON l.module_id = cm.id WHERE l.id = $1 AND cm.course_id = $2`,
@@ -215,23 +285,31 @@ router.post('/:courseId/lessons/:lessonId/complete', verifyToken, checkRole(['st
       // If not using a student_lesson_progress table, we check if this lesson was already "counted".
       // This requires a way to know which lessons are completed. For now, we stick to the existing model.
       // The current model increments completed_lessons_count. If it reaches total, status becomes 'completed'.
+      // This needs to be more robust by using the completed_lesson_ids array.
 
-      // If this lesson completion makes the course complete
-      let updated_completed_lessons_count = completed_lessons_count;
-      if (initialProgressStatus !== 'completed') { // Only increment if course not already complete
-          // This increment logic is still simplified and not truly idempotent for individual lessons
-          updated_completed_lessons_count = Math.min(completed_lessons_count + 1, total_lessons_count);
+      let new_completed_lesson_ids = [...completed_lesson_ids];
+      let lessonAddedToCompletion = false;
+
+      if (!completed_lesson_ids.includes(lessonId)) {
+        new_completed_lesson_ids.push(lessonId);
+        lessonAddedToCompletion = true;
       }
 
+      const updated_completed_lessons_count = new_completed_lesson_ids.length;
+
       const new_progress_percentage = total_lessons_count > 0 ? Math.round((updated_completed_lessons_count / total_lessons_count) * 100) : 0;
-      const new_status = (updated_completed_lessons_count === total_lessons_count && total_lessons_count > 0) ? 'completed' : 'in-progress';
+      let new_status = progressEntry.current_status; // Keep current status unless changed below
+
+      if (lessonAddedToCompletion || initialProgressStatus === 'not-started') {
+        new_status = (updated_completed_lessons_count === total_lessons_count && total_lessons_count > 0) ? 'completed' : 'in-progress';
+      }
 
       const updateResult = await client.query(
         `UPDATE student_progress
          SET completed_lessons_count = $1, total_lessons_count = $2, progress_percentage = $3, status = $4,
-             last_accessed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-         WHERE id = $5 RETURNING *`,
-        [updated_completed_lessons_count, total_lessons_count, new_progress_percentage, new_status, student_progress_id]
+             completed_lesson_ids = $5, last_accessed_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $6 RETURNING *`,
+        [updated_completed_lessons_count, total_lessons_count, new_progress_percentage, new_status, new_completed_lesson_ids, student_progress_id]
       );
 
       if (updateResult.rowCount === 0) throw new Error("Failed to update progress.");

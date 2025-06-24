@@ -223,45 +223,55 @@ router.post(
     }
 
     const { token, newPassword } = req.body;
+    let client; // For explicit client management from the pool
 
     try {
-      // Find the token record. We need to iterate or query differently since we only have the plain token.
-      // A more robust way would be to have a shorter, non-hashed selector part and a hashed verifier part.
-      // For now, we fetch all valid tokens and compare. This is NOT efficient for many tokens.
-      // A better approach if tokens are long & unique: hash the input token and query token_hash.
+      client = await db.pool.connect(); // Checkout a client from the pool
 
-      const potentialTokens = await db.query(
-        "SELECT * FROM password_reset_tokens WHERE used_at IS NULL AND expires_at > NOW()"
+      // Refined approach: Iterate through valid tokens and compare. This is necessary because we only store hashes.
+      const potentialTokensResult = await client.query(
+        "SELECT id, user_id, token_hash FROM password_reset_tokens WHERE used_at IS NULL AND expires_at > NOW()"
       );
 
-      let tokenRecord = null;
-      for (const record of potentialTokens.rows) {
-        const isMatch = await bcrypt.compare(token, record.token_hash);
-        if (isMatch) {
-          tokenRecord = record;
+      let matchedTokenRecord = null;
+      for (const record of potentialTokensResult.rows) {
+        const isTokenMatch = await bcrypt.compare(token, record.token_hash);
+        if (isTokenMatch) {
+          matchedTokenRecord = record;
           break;
         }
       }
 
-      if (!tokenRecord) {
-        return res.status(400).json({ message: 'Invalid or expired password reset token.' });
+      if (!matchedTokenRecord) {
+        // It's important to release the client even on early returns if it was connected.
+        if (client) client.release();
+        return res.status(400).json({ success: false, message: 'Invalid or expired reset token.' });
       }
 
-      // Hash the new password
-      const salt = await bcrypt.genSalt(10);
-      const newPasswordHash = await bcrypt.hash(newPassword, salt);
+      // Valid token found, proceed to update password
+      const newPasswordHash = await bcrypt.hash(newPassword, 10); // Salt rounds = 10
 
-      // Update user's password
-      await db.query('UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2', [newPasswordHash, tokenRecord.user_id]);
+      await client.query('BEGIN'); // Start transaction
+      await client.query(
+        'UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2',
+        [newPasswordHash, matchedTokenRecord.user_id]
+      );
+      await client.query(
+        'UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1',
+        [matchedTokenRecord.id]
+      );
+      await client.query('COMMIT'); // Commit transaction
 
-      // Mark token as used
-      await db.query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1', [tokenRecord.id]);
-
-      res.status(200).json({ message: 'Password has been reset successfully.' });
+      res.json({ success: true, message: 'Password has been reset successfully.' });
 
     } catch (error) {
-      console.error('Reset password error:', error.stack);
-      res.status(500).json({ message: 'Server error during password reset.' });
+      if (client) await client.query('ROLLBACK'); // Rollback transaction on error
+      console.error('Error resetting password:', error.stack); // Log full error stack
+      res.status(500).json({ success: false, message: 'Server error during password reset.' });
+    } finally {
+      if (client) {
+        client.release(); // Release client back to the pool
+      }
     }
   }
 );

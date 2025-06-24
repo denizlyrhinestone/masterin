@@ -30,8 +30,21 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files
+# Ignore local environment variables
+.env.local
+.env.development.local
+.env.production.local
+.env # General .env file, if used directly
+
+# IMPORTANT: Do NOT ignore example files
+# Ensure that your .env.example or .env.*.example files are NOT ignored.
+# If they were previously ignored by a broader pattern like .env*,
+# you might need to explicitly un-ignore them if you want them versioned:
+# !.env.example
+# !.env.local.example
+# (Usually, .env.example is enough and it's not matched by .env*.local anyway)
+# For this project, we ensure .env.local.example is NOT ignored by the above more specific rules.
 
 # vercel
 .vercel

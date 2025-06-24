@@ -100,25 +100,86 @@ const ContentBlockViewer: React.FC<ContentBlockViewerProps> = ({ block, blockDet
             ) : <p className="text-slate-500">Lab content not available for direct viewing.</p>}
           </div>
         );
+      case 'video_upload':
+        if (blockDetails?.view_url) {
+          return (
+            <div className="bg-slate-900 rounded-lg shadow-lg overflow-hidden">
+              <video
+                src={blockDetails.view_url}
+                controls
+                className="w-full max-h-[calc(100vh-300px)]" // Example max height
+                preload="metadata"
+              >
+                Your browser does not support the video tag. You can download it <a href={blockDetails.view_url} download={blockDetails.file_name || 'video'}>here</a>.
+              </video>
+              {blockDetails.file_name && <p className="mt-2 p-2 text-sm text-slate-200 bg-slate-800 text-center">{blockDetails.file_name}</p>}
+            </div>
+          );
+        }
+        return <p className="text-slate-500 p-4">Video content is being processed or is unavailable.</p>;
+
+      case 'slide_deck_upload': // Primarily for PDFs or viewable slide formats
+        if (blockDetails?.view_url) {
+          if (blockDetails.mime_type === 'application/pdf') {
+            return (
+              <div className="h-[calc(100vh-280px)] border border-slate-300 rounded-md overflow-hidden">
+                <iframe
+                  src={blockDetails.view_url}
+                  title={blockDetails.file_name || 'Slide Deck'}
+                  className="w-full h-full"
+                ></iframe>
+              </div>
+            );
+          }
+          // For other slide types (pptx etc.), browser might download or try to render if plugin exists.
+          // Offering a direct link is safer.
+          return (
+            <div className="text-center p-6 bg-indigo-50 rounded-lg shadow">
+              <DocumentIcon className="h-12 w-12 text-indigo-500 mx-auto mb-3" />
+              <h3 className="text-xl font-semibold text-indigo-700 mb-2">{blockDetails.file_name || 'Slide Deck'}</h3>
+              <p className="text-sm text-slate-600 mb-4">This slide deck may not be viewable directly. You can try opening or downloading it.</p>
+              <a
+                href={blockDetails.view_url} // view_url might prompt download for non-PDFs
+                target="_blank" rel="noopener noreferrer"
+                className="py-2 px-6 rounded-md text-base font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-indigo-500 inline-flex items-center transition-colors"
+              >
+                Open/Download Slides
+              </a>
+            </div>
+          );
+        }
+        return <p className="text-slate-500 p-4">Slide deck content is being processed or is unavailable.</p>;
+
       case 'downloadable_ref':
-      case 'video_upload': // Assuming these point to files that need a link from uploaded_files
-      case 'slide_deck_upload':
-        const fileName = block.content_data?.file_name || `File ID: ${block.content_data?.file_id}`;
-        // In a real app, temporary_access_url would come from backend /details endpoint
-        const downloadUrl = block.content_data?.temporary_access_url || `/api/download-placeholder/${block.content_data?.file_id}`;
-        return (
-          <div className="text-center p-6 bg-purple-50 rounded-lg shadow">
-             {block.content_type === 'video_upload' ? <VideoCameraIcon className="h-12 w-12 text-purple-500 mx-auto mb-3"/> : <DocumentArrowDownIcon className="h-12 w-12 text-purple-500 mx-auto mb-3"/>}
-            <h3 className="text-xl font-semibold text-purple-700 mb-2">{fileName}</h3>
-            <a
-              href={downloadUrl}
-              target="_blank" rel="noopener noreferrer"
-              className="py-2 px-6 rounded-md text-base font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500 inline-flex items-center transition-colors"
-            >
-              {block.content_type === 'video_upload' ? 'Play Video' : 'Download Resource'}
-            </a>
-          </div>
-        );
+        if (blockDetails?.download_url) {
+          return (
+            <div className="text-center p-6 bg-purple-50 rounded-lg shadow">
+              <DocumentArrowDownIcon className="h-12 w-12 text-purple-500 mx-auto mb-3"/>
+              <h3 className="text-xl font-semibold text-purple-700 mb-2">{blockDetails.file_name || 'Downloadable Resource'}</h3>
+              <a
+                href={blockDetails.download_url}
+                download={blockDetails.file_name || 'download'} // Suggest original filename for download
+                className="py-2 px-6 rounded-md text-base font-semibold shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500 inline-flex items-center transition-colors"
+              >
+                Download Resource
+              </a>
+            </div>
+          );
+        }
+        return <p className="text-slate-500 p-4">Downloadable content is being processed or is unavailable.</p>;
+
+      // Placeholder for a generic image uploaded via uploaded_files (if schema supports 'image_upload' type)
+      // case 'image_upload':
+      //   if (blockDetails?.public_url) { // Assuming backend provides public_url for this type
+      //     return (
+      //       <div className="text-center p-4">
+      //         <img src={blockDetails.public_url} alt={blockDetails.file_name || 'Uploaded Image'} className="max-w-full h-auto rounded-md shadow-md mx-auto" />
+      //         {blockDetails.file_name && <p className="mt-2 text-sm text-slate-600">{blockDetails.file_name}</p>}
+      //       </div>
+      //     );
+      //   }
+      //   return <p className="text-slate-500">Image content not available.</p>;
+
       default:
         return <p className="text-slate-500 italic">Unsupported content block type: "{block.content_type}"</p>;
     }

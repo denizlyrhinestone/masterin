@@ -83,15 +83,21 @@ CREATE TABLE IF NOT EXISTS uploaded_files (
     id SERIAL PRIMARY KEY,
     uploader_user_id INT REFERENCES users(id) ON DELETE SET NULL,
     file_name VARCHAR(255) NOT NULL,
-    file_path TEXT NOT NULL,
+    file_path TEXT NOT NULL, -- Will store S3 object key
     mime_type VARCHAR(100) NOT NULL,
     size_bytes BIGINT,
-    upload_status VARCHAR(50) DEFAULT 'pending' CHECK (upload_status IN ('pending', 'processing', 'completed', 'error')),
-    storage_details JSONB,
+    upload_status VARCHAR(50) DEFAULT 'pending' CHECK (upload_status IN ('pending', 'pending_s3_upload', 'processing', 'completed', 'error')), -- Added 'pending_s3_upload'
+    storage_details JSONB NULL, -- Ensure it exists and allows NULL
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_uploaded_files_uploader_user_id ON uploaded_files(uploader_user_id);
+
+-- Note for existing databases: If the 'uploaded_files_status_check' constraint needs updating
+-- you might need to drop the old constraint and add a new one, e.g.:
+-- ALTER TABLE uploaded_files DROP CONSTRAINT uploaded_files_status_check; -- (Replace with actual constraint name if different)
+-- ALTER TABLE uploaded_files ADD CONSTRAINT uploaded_files_status_check
+-- CHECK (upload_status IN ('pending', 'pending_s3_upload', 'processing', 'completed', 'error'));
 
 -- Course Quizzes Table
 CREATE TABLE IF NOT EXISTS course_quizzes (
@@ -227,21 +233,23 @@ CREATE TABLE IF NOT EXISTS learning_pathways (
     UNIQUE(student_id, career_path_id)
 );
 
--- Student Progress Table (Modified for lesson counts)
+-- Student Progress Table (Simplified and Corrected)
 CREATE TABLE IF NOT EXISTS student_progress (
     id SERIAL PRIMARY KEY,
-    learning_pathway_id INTEGER NOT NULL REFERENCES learning_pathways(id) ON DELETE CASCADE,
-    course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    status VARCHAR(50) DEFAULT 'not-started' CHECK (status IN ('not-started', 'in-progress', 'completed', 'skipped')),
-    progress_percentage INTEGER DEFAULT 0,
+    student_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- Added student_id
+    course_id INT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    status VARCHAR(50) DEFAULT 'not-started' CHECK (status IN ('not-started', 'in-progress', 'completed', 'skipped')), -- 'skipped' kept as it was already there
+    progress_percentage INT DEFAULT 0,
     completed_lessons_count INT DEFAULT 0,
     total_lessons_count INT DEFAULT 0,
-    completed_lesson_ids INT[] DEFAULT ARRAY[]::INT[], -- New
+    completed_lesson_ids INT[] DEFAULT ARRAY[]::INT[],
     last_accessed_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(learning_pathway_id, course_id)
+    UNIQUE (student_id, course_id) -- Updated Unique constraint
 );
+-- Removed learning_pathway_id from this table. Progress on a course is independent of pathway context here.
+-- Pathway progress itself can be a higher-level aggregation if needed.
 
 -- Course Reviews Table (New)
 CREATE TABLE IF NOT EXISTS course_reviews (
@@ -280,7 +288,10 @@ CREATE INDEX IF NOT EXISTS idx_student_quiz_attempts_student_id ON student_quiz_
 CREATE INDEX IF NOT EXISTS idx_student_quiz_answers_attempt_id ON student_quiz_answers(attempt_id);
 CREATE INDEX IF NOT EXISTS idx_career_paths_name ON career_paths(name);
 CREATE INDEX IF NOT EXISTS idx_learning_pathways_student_id ON learning_pathways(student_id);
-CREATE INDEX IF NOT EXISTS idx_student_progress_learning_pathway_id ON student_progress(learning_pathway_id);
+-- CREATE INDEX IF NOT EXISTS idx_student_progress_learning_pathway_id ON student_progress(learning_pathway_id); -- This index is no longer needed
+CREATE INDEX IF NOT EXISTS idx_student_progress_student_id ON student_progress(student_id); -- Index for student_id
+CREATE INDEX IF NOT EXISTS idx_student_progress_course_id ON student_progress(course_id); -- Index for course_id (often useful)
+
 
 -- Function to update 'updated_at' timestamp
 CREATE OR REPLACE FUNCTION trigger_set_timestamp()

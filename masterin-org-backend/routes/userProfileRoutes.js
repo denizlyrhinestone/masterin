@@ -5,6 +5,7 @@ const { verifyToken } = require('../middleware/authMiddleware');
 const { body, param, validationResult } = require('express-validator'); // Added body
 const bcryptjs = require('bcryptjs'); // Added bcryptjs
 const { ensureStudentProgressRecord } = require('../lib/progressService');
+const { getPublicS3Url } = require('../lib/s3Service'); // Import S3 utility
 
 
 // GET /api/users/my-badges
@@ -72,7 +73,8 @@ router.get(
 router.get('/profile/me', verifyToken, async (req, res) => {
   try {
     const result = await db.pool.query(
-      `SELECT u.id, u.email, u.role, u.full_name, u.bio, u.social_links, u.created_at, uf.file_path as profile_picture_url, u.profile_picture_file_id
+      `SELECT u.id, u.email, u.role, u.full_name, u.bio, u.social_links, u.created_at,
+              u.profile_picture_file_id, uf.file_path as profile_s3_key
        FROM users u
        LEFT JOIN uploaded_files uf ON u.profile_picture_file_id = uf.id
        WHERE u.id = $1`,
@@ -81,7 +83,16 @@ router.get('/profile/me', verifyToken, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'User profile not found.' });
     }
-    res.json({ success: true, profile: result.rows[0] });
+
+    const profile = result.rows[0];
+    if (profile.profile_s3_key) {
+      profile.profile_picture_url = getPublicS3Url(profile.profile_s3_key);
+    } else {
+      profile.profile_picture_url = null; // Or a default avatar URL
+    }
+    // delete profile.profile_s3_key; // Optionally remove the key from the response
+
+    res.json({ success: true, profile: profile });
   } catch (error) {
     console.error('Error fetching user profile:', error);
     res.status(500).json({ success: false, message: 'Server error fetching profile.' });

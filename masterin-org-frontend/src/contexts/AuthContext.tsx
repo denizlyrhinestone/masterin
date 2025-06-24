@@ -17,36 +17,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const router = useRouter();
 
   const checkAuthStatus = useCallback(async () => {
+    // No navigation parameter for router here
     setIsLoading(true);
     const storedToken = getAuthToken();
+
     if (storedToken) {
+      apiClient.setAuthToken(storedToken); // Set token for the upcoming API call
       try {
-        // Simplified: retrieve user from localStorage if token exists
-        // Production: Validate token with backend using an endpoint like /auth/me
-        const storedUserString = localStorage.getItem('user_data');
-        if (storedUserString) {
-          const storedUser: User = JSON.parse(storedUserString);
-          setUser(storedUser);
-          setToken(storedToken);
+        const response = await apiClient.get<{ profile: User }>('/users/profile/me');
+        if (response.profile) {
+          setUser(response.profile);
+          setToken(storedToken); // Keep the original token, assuming it's still valid
           setIsAuthenticated(true);
-          apiClient.setAuthToken(storedToken); // Ensure apiClient has the token for subsequent calls
+          localStorage.setItem('user_data', JSON.stringify(response.profile));
+          // apiClient.setAuthToken(storedToken) was already called
         } else {
-          removeAuthToken();
-          setIsAuthenticated(false); setUser(null); setToken(null);
-          apiClient.setAuthToken(null);
+          // Should not happen if API call is successful and returns profile
+          throw new Error("Profile data not found in API response.");
         }
       } catch (err) {
-        console.error("Auth check failed during user data parsing:", err);
-        removeAuthToken(); localStorage.removeItem('user_data');
-        setIsAuthenticated(false); setUser(null); setToken(null);
-        apiClient.setAuthToken(null);
+        console.warn("Token validation failed or /me endpoint error:", err);
+        removeAuthToken();
+        localStorage.removeItem('user_data');
+        setUser(null);
+        setToken(null);
+        setIsAuthenticated(false);
+        apiClient.setAuthToken(null); // Clear token in apiClient
+        // Optionally, redirect to login if on a protected route, but AuthGuard should handle this.
+        // router.push('/login'); // Example, but typically handled by AuthGuard or page logic
       }
     } else {
-      setIsAuthenticated(false); setUser(null); setToken(null);
+      // No token found
+      setUser(null);
+      setToken(null);
+      setIsAuthenticated(false);
       apiClient.setAuthToken(null);
     }
     setIsLoading(false);
-  }, []);
+  }, []); // Removed router from dependencies as it's not used directly for navigation here
 
   useEffect(() => {
     checkAuthStatus();

@@ -23,7 +23,7 @@ const MediaViewer: React.FC<{ files: UploadedFileMetadata[] }> = ({ files }) => 
   if (firstImage) {
     return (
       <Image
-        src={firstImage.file_path || '/images/placeholder.png'} // Ensure placeholder exists
+        src={firstImage.publicUrl || firstImage.file_path || '/images/placeholder.png'} // Prioritize publicUrl
         alt={firstImage.file_name || 'Product preview'}
         width={600}
         height={400}
