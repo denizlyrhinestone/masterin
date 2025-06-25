@@ -21,24 +21,36 @@ const ForgotPasswordPage = () => {
     clearError();
     setMessage(null);
     if (!email) {
-      // Basic client-side validation
+      setError("Email address cannot be empty."); // Use local error state for form validation
       return;
     }
     try {
-      const response = await requestPasswordReset(email);
-      if (response.success) {
-        setMessage(response.message);
-        if (response._dev_token) { // For development/testing display
-            console.log("DEV ONLY: Password Reset Token:", response._dev_token);
-            setMessage(prev => prev + ` (DEV: Token ${response._dev_token})`);
-        }
-      }
-      // Error is handled by AuthContext and displayed via 'error' state
-    } catch (err) {
-      // Error is set in AuthContext, will be displayed by the error div below
+      // requestPasswordReset from AuthContext now handles the API call.
+      // The backend will always return a success-like response to prevent email enumeration.
+      await requestPasswordReset(email);
+      // Regardless of whether the email exists on the backend, show a generic success message.
+      setSuccessMessage("If an account with that email exists, a password reset link has been sent. Please check your inbox (and spam folder). This link will expire in 1 hour.");
+      setEmail(''); // Clear the email field
+      clearError(); // Clear any global error from AuthContext
+    } catch (err: any) {
+      // This catch block will primarily handle network errors or unexpected client-side issues,
+      // as AuthContext's requestPasswordReset is designed to re-throw errors for the page to handle.
+      // The AuthContext might also set its own global 'error' state.
+      // For this page, we can use a local error state or rely on the global one.
+      // If relying on global `error` from `useAuth()`:
+      // No specific action here if AuthContext.error is already displayed.
+      // If we want a local error display too or instead:
+      // setError(err.message || "An unexpected error occurred during the request.");
       console.error("Forgot password page caught error:", err);
+      // The global error from AuthContext will be displayed by the {error && ...} block below.
+      // Ensure local success message is cleared if global error is shown.
+      setSuccessMessage(null);
     }
   };
+
+  // Rename 'message' state to 'successMessage' for clarity
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
 
   return (
     <>
@@ -66,25 +78,29 @@ const ForgotPasswordPage = () => {
               type="email"
               autoComplete="email"
               required
+              value={email} // Bind state
+              onChange={(e) => setEmail(e.target.value)} // Update state
               className="appearance-none block w-full px-3 py-2.5 pl-10 border border-gray-300 dark:border-gray-600 rounded-md placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
               placeholder="you@example.com"
             />
           </div>
         </div>
 
-        {/* Display error messages from AuthContext */}
-        {error && (
-          <div className="p-3 my-2 bg-red-50 border border-red-200 text-red-700 text-sm rounded-md flex items-center">
-            <ExclamationTriangleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
+        {/* Display global error messages from AuthContext OR local error for form validation */}
+        {error && ( // This 'error' is from useAuth()
+          <Alert variant="destructive" className="my-2">
+            <ExclamationTriangleIcon className="h-5 w-5" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
-        {/* Display success message from local state */}
-        {message && !error &&(
-          <div className="p-3 my-2 bg-green-50 border border-green-200 text-green-700 text-sm rounded-md flex items-center">
-            <CheckCircleIcon className="h-5 w-5 mr-2 flex-shrink-0" />
-            <span>{message}</span>
-          </div>
+        {/* Display local success message */}
+        {successMessage && !error && ( // Only show success if no global error
+           <Alert variant="default" className="my-2 bg-green-50 border-green-200 dark:bg-green-800 dark:border-green-700">
+            <CheckCircleIcon className="h-5 w-5 text-green-500 dark:text-green-300" />
+            <AlertTitle className="text-green-700 dark:text-green-200">Request Sent</AlertTitle>
+            <AlertDescription className="text-green-600 dark:text-green-300">{successMessage}</AlertDescription>
+          </Alert>
         )}
 
         <div>

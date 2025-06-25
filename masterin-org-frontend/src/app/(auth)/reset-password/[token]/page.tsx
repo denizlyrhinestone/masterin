@@ -82,6 +82,8 @@ const ResetPasswordPage = () => {
                 <LockClosedIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
             </div>
             <input id="newPassword" name="newPassword" type="password" required
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
               className="appearance-none block w-full px-3 py-2.5 pl-10 border border-gray-300 dark:border-gray-600 rounded-md placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
               placeholder="••••••••" />
           </div>
@@ -94,6 +96,8 @@ const ResetPasswordPage = () => {
                 <LockClosedIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
             </div>
             <input id="confirmNewPassword" name="confirmNewPassword" type="password" required
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
               className="appearance-none block w-full px-3 py-2.5 pl-10 border border-gray-300 dark:border-gray-600 rounded-md placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
               placeholder="••••••••" />
           </div>

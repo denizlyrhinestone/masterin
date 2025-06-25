@@ -53,11 +53,17 @@ router.get(
 
     try {
       client = await db.pool.connect(); // Get a client from the pool for ensureStudentProgressRecord
-      const progressRecord = await ensureStudentProgressRecord(userId, parseInt(courseId, 10), client);
-      if (!progressRecord) { // This might happen if ensureStudentProgressRecord throws or returns null on pathway issue
-          return res.status(404).json({ success: false, message: "Could not get or create progress record for this course, possibly due to missing learning pathway."})
+      // ensureStudentProgressRecord now returns an object { progressRecord, isNewEnrollment }
+      const { progressRecord, isNewEnrollment } = await ensureStudentProgressRecord(userId, parseInt(courseId, 10), client);
+
+      // The isNewEnrollment flag could be used here if needed, e.g., to send a different response on first access.
+      // For now, we just care about the progressRecord.
+      // The "possibly due to missing learning pathway" part of the message is no longer relevant.
+      if (!progressRecord) {
+          return res.status(404).json({ success: false, message: "Could not get or create progress record for this course."})
       }
-      res.json({ success: true, progress: progressRecord });
+      // The email sending for new enrollment is handled within ensureStudentProgressRecord itself.
+      res.json({ success: true, progress: progressRecord, newEnrollment: isNewEnrollment }); // Optionally return isNewEnrollment
     } catch (error) {
       console.error(`Error fetching or ensuring student progress for course ${courseId}, user ${userId}:`, error.stack);
       res.status(500).json({ success: false, message: 'Server error handling student progress.' });

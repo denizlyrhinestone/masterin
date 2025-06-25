@@ -2,9 +2,10 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../db/database');
+const db = require('../db/database'); // Provides pool via db.pool or query via db.query
 const { body, validationResult } = require('express-validator');
 const crypto = require('crypto');
+const { sendEmail, SES_FROM_EMAIL } = require('../lib/emailService'); // Import email service
 
 // User Registration
 // POST /auth/signup
@@ -58,11 +59,53 @@ router.post(
       VALUES ($1, $2, $3)
       RETURNING id, email, role, created_at, updated_at
     `;
-    const newUser = await db.query(newUserQuery, [email, passwordHash, userRole]);
+    const newUserResult = await db.query(newUserQuery, [email, passwordHash, userRole]);
+    const newlyCreatedUser = newUserResult.rows[0];
+
+    // Send Welcome Email (fire and forget)
+    if (SES_FROM_EMAIL && sendEmail && newlyCreatedUser) {
+      const userEmailForWelcome = newlyCreatedUser.email;
+      // 'full_name' is not available directly from signup, so derive from email or use generic
+      const userNameForWelcome = newlyCreatedUser.full_name || userEmailForWelcome.split('@')[0];
+
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const subject = "Welcome to MasterIn.org!";
+      const textBody = `Hello ${userNameForWelcome},\n\n` +
+                       `Thank you for signing up at MasterIn.org! We're excited to have you join our learning community.\n\n` +
+                       `Get started by exploring our courses: ${frontendUrl}/courses\n` +
+                       `Or head to your dashboard: ${frontendUrl}/dashboard\n\n` +
+                       `Happy learning!\n\n` +
+                       `The MasterIn.org Team`;
+      const htmlBody = `<html>
+                        <body style="font-family: Arial, sans-serif; line-height: 1.6;">
+                          <p>Hello ${userNameForWelcome},</p>
+                          <p>Thank you for signing up at MasterIn.org! We're excited to have you join our learning community.</p>
+                          <p>Get started by <a href="${frontendUrl}/courses" style="color: #007bff; text-decoration: none;">exploring our courses</a> or head to <a href="${frontendUrl}/dashboard" style="color: #007bff; text-decoration: none;">your dashboard</a>.</p>
+                          <p>Happy learning!</p>
+                          <p>Thanks,<br/>The MasterIn.org Team</p>
+                        </body>
+                      </html>`;
+
+      sendEmail({ to: userEmailForWelcome, subject, htmlBody, textBody })
+        .then(emailResult => {
+          if (emailResult.success) {
+            console.log(`Welcome email sent to ${userEmailForWelcome}. Message ID: ${emailResult.messageId}`);
+          } else {
+            console.error(`Failed to send welcome email to ${userEmailForWelcome}: ${emailResult.error}`);
+          }
+        })
+        .catch(error => {
+          console.error(`Unexpected error while trying to send welcome email to ${userEmailForWelcome}:`, error);
+        });
+    } else {
+      if (newlyCreatedUser) { // Check if user was actually created before logging skip
+        console.log(`Welcome email for ${newlyCreatedUser.email} skipped: Email service (SES_FROM_EMAIL or sendEmail function) is not configured.`);
+      }
+    }
 
     res.status(201).json({
       message: 'User registered successfully.',
-      user: newUser.rows[0]
+      user: newlyCreatedUser // Use the stored result
     });
 
   } catch (error) {
@@ -158,52 +201,96 @@ router.post('/logout', (req, res) => {
 router.post(
   '/request-password-reset',
   [
-    body('email').isEmail().normalizeEmail().withMessage('Valid email is required.'),
+    // Use 'email_address' to match frontend AuthContext if that's the standard there
+    body('email_address').isEmail().withMessage('Please enter a valid email address.').normalizeEmail()
   ],
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ errors: errors.array() });
+      return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { email } = req.body;
+    const { email_address } = req.body; // Changed from 'email'
+    let client;
 
     try {
-      const userResult = await db.query('SELECT * FROM users WHERE email = $1', [email]);
-      if (userResult.rows.length === 0) {
-        // IMPORTANT: Do not reveal if email exists or not for security (prevents email enumeration)
-        console.log(`Password reset requested for non-existent email: ${email}`);
-        return res.status(200).json({ message: 'If your email is registered, a password reset link has been sent.' });
+      client = await db.pool.connect(); // Use db.pool for explicit client
+      const userResult = await client.query('SELECT id, email, full_name FROM users WHERE email = $1', [email_address]);
+
+      // Always return a generic success message to prevent email enumeration
+      // Actual email sending and token generation only happens if user exists.
+      if (userResult.rows.length > 0) {
+        const user = userResult.rows[0];
+
+        await client.query('BEGIN'); // Start transaction
+
+        // Invalidate previous *unused* tokens for this user by marking them as used
+        // This prevents multiple active reset tokens.
+        await client.query(
+          "UPDATE password_reset_tokens SET used_at = NOW(), updated_at = NOW() WHERE user_id = $1 AND used_at IS NULL AND expires_at > NOW()",
+          [user.id]
+        );
+
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const salt = await bcrypt.genSalt(10); // bcrypt is already imported
+        const hashedToken = await bcrypt.hash(resetToken, salt);
+        const expiresAt = new Date(Date.now() + 3600000); // 1 hour from now
+
+        await client.query(
+          'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
+          [user.id, hashedToken, expiresAt]
+        );
+
+        // Construct Reset Link
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000'; // Fallback for local dev
+        const resetLink = `${frontendUrl}/reset-password/${resetToken}`; // Path on frontend
+
+        // Compose Email
+        const subject = "Password Reset Request - MasterIn.org";
+        const textBody = `Hello ${user.full_name || user.email},\n\n` +
+                         `You requested a password reset for your MasterIn.org account. Please click the following link to reset your password:\n` +
+                         `${resetLink}\n\n` +
+                         `This link will expire in 1 hour. If you did not request this, please ignore this email.\n\n` +
+                         `Thanks,\nThe MasterIn.org Team`;
+        const htmlBody = `<html><body>
+                          <p>Hello ${user.full_name || user.email},</p>
+                          <p>You requested a password reset for your MasterIn.org account. Please click the link below to reset your password:</p>
+                          <p><a href="${resetLink}">Reset Your Password</a></p>
+                          <p>This link will expire in 1 hour. If you did not request this, please ignore this email.</p>
+                          <p>Thanks,<br/>The MasterIn.org Team</p>
+                        </body></html>`;
+
+        if (!SES_FROM_EMAIL || !sendEmail) { // Check from emailService if SES is configured and function exists
+            console.warn(`SES_FROM_EMAIL or sendEmail function is not available. Password reset email for user ${user.email} will not be sent. Token: ${resetToken} (for dev/testing)`);
+            // For development, you might still want to log the token if email sending fails.
+        } else {
+            const emailResult = await sendEmail({
+              to: user.email,
+              subject,
+              htmlBody,
+              textBody
+            });
+
+            if (emailResult.success) {
+              console.log(`Password reset email sent to ${user.email}. Message ID: ${emailResult.messageId}`);
+            } else {
+              console.error(`Failed to send password reset email to ${user.email}:`, emailResult.error);
+              // Non-critical error for client, but important for server logs.
+              // The transaction for token generation should still commit.
+            }
+        }
+        await client.query('COMMIT'); // Commit transaction for token generation
       }
-      const user = userResult.rows[0];
-
-      // Invalidate previous tokens for this user
-      await db.query('DELETE FROM password_reset_tokens WHERE user_id = $1 AND used_at IS NULL', [user.id]);
-
-      const resetToken = crypto.randomBytes(32).toString('hex');
-      const salt = await bcrypt.genSalt(10);
-      const tokenHash = await bcrypt.hash(resetToken, salt);
-
-      const expiresAt = new Date(Date.now() + 3600000); // Token expires in 1 hour
-
-      await db.query(
-        'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)',
-        [user.id, tokenHash, expiresAt]
-      );
-
-      // In a real application, you would email this resetToken (or a link containing it) to the user.
-      // For this exercise, we log it and send it in response for testing.
-      console.log(`Password reset token for ${user.email} (user_id: ${user.id}): ${resetToken} (Hashed: ${tokenHash})`);
-
-      // IMPORTANT: DO NOT SEND THE PLAIN TOKEN IN PRODUCTION RESPONSE. This is for dev/testing only.
-      res.status(200).json({
-        message: 'If your email is registered, a password reset link has been sent.',
-        _dev_token: resetToken // For testing purposes ONLY
-      });
+      // Generic success response to client, regardless of whether user existed or email was sent
+      res.json({ success: true, message: 'If your email is registered, a password reset link has been sent.' });
 
     } catch (error) {
-      console.error('Request password reset error:', error.stack);
-      res.status(500).json({ message: 'Server error during password reset request.' });
+      if (client) await client.query('ROLLBACK'); // Rollback on error during DB operations
+      console.error('Error in /request-password-reset:', error.stack);
+      // Still send a generic success message to the client for security.
+      res.json({ success: true, message: 'If your email is registered, a password reset link has been sent.' });
+    } finally {
+      if (client) client.release();
     }
   }
 );

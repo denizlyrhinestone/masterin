@@ -1,0 +1,87 @@
+# .github/workflows/ci.yml
+name: Backend CI
+
+on:
+  push:
+    branches: [ main, master, develop ] # Adjust to your main branches
+    paths: # Only run if files within the backend directory change
+      - '**' # Trigger if any file within masterin-org-backend changes
+      # This assumes the workflow file is inside masterin-org-backend/.github/workflows
+      # If it were at monorepo root, it would be 'masterin-org-backend/**'
+      # Also include the workflow file itself to trigger on its changes:
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [ main, master, develop ]
+    paths: # Only run if files within the backend directory change
+      - '**'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  build_and_test_backend:
+    name: Build and Test Backend
+    runs-on: ubuntu-latest
+
+    # If this workflow file is inside masterin-org-backend, working-directory is not needed at job level.
+    # It would be needed if the workflow was at monorepo root and checked out the whole monorepo.
+
+    strategy:
+      matrix:
+        node-version: [20.x] # Test on a specific Node.js version (e.g., current LTS)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        # with:
+        #   fetch-depth: 0 # Fetches all history for all tags and branches, useful for some tools
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm' # Automatically caches npm dependencies based on package-lock.json
+          # cache-dependency-path: 'masterin-org-backend/package-lock.json' # If at monorepo root
+
+      - name: Install dependencies
+        run: npm ci # Use 'ci' for cleaner installs in CI environments
+        # working-directory: ./masterin-org-backend # If at monorepo root
+
+      - name: Run Linters (Placeholder)
+        # In a real setup, you'd have ESLint configured and a script like "npm run lint"
+        # For now, this is a placeholder. If you have a lint script, uncomment and use it.
+        run: echo "Linting step placeholder. Configure ESLint and add 'npm run lint' or similar."
+        # working-directory: ./masterin-org-backend # If at monorepo root
+        # run: npm run lint --if-present
+
+      - name: Run Build Script (if any)
+        # Backend is plain JS, so build script is likely a no-op or placeholder.
+        run: npm run build
+        # working-directory: ./masterin-org-backend # If at monorepo root
+        # This will echo "No build step required..." as per our package.json
+
+      - name: Run Tests
+        # This runs the "test" script from package.json: "jest --detectOpenHandles --forceExit"
+        run: npm test
+        # working-directory: ./masterin-org-backend # If at monorepo root
+        env:
+          # Define environment variables needed for tests, if any
+          # These should NOT be secrets. Secrets are handled via GitHub Secrets.
+          NODE_ENV: test
+          # For pg-mem, actual DB connection vars might be ignored by the mock,
+          # but if other parts of app initialization read them, provide placeholders.
+          DB_HOST: localhost
+          DB_USER: testuser
+          DB_PASSWORD: testpassword
+          DB_DATABASE: testdb_masterin_ci # Use a specific DB name for CI tests if needed
+          DB_PORT: 5432
+          JWT_SECRET: test_jwt_secret_for_ci_do_not_use_in_prod_min_32_chars_long_random
+          FRONTEND_URL: http://localhost:7000 # For email link generation in tests
+          # AI API Keys would ideally be mocked at a lower level for unit/integration tests
+          # So they are not strictly needed here for 'npm test' if tests mock them out.
+          # SES_FROM_EMAIL is mocked in tests, but if any test didn't mock it, provide a dummy
+          SES_FROM_EMAIL: test-ci@example.com
+          # S3 related vars also assumed to be mocked or not directly hit in unit/integration tests
+          S3_BUCKET_NAME: test-ci-bucket
+          AWS_ACCESS_KEY_ID: test_ci_aws_key_id
+          AWS_SECRET_ACCESS_KEY: test_ci_aws_secret_key
+          AWS_REGION: us-east-1 # Placeholder region
+```

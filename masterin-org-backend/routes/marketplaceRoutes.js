@@ -3,14 +3,15 @@ const router = express.Router();
 const db = require('../db/database');
 const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 const { body, query, param, validationResult } = require('express-validator');
-// const path = require('path'); // No longer needed for local path joining for S3 downloads in this route
-// const UPLOAD_DIR_ROOT = path.join(__dirname, '..', 'uploads'); // No longer needed for S3 downloads
+// path and UPLOAD_DIR_ROOT are removed as they are no longer used in this file after S3 migration.
 
 // Import S3 utilities from s3Service.js
-const { s3Client, S3_BUCKET_NAME, generatePresignedGetUrl, getPublicS3Url } = require('../lib/s3Service');
-// Note: generatePresignedGetUrl was added to s3Service.js in a previous conceptual step.
-// If direct SDK usage is preferred here, import GetObjectCommand and getSignedUrl directly.
+// generatePresignedGetUrl will be used for downloads.
+// s3Client and S3_BUCKET_NAME are used by generatePresignedGetUrl internally.
+// getPublicS3Url is used for public URLs (e.g., product previews).
+const { generatePresignedGetUrl, getPublicS3Url, s3Client, S3_BUCKET_NAME } = require('../lib/s3Service');
 // For this refactor, we'll assume generatePresignedGetUrl exists and uses s3Client & S3_BUCKET_NAME from s3Service.
+const { sendEmail, SES_FROM_EMAIL } = require('../lib/emailService'); // Import email service
 
 const productValidationRules = [
   body('title').notEmpty().trim().escape().withMessage('Title is required.'),
@@ -390,6 +391,78 @@ router.post('/:productId/acquire', verifyToken, [
         RETURNING *;
       `;
       const { rows: [newPurchase] } = await db.query(insertQuery, [userId, productId, price_paid, transaction_id]);
+
+      // Send Acquisition Confirmation Email (fire and forget)
+      if (SES_FROM_EMAIL && sendEmail && req.user) { // req.user should be populated by verifyToken
+        const userEmailForConfirmation = req.user.email;
+        // Assuming req.user might not have full_name, fetch it or use email part.
+        // For simplicity, let's assume req.user has full_name or we default like password reset.
+        // If req.user doesn't have full_name, a separate query might be needed or use a simpler name.
+        // For this subtask, we'll assume req.user may have full_name.
+        const userNameForConfirmation = req.user.full_name || userEmailForConfirmation.split('@')[0];
+
+        const productTitleForEmail = product.title; // from fetched product details
+        const pricePaidForEmail = newPurchase.price_paid;
+        const purchaseDateForEmail = new Date(newPurchase.purchased_at).toLocaleDateString();
+
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const subject = `Your MasterIn.org Order Confirmation: ${productTitleForEmail}`;
+
+        const textBody = `Hello ${userNameForConfirmation},\n\n` +
+                         `Thank you for acquiring "${productTitleForEmail}" from the MasterIn.org Marketplace!\n\n` +
+                         `Order Details:\n` +
+                         `  Product: ${productTitleForEmail}\n` +
+                         `  Price Paid: $${pricePaidForEmail}\n` + // Corrected to $
+                         `  Date: ${purchaseDateForEmail}\n\n` +
+                         `You can access your purchased items in your dashboard: ${frontendUrl}/dashboard/my-products\n\n` +
+                         `Thanks for being a part of our community!\n` +
+                         `The MasterIn.org Team`;
+
+        const htmlBody = `<html>
+                          <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                            <div style="max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                              <h2 style="color: #0056b3;">Order Confirmation</h2>
+                              <p>Hello ${userNameForConfirmation},</p>
+                              <p>Thank you for acquiring <strong>"${productTitleForEmail}"</strong> from the MasterIn.org Marketplace!</p>
+                              <h3 style="color: #0056b3;">Order Details:</h3>
+                              <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                                <tr>
+                                  <td style="padding: 10px; border: 1px solid #eee; font-weight: bold;">Product:</td>
+                                  <td style="padding: 10px; border: 1px solid #eee;">${productTitleForEmail}</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 10px; border: 1px solid #eee; font-weight: bold;">Price Paid:</td>
+                                  <td style="padding: 10px; border: 1px solid #eee;">$${pricePaidForEmail}</td>
+                                </tr>
+                                <tr>
+                                  <td style="padding: 10px; border: 1px solid #eee; font-weight: bold;">Date:</td>
+                                  <td style="padding: 10px; border: 1px solid #eee;">${purchaseDateForEmail}</td>
+                                </tr>
+                              </table>
+                              <p style="text-align: center;">
+                                <a href="${frontendUrl}/dashboard/my-products" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Access Your Purchases</a>
+                              </p>
+                              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;"/>
+                              <p style="font-size: 0.9em; color: #777;">Thanks for being a part of our community!</p>
+                              <p style="font-size: 0.9em; color: #777;">The MasterIn.org Team</p>
+                            </div>
+                          </body>
+                        </html>`;
+
+        sendEmail({ to: userEmailForConfirmation, subject, htmlBody, textBody })
+          .then(emailResult => {
+            if (emailResult.success) {
+              console.log(`Marketplace acquisition confirmation sent to ${userEmailForConfirmation} for product ID ${product.id}. Message ID: ${emailResult.messageId}`);
+            } else {
+              console.error(`Failed to send marketplace acquisition confirmation to ${userEmailForConfirmation} for product ID ${product.id}: ${emailResult.error}`);
+            }
+          })
+          .catch(error => {
+            console.error(`Unexpected error sending marketplace acquisition email to ${userEmailForConfirmation} for product ID ${product.id}:`, error);
+          });
+      } else {
+        console.log(`Marketplace acquisition email for ${req.user.email} (Product ID: ${product.id}) skipped: Email service not configured.`);
+      }
 
       // 6. Return success with the new purchase record
       res.status(201).json({ success: true, message: 'Product acquired successfully.', purchase: newPurchase });

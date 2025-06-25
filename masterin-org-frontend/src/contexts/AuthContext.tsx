@@ -122,10 +122,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const requestPasswordReset = async (email: string) => {
     setIsLoading(true); setError(null);
     try {
-      const response = await apiClient.post<{ success: boolean; message: string; _dev_token?: string }>('/auth/request-password-reset', {
-        email: email, // Backend auth.js expects 'email'
+      // Backend now expects 'email_address' and always returns a generic success-like response.
+      // The _dev_token is no longer sent from the backend.
+      const response = await apiClient.post<{ success: boolean; message: string }>('/auth/request-password-reset', {
+        email_address: email, // Changed from 'email' to 'email_address'
       });
-      return response;
+      // The page component calling this will set its own specific success message.
+      // This function just processes the request and returns backend's generic message or throws error.
+      return response.data; // Return response.data directly for consistency if apiClient wraps it, or just response if not.
+                           // Assuming apiClient.post returns the { data } structure.
+                           // The subtask example for the page expects the function to resolve.
     } catch (err: any) {
       setError(err.message || 'Password reset request failed.');
       throw err;
